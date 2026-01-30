@@ -1,9 +1,8 @@
+streamlit
 plotly
 numpy
 streamlit-autorefresh
-streamlit
 math
-streamlit
 pandas
 requests
 pytz
