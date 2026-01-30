@@ -307,14 +307,14 @@ with tab2:
     st.metric("Stocks Currently in Trade", in_trade_count)
 
     # Top Gainers
-    top_gainers = df.sort_values("Gain_Loss_Today_%", ascending=False).head(3)
+    top_gainers = df.sort_values("Unrealized_PnL_%", ascending=False).head(3)
     st.markdown("### 🟢 Top 3 Gainers")
-    st.table(top_gainers[["Ticker", "Company Name", "Gain_Loss_Today_%", "Last_Close"]])
+    st.table(top_gainers[["Ticker", "Company Name", "Unrealized_PnL_%", "Last_Close"]])
 
     # Top Losers
-    top_losers = df.sort_values("Gain_Loss_Today_%", ascending=True).head(3)
+    top_losers = df.sort_values("Unrealized_PnL_%", ascending=True).head(3)
     st.markdown("### 🔴 Top 3 Losers")
-    st.table(top_losers[["Ticker", "Company Name", "Gain_Loss_Today_%", "Last_Close"]])
+    st.table(top_losers[["Ticker", "Company Name", "Unrealized_PnL_%", "Last_Close"]])
 
     # Top Near Support
     df["Dist_To_Support_%"] = ((df["Last_Close"] - df["Support"]) / df["Support"]).abs()
