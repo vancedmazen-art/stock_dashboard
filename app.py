@@ -1,286 +1,182 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import requests
-from datetime import datetime, timedelta
-import pytz
-import streamlit.components.v1 as components
-from streamlit_autorefresh import st_autorefresh
 
-
-# ====================================
-# CONFIG
-# ====================================
-
-NEWS_API_URL = (
-    "https://news-mediator.tradingview.com/news-flow/v2/news?"
-    "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
-)
-
-CAIRO_TZ = pytz.timezone("Africa/Cairo")
-
-REFRESH_SEC = 300   # 5 minutes
-
-
-# ====================================
-# PAGE SETUP
-# ====================================
-
+# ---------------------------
+# Page Config
+# ---------------------------
 st.set_page_config(
-    page_title="EGX Trading Terminal",
+    page_title="Stock Analysis Dashboard",
     layout="wide"
 )
 
+# ---------------------------
+# Load Data
+# ---------------------------
+@st.cache_data
+def load_data():
+    return pd.read_csv("StockQuotes.csv")
 
-# ====================================
-# AUTO REFRESH
-# ====================================
-
-# Auto refresh every 5 minutes
-st_autorefresh(interval=REFRESH_SEC * 1000, key="refresh")
-
-
-
-# ====================================
-# EMOJI RULES
-# ====================================
-
-KEYWORD_EMOJI_RULES = [
-
-    (["bankruptcy", "default", "collapse", "scandal"], "💥"),
-
-    (["loss", "decline", "drop", "fall", "deficit",
-      "bear", "recession"], "🔻🐻"),
-
-    (["rise", "up", "positive", "bull",
-      "increase"], "✅📈🐂"),
-
-    (["profit", "beat estimates", "surge"], "⬆💰"),
-
-    (["dividend"], "💰"),
-
-    (["merger", "acquire", "deal"], "🤝"),
-
-    (["growth", "expand", "invest"], "🚀"),
-
-    (["cut", "layoff"], "⚠️"),
-
-    (["launch"], "🆕"),
-
-    (["approval", "license"], "📜"),
-
-    (["ceo", "cfo", "board"], "👔"),
-]
-
-DEFAULT_EMOJI = "📰"
+df = load_data()
 
 
-def pick_emoji(headline):
-
-    h = headline.lower()
-    emojis = []
-
-    for keys, emo in KEYWORD_EMOJI_RULES:
-        if any(k in h for k in keys):
-            emojis.append(emo)
-
-    return "".join(set(emojis)) if emojis else DEFAULT_EMOJI
-
-
-# ====================================
-# NEWS
-# ====================================
-
-@st.cache_data(ttl=REFRESH_SEC)
-def fetch_news():
-
-    r = requests.get(NEWS_API_URL, timeout=10)
-    r.raise_for_status()
-
-    return r.json().get("items", [])
-
-
-def get_stock_news(ticker):
-
-    items = fetch_news()
-    res = []
-
-    for n in items:
-
-        related = n.get("relatedSymbols", [])
-
-        syms = []
-        for s in related:
-            sym = s.get("symbol", "")
-            if sym.startswith("EGX:"):
-                syms.append(sym.replace("EGX:", ""))
-
-        if ticker not in syms:
-            continue
-
-        ts = n.get("published")
-
-        dt = datetime.utcfromtimestamp(ts).replace(
-            tzinfo=pytz.UTC).astimezone(CAIRO_TZ)
-
-        title = n.get("title", "")
-        url = "https://www.tradingview.com" + n.get("storyPath", "")
-        provider = n.get("provider", {}).get("name", "")
-
-        emoji = pick_emoji(title)
-
-        is_breaking = datetime.now(CAIRO_TZ) - dt < timedelta(hours=1)
-
-        res.append({
-            "title": title,
-            "url": url,
-            "provider": provider,
-            "dt": dt,
-            "display": dt.strftime("%Y-%m-%d %H:%M"),
-            "emoji": emoji,
-            "breaking": is_breaking
-        })
-
-    return sorted(res, key=lambda x: x["dt"], reverse=True)[:3]
-
-
-# ====================================
-# LOAD DATA
-# ====================================
-
-df = pd.read_csv("StockQuotes.csv")
-
-df["Report_Date"] = pd.to_datetime(df["Report_Date"], format="%Y%m%d")
-
-
-# ====================================
-# SIDEBAR
-# ====================================
-
-st.sidebar.title("📌 Controls")
+# ---------------------------
+# Sidebar
+# ---------------------------
+st.sidebar.header("🔍 Stock Selector")
 
 symbols = sorted(df["Ticker"].unique())
-symbol = st.sidebar.selectbox("Select Stock", symbols)
 
-st.sidebar.markdown("---")
-st.sidebar.info("🔄 Auto refresh every 5 min")
-
-
-# ====================================
-# FILTER
-# ====================================
-
-stock = df[df["Ticker"] == symbol].sort_values("Report_Date")
-latest = stock.iloc[-1]
-
-
-# ====================================
-# KPI BAR
-# ====================================
-
-c1, c2, c3, c4, c5 = st.columns(5)
-
-c1.metric("Last Close", f"{latest['Last_Close']:.2f}")
-c2.metric("PnL %", f"{latest['Unrealized_PnL_%']:.2f}")
-c3.metric("Rel Vol", f"{latest['Rel_Volume']:.2f}")
-c4.metric("Score", f"{latest['Score']:.1f}")
-c5.metric("In Trade", "YES" if latest['In_Trade'] else "NO")
-
-
-# ====================================
-# TRADINGVIEW WIDGET
-# ====================================
-
-st.subheader("📈 Live Chart (TradingView)")
-
-tv_html = f"""
-<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div id="tv_{symbol}"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-  <script type="text/javascript">
-  new TradingView.widget({{
-    "width": "100%",
-    "height": 500,
-    "symbol": "EGX:{symbol}",
-    "interval": "D",
-    "timezone": "Africa/Cairo",
-    "theme": "light",
-    "style": "1",
-    "locale": "en",
-    "toolbar_bg": "#f1f3f6",
-    "enable_publishing": false,
-    "allow_symbol_change": false,
-    "container_id": "tv_{symbol}"
-  }});
-  </script>
-</div>
-<!-- TradingView Widget END -->
-"""
-
-components.html(tv_html, height=520)
-
-
-# ====================================
-# INTERNAL PRICE CHART
-# ====================================
-
-st.subheader("📊 Historical Price")
-
-fig = px.line(
-    stock,
-    x="Report_Date",
-    y="Last_Close",
-    title=f"{symbol} Price History"
+selected_symbol = st.sidebar.selectbox(
+    "Choose Stock:",
+    symbols
 )
 
-if latest["Support"]:
-    fig.add_hline(y=latest["Support"], line_dash="dot", annotation_text="Support")
 
-if latest["Resistance"]:
-    fig.add_hline(y=latest["Resistance"], line_dash="dot", annotation_text="Resistance")
+# ---------------------------
+# Filter Data
+# ---------------------------
+stock_df = df[df["Ticker"] == selected_symbol]
 
-if latest["Last_Exit_High"]:
-    fig.add_hline(
-        y=latest["Last_Exit_High"],
-        line_dash="dash",
-        annotation_text="Last Exit"
-    )
-
-st.plotly_chart(fig, use_container_width=True)
+latest = stock_df.sort_values("Report_Date").iloc[-1]
 
 
-# ====================================
-# NEWS
-# ====================================
-
-st.subheader("📰 Latest News")
-
-news = get_stock_news(symbol)
-
-if not news:
-    st.info("No recent news.")
-else:
-
-    for n in news:
-
-        badge = "🚨 BREAKING" if n["breaking"] else ""
-
-        st.markdown(f"""
-### {n['emoji']} {n['title']} {badge}
-
-**Source:** {n['provider']}  
-**Time:** {n['display']}  
-
-👉 [Read More]({n['url']})
----
-""")
+# ---------------------------
+# Company Name (If Exists)
+# ---------------------------
+company_name = latest.get("Company_Name", "Unknown Company")
 
 
-# ====================================
-# TABLE
-# ====================================
+# ---------------------------
+# Title Section
+# ---------------------------
+st.markdown(
+    f"""
+    <h1 style="margin-bottom:0;">
+        📈 {selected_symbol}
+    </h1>
+    <h3 style="color:gray;margin-top:0;">
+        {company_name}
+    </h3>
+    """,
+    unsafe_allow_html=True
+)
 
-with st.expander("📋 Full Data"):
+st.divider()
 
-    st.dataframe(stock, use_container_width=True)
+
+# ---------------------------
+# Sentiment Engine
+# ---------------------------
+def calculate_sentiment(row):
+
+    score = 0
+
+    # Profit
+    if row["Unrealized_PnL_%"] and row["Unrealized_PnL_%"] > 0:
+        score += 2
+    elif row["Unrealized_PnL_%"] and row["Unrealized_PnL_%"] < 0:
+        score -= 2
+
+    # Volume
+    if row["Rel_Volume"] and row["Rel_Volume"] > 1.5:
+        score += 1
+
+    # Trend
+    if row["HMA_above_EMA"]:
+        score += 1
+
+    if row["Accumulation"]:
+        score += 1
+
+    # RSI
+    if row["RSI_Divergence"]:
+        score += 1
+
+    # Market structure
+    if row["Market_Structure"]:
+        score += 1
+
+    # Final sentiment
+    if score >= 4:
+        return "🟢 Strong Bullish"
+    elif score >= 2:
+        return "🟢 Bullish"
+    elif score >= 0:
+        return "🟡 Neutral"
+    elif score >= -2:
+        return "🔴 Bearish"
+    else:
+        return "🔴 Strong Bearish"
+
+
+sentiment = calculate_sentiment(latest)
+
+
+# ---------------------------
+# Summary Cards
+# ---------------------------
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Last Close", f"{latest['Last_Close']:.2f}")
+col2.metric("Daily %", f"{latest['Gain_Loss_Today_%']:.2f}%")
+col3.metric("Unrealized PnL", f"{latest['Unrealized_PnL_%']:.2f}%")
+col4.metric("Sentiment", sentiment)
+
+
+st.divider()
+
+
+# ---------------------------
+# Full Data View
+# ---------------------------
+st.subheader("📋 Full Stock Metrics")
+
+display_df = latest.to_frame(name="Value").reset_index()
+display_df.columns = ["Metric", "Value"]
+
+st.dataframe(
+    display_df,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# ---------------------------
+# Trade Status
+# ---------------------------
+st.subheader("💼 Trade Status")
+
+status_col1, status_col2, status_col3 = st.columns(3)
+
+status_col1.metric(
+    "In Trade",
+    "YES ✅" if latest["In_Trade"] else "NO ❌"
+)
+
+status_col2.metric(
+    "Days In Trade",
+    int(latest["Days_In_Trade"])
+    if not pd.isna(latest["Days_In_Trade"])
+    else "-"
+)
+
+status_col3.metric(
+    "Entry Price",
+    f"{latest['Entry_Price']:.2f}"
+    if not pd.isna(latest["Entry_Price"])
+    else "-"
+)
+
+
+st.divider()
+
+
+# ---------------------------
+# Historical Table
+# ---------------------------
+st.subheader("🕒 Historical Records")
+
+st.dataframe(
+    stock_df.sort_values("Report_Date", ascending=False),
+    use_container_width=True
+)
