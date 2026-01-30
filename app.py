@@ -70,21 +70,28 @@ def calculate_sentiment(row):
     else:
         return "🔴 Strong Bearish"
 
-# Add sentiment to latest row
 latest_sentiment = calculate_sentiment(latest)
 latest["Sentiment"] = latest_sentiment
 
-# Display metrics horizontally in sidebar
+# ---------------------------
+# Sidebar: Full Metrics Horizontal
+# ---------------------------
 st.sidebar.subheader("📋 Full Stock Metrics")
 metrics = latest.to_dict()
-cols = st.sidebar.columns(len(metrics))
-for i, (metric, value) in enumerate(metrics.items()):
-    # Format floats nicely
-    if isinstance(value, float):
-        value_str = f"{value:.2f}"
-    else:
-        value_str = str(value)
-    cols[i].metric(metric, value_str)
+metrics_per_row = 6  # max metrics per row
+metric_items = list(metrics.items())
+for i in range(0, len(metric_items), metrics_per_row):
+    row_metrics = metric_items[i:i + metrics_per_row]
+    cols = st.sidebar.columns(len(row_metrics))
+    for col, (metric, value) in zip(cols, row_metrics):
+        # Format values nicely
+        if isinstance(value, float):
+            value_str = f"{value:.2f}"
+        elif pd.isna(value):
+            value_str = "-"
+        else:
+            value_str = str(value)
+        col.metric(label=metric, value=value_str)
 
 # ---------------------------
 # Main Page: Stock Info
@@ -140,20 +147,14 @@ iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview
 components.iframe(iframe_url, height=600, width=1200)
 
 # ---------------------------
-# Latest 3 News Section
+# Latest 3 News
 # ---------------------------
 st.subheader("📰 Latest News")
-
-# ---------------------------
-# News Fetching Function
-# ---------------------------
-DISCORD_WEBHOOK_URL = ""  # Optional: remove if not needed
 
 API_URL = (
     "https://news-mediator.tradingview.com/news-flow/v2/news?"
     "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
 )
-
 CAIRO_TZ = pytz.timezone("Africa/Cairo")
 KEYWORD_EMOJI_RULES = [
     (["bankruptcy", "default", "collapse", "scandal"], "💥"),
@@ -183,9 +184,7 @@ def pick_emoji(headline: str) -> str:
         if any(k in h for k in keywords):
             if emoji not in emojis:
                 emojis.append(emoji)
-    if not emojis:
-        return DEFAULT_EMOJI
-    return "".join(emojis)
+    return "".join(emojis) if emojis else DEFAULT_EMOJI
 
 def fetch_latest_news(symbol: str, max_items=3):
     try:
@@ -224,6 +223,10 @@ def fetch_latest_news(symbol: str, max_items=3):
 news_items = fetch_latest_news(selected_symbol)
 if news_items:
     for n in news_items:
-        st.markdown(f"{n['emoji']} **{n['title']}**  \nSource: {n['provider']} | Published: {n['published']}  \n[Read More]({n['url']})")
+        st.markdown(
+            f"{n['emoji']} **{n['title']}**  \n"
+            f"Source: {n['provider']} | Published: {n['published']}  \n"
+            f"[Read More]({n['url']})"
+        )
 else:
     st.info("No news found for this stock.")
