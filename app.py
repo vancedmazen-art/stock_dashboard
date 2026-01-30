@@ -61,7 +61,22 @@ st.markdown(
 )
 
 st.divider()
+# ---------------------------
+# Trade Status
+# ---------------------------
+st.subheader("💼 Trade Status")
+status_col1, status_col2, status_col3 = st.columns(3)
+status_col1.metric("In Trade", "YES ✅" if latest["In_Trade"] else "NO ❌")
+status_col2.metric(
+    "Days In Trade",
+    int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
+)
+status_col3.metric(
+    "Entry Price",
+    f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
+)
 
+st.divider()
 # ---------------------------
 # Sentiment Engine
 # ---------------------------
@@ -115,22 +130,7 @@ display_df = latest.to_frame(name="Value").reset_index()
 display_df.columns = ["Metric", "Value"]
 st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-# ---------------------------
-# Trade Status
-# ---------------------------
-st.subheader("💼 Trade Status")
-status_col1, status_col2, status_col3 = st.columns(3)
-status_col1.metric("In Trade", "YES ✅" if latest["In_Trade"] else "NO ❌")
-status_col2.metric(
-    "Days In Trade",
-    int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
-)
-status_col3.metric(
-    "Entry Price",
-    f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
-)
 
-st.divider()
 
 # ---------------------------
 # TradingView Chart Embed
