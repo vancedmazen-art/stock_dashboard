@@ -1,9 +1,9 @@
-name: Daily OHLCV Update
+﻿name: Daily OHLCV Update
 
 on:
-  workflow_dispatch:       # manual run button
+  workflow_dispatch:       # manual run
   schedule:
-    - cron: "0 20 * * *"  # every day 8 PM UTC (10 PM Cairo)
+    - cron: "0 20 * * *"  # daily 8 PM UTC (10 PM Cairo)
 
 jobs:
   update:
