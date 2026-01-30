@@ -19,6 +19,7 @@ def load_data():
     company_map = pd.read_csv("egx_company_map.csv")
     # Strip EGX: prefix to match your tickers
     company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
+    # Merge on Ticker
     df = df.merge(
         company_map,
         on="Ticker",
@@ -29,65 +30,26 @@ def load_data():
 df = load_data()
 
 # ---------------------------
-# Sidebar
+# Sidebar: Stock Selector + Full Metrics
 # ---------------------------
 st.sidebar.header("🔍 Stock Selector")
 symbols = sorted(df["Ticker"].unique())
 selected_symbol = st.sidebar.selectbox("Choose Stock:", symbols)
 
-# ---------------------------
-# Filter Data
-# ---------------------------
+# Filter stock
 stock_df = df[df["Ticker"] == selected_symbol]
-latest = stock_df.sort_values("Report_Date").iloc[-1]
 
-# ---------------------------
-# Company Info
-# ---------------------------
-company_name = latest.get("Company Name") or "Unknown Company"
-sector = latest.get("Sector") or "Unknown Sector"
-industry = latest.get("Industry/Subsector") or "Unknown Industry"
-
-# ---------------------------
-# Title Section
-# ---------------------------
-st.markdown(
-    f"""
-    <h1 style="margin-bottom:0;">📈 {selected_symbol}</h1>
-    <h3 style="color:gray;margin-top:0;">{company_name}</h3>
-    <h4 style="color:#4CAF50;margin-top:5px;">🏭 Sector: {sector} | 🏷 Industry: {industry}</h4>
-    """,
-    unsafe_allow_html=True
-)
-
-st.divider()
-# ---------------------------
-# Trade Status
-# ---------------------------
-st.subheader("💼 Trade Status")
-status_col1, status_col2, status_col3 = st.columns(3)
-status_col1.metric("In Trade", "YES ✅" if latest["In_Trade"] else "NO ❌")
-status_col2.metric(
-    "Days In Trade",
-    int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
-)
-status_col3.metric(
-    "Entry Price",
-    f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
-)
-
-st.divider()
 # ---------------------------
 # Sentiment Engine
 # ---------------------------
 def calculate_sentiment(row):
     score = 0
-    if pd.notna(row["Unrealized_PnL_%"]):
+    if pd.notna(row.get("Unrealized_PnL_%")):
         if row["Unrealized_PnL_%"] > 0:
             score += 2
         elif row["Unrealized_PnL_%"] < 0:
             score -= 2
-    if pd.notna(row["Rel_Volume"]) and row["Rel_Volume"] > 1.5:
+    if pd.notna(row.get("Rel_Volume")) and row["Rel_Volume"] > 1.5:
         score += 1
     if row.get("HMA_above_EMA", False):
         score += 1
@@ -109,7 +71,48 @@ def calculate_sentiment(row):
     else:
         return "🔴 Strong Bearish"
 
+# Add sentiment column for sidebar table
+stock_df_display = stock_df.copy()
+stock_df_display["Sentiment"] = stock_df_display.apply(calculate_sentiment, axis=1)
+
+# Optional: reorder columns to put Sentiment at the end
+cols = list(stock_df_display.columns)
+if "Sentiment" in cols:
+    cols.remove("Sentiment")
+cols.append("Sentiment")
+stock_df_display = stock_df_display[cols]
+
+# Display full stock metrics in sidebar
+st.sidebar.subheader("📋 Full Stock Metrics")
+st.sidebar.dataframe(
+    stock_df_display.sort_values("Report_Date", ascending=False),
+    use_container_width=True
+)
+
+# ---------------------------
+# Latest Record for Main Page
+# ---------------------------
+latest = stock_df.sort_values("Report_Date").iloc[-1]
+
+# Company Info
+company_name = latest.get("Company Name") or "Unknown Company"
+sector = latest.get("Sector") or "Unknown Sector"
+industry = latest.get("Industry/Subsector") or "Unknown Industry"
 sentiment = calculate_sentiment(latest)
+
+# ---------------------------
+# Title Section
+# ---------------------------
+st.markdown(
+    f"""
+    <h1 style="margin-bottom:0;">📈 {selected_symbol}</h1>
+    <h3 style="color:gray;margin-top:0;">{company_name}</h3>
+    <h4 style="color:#4CAF50;margin-top:5px;">🏭 Sector: {sector} | 🏷 Industry: {industry}</h4>
+    """,
+    unsafe_allow_html=True
+)
+
+st.divider()
 
 # ---------------------------
 # Summary Cards
@@ -123,24 +126,37 @@ col4.metric("Sentiment", sentiment)
 st.divider()
 
 # ---------------------------
-# Full Data View
+# Full Data View of Latest Row
 # ---------------------------
-st.subheader("📋 Full Stock Metrics")
+st.subheader("📋 Latest Stock Metrics")
 display_df = latest.to_frame(name="Value").reset_index()
 display_df.columns = ["Metric", "Value"]
 st.dataframe(display_df, use_container_width=True, hide_index=True)
 
+# ---------------------------
+# Trade Status
+# ---------------------------
+st.subheader("💼 Trade Status")
+status_col1, status_col2, status_col3 = st.columns(3)
+status_col1.metric("In Trade", "YES ✅" if latest["In_Trade"] else "NO ❌")
+status_col2.metric(
+    "Days In Trade",
+    int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
+)
+status_col3.metric(
+    "Entry Price",
+    f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
+)
 
+st.divider()
 
 # ---------------------------
 # TradingView Chart Embed
 # ---------------------------
 st.subheader("📈 TradingView Live Chart")
 
-# Generate TradingView URL
-# EGX tickers need "EGX:XXX" format
+# Generate TradingView URL (EGX:XXX format)
 tradingview_symbol = f"EGX:{selected_symbol}"
-
 iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview_{selected_symbol}&symbol={tradingview_symbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc%2FUTC"
 
 components.iframe(iframe_url, height=600, width=1200)
