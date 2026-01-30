@@ -1,9 +1,10 @@
 name: Daily OHLCV Update
 
+# Trigger: manual or scheduled
 on:
+  workflow_dispatch:    # allows you to run manually
   schedule:
-    - cron: "0 20 * * *"   # 8 PM UTC (10 PM Cairo)
-  workflow_dispatch:
+    - cron: "0 20 * * *"  # every day 8 PM UTC (10 PM Cairo)
 
 jobs:
   update:
@@ -19,19 +20,16 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install deps
-        run: |
-          pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run updater
-        run: |
-          python scripts/update_ohlcv.py
+        run: python scripts/update_ohlcv.py
 
       - name: Commit CSV
         run: |
-          git config --global user.name "data-bot"
-          git config --global user.email "bot@github.com"
-
+          git config --global user.name "Mazen Diab"
+          git config --global user.email "vancedmazen@gmail.com"
           git add data/egx_ohlcv.csv
-          git commit -m "Daily OHLCV update" || echo "No changes"
+          git commit -m "Daily OHLCV update" || echo "No changes to commit"
           git push
