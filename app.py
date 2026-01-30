@@ -5,6 +5,7 @@ from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
 import os
+import math
 
 # ---------------------------
 # Page Config
@@ -140,24 +141,35 @@ with tab1:
         st.divider()
         # TradingView chart
         st.subheader("📈 TradingView Live Chart")
+        horz_lines = []
+
+        if support is not None and not math.isnan(support):
+            horz_lines.append(
+                f'%7B%22price%22:{support},%22color%22:%22green%22,%22width%22:2,%22style%22:0%7D'
+            )
+
+        if resistance is not None and not math.isnan(resistance):
+            horz_lines.append(
+                f'%7B%22price%22:{resistance},%22color%22:%22red%22,%22width%22:2,%22style%22:0%7D'
+            )
+
+        horz_lines_str = ",".join(horz_lines)
         iframe_url = (
-        f"https://s.tradingview.com/widgetembed/?"
-        f"frameElementId=tradingview_{selected_symbol}&"
-        f"symbol=EGX:{selected_symbol}&"
-        f"interval=D&"
-        f"hidesidetoolbar=1&"
-        f"symboledit=1&"
-        f"saveimage=1&"
-        f"toolbarbg=f1f3f6&"
-        f"theme=Light&"
-        f"style=9&"  # Hollow candles
-        f"timezone=Etc%2FUTC"
-        f"overrides=%7B"
-        f"%22paneProperties.horzLines%22:%5B"
-        f"%7B%22price%22:{support},%22color%22:%22green%22,%22width%22:2,%22style%22:0%7D,"
-        f"%7B%22price%22:{resistance},%22color%22:%22red%22,%22width%22:2,%22style%22:0%7D"
-        f"%5D%7D"
+            f"https://s.tradingview.com/widgetembed/?"
+            f"frameElementId=tradingview_{selected_symbol}&"
+            f"symbol=EGX:{selected_symbol}&"
+            f"interval=D&"
+            f"hidesidetoolbar=1&"
+            f"symboledit=1&"
+            f"saveimage=1&"
+            f"toolbarbg=f1f3f6&"
+            f"theme=Light&"
+            f"style=9&"  # Hollow candles
+            f"timezone=Etc%2FUTC"
         )
+
+        if horz_lines_str:
+            iframe_url += f"&overrides=%7B%22paneProperties.horzLines%22:%5B{horz_lines_str}%5D%7D"
         components.iframe(iframe_url, height=600, width=900)
 
 
