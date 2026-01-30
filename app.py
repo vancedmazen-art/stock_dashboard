@@ -78,9 +78,6 @@ latest["Sentiment"] = latest_sentiment
 # ---------------------------
 left_col, right_col = st.columns([3, 1])  # 3:1 width ratio
 
-# ---------------------------
-# Left Column: Stock Info, Trade Status, Summary, Chart, News
-# ---------------------------
 with left_col:
     # Stock Header
     company_name = latest.get("Company Name") or "Unknown Company"
@@ -97,27 +94,65 @@ with left_col:
         unsafe_allow_html=True
     )
 
-    # Trade Status
-    st.subheader("💼 Trade Status")
-    status_col1, status_col2, status_col3 = st.columns(3)
-    status_col1.metric("In Trade", "YES ✅" if latest["In_Trade"] else "NO ❌")
-    status_col2.metric(
-        "Days In Trade",
-        int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
-    )
-    status_col3.metric(
-        "Entry Price",
-        f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
-    )
+    # ---------------------------
+    # Only show Trade Status + Summary if in trade
+    # ---------------------------
+    if latest["In_Trade"]:
+        st.subheader("💼 Trade Status")
+        status_col1, status_col2, status_col3 = st.columns(3)
+        status_col1.metric("In Trade", "YES ✅")
+        status_col2.metric(
+            "Days In Trade",
+            int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
+        )
+        status_col3.metric(
+            "Entry Price",
+            f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
+        )
 
-    st.divider()
+        # Entry Date if exists
+        if "Entry_Date" in latest and pd.notna(latest["Entry_Date"]):
+            st.markdown(f"**Entry Date:** {latest['Entry_Date']}")
 
-    # Summary Cards
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Last Close", f"{latest['Last_Close']:.2f}" if pd.notna(latest["Last_Close"]) else "-")
-    col2.metric("Daily %", f"{latest['Gain_Loss_Today_%']:.2f}%" if pd.notna(latest["Gain_Loss_Today_%"]) else "-")
-    col3.metric("Unrealized PnL", f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-")
-    col4.metric("Sentiment", sentiment)
+        st.divider()
+
+        # Summary Cards
+        last_close = latest['Last_Close'] if pd.notna(latest['Last_Close']) else "-"
+        daily_pct = f"{latest['Gain_Loss_Today_%']:.2f}%" if pd.notna(latest["Gain_Loss_Today_%"]) else "-"
+        unrealized_pnl = f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-"
+        score = latest.get("Score", "-")
+        rsi_div = "Yes ✅" if latest.get("RSI_Divergence", False) else "No ❌"
+
+        # Distance to Support/Resistance
+        price = latest['Last_Close'] if pd.notna(latest['Last_Close']) else None
+        support = latest.get("Support")
+        resistance = latest.get("Resistance")
+        dist_support = f"{(price - support):.2f}" if price and support else "-"
+        dist_resistance = f"{(resistance - price):.2f}" if price and resistance else "-"
+        
+        # Price relation to S/R
+        if price and support and resistance:
+            if price < support:
+                price_vs_sr = "Below Support 🔻"
+            elif price > resistance:
+                price_vs_sr = "Above Resistance ⬆️"
+            elif abs(price - support) / support < 0.01:
+                price_vs_sr = "Near Support ⚠️"
+            elif abs(price - resistance) / resistance < 0.01:
+                price_vs_sr = "Near Resistance ⚠️"
+            else:
+                price_vs_sr = "Between Support & Resistance"
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Last Close", last_close)
+        col2.metric("Unrealized PnL", unrealized_pnl)
+        col3.metric("Score", score)
+        col4.metric("RSI Divergence", rsi_div)
+
+        st.markdown(f"**Distance to Support:** {dist_support} | **Distance to Resistance:** {dist_resistance}")
+        st.markdown(f"**Price Position:** {price_vs_sr}")
+        st.markdown(f"**Sentiment:** {sentiment}")
+
 
     st.divider()
 
