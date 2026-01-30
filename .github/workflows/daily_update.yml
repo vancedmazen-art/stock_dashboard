@@ -1,8 +1,7 @@
 name: Daily OHLCV Update
 
-# Trigger: manual or scheduled
 on:
-  workflow_dispatch:    # allows you to run manually
+  workflow_dispatch:       # manual run button
   schedule:
     - cron: "0 20 * * *"  # every day 8 PM UTC (10 PM Cairo)
 
@@ -11,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repo
         uses: actions/checkout@v4
 
