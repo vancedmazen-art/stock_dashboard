@@ -5,3 +5,5 @@ requests
 pytz
 numpy
 streamlit-autorefresh
+streamlit
+streamlit.components.v1
