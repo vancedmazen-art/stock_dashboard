@@ -220,7 +220,6 @@ with right_col:
 
     # Map your DataFrame columns to proper display names
     metric_names = {
-        "Ticker": "Ticker",
         "In_Trade": "In Trade",
         "Last_Close": "Last Close",
         "Gain_Loss_Today_%": "Daily % Gain/Loss",
@@ -232,10 +231,7 @@ with right_col:
         "Accumulation": "Accumulation",
         "RSI_Divergence": "RSI Divergence",
         "Market_Structure": "Market Structure",
-        "Sentiment": "Sentiment",
-        "Company Name": "Company Name",
-        "Sector": "Sector",
-        "Industry/Subsector": "Industry/Subsector"
+        "Sentiment": "Sentiment"
     }
 
     metrics_to_show = []
