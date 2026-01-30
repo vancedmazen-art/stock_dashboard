@@ -67,7 +67,7 @@ latest_sentiment = calculate_sentiment(latest)
 latest["Sentiment"] = latest_sentiment
 
 # ---------------------------
-# Tabs: Stock Detail + Market Aggregates + AI Chat
+# Tabs: Stock Detail + Market Aggregates
 # ---------------------------
 tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
 
@@ -102,7 +102,7 @@ with tab1:
             st.divider()
 
             # Summary
-            last_close = latest['Last_Close'] if pd.notna(latest['Last_Close']) else "-"
+            last_close = latest['Last_Close'] if pd.notna(latest['Last_Close']) else None
             unrealized_pnl = f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-"
             score = latest.get("Score", "-")
             rsi_div = "Yes ✅" if latest.get("RSI_Divergence", False) else "No ❌"
@@ -139,7 +139,10 @@ with tab1:
             st.markdown(f"**Distance to Support:** {dist_support_pct_str} | **Distance to Resistance:** {dist_resistance_pct_str}")
 
         st.divider()
-        # TradingView chart
+
+        # ---------------------------
+        # TradingView chart with hollow candles + support/resistance
+        # ---------------------------
         st.subheader("📈 TradingView Live Chart")
         horz_lines = []
 
@@ -170,9 +173,12 @@ with tab1:
 
         if horz_lines_str:
             iframe_url += f"&overrides=%7B%22paneProperties.horzLines%22:%5B{horz_lines_str}%5D%7D"
+
         components.iframe(iframe_url, height=600, width=900)
 
-
+    # ---------------------------
+    # Right column: metrics
+    # ---------------------------
     with right_col:
         st.subheader("📋 Full Stock Metrics")
         metric_names = {
@@ -230,4 +236,3 @@ with tab2:
 
     st.markdown("### 📈 Top 3 ATR")
     st.table(top_atr[["Ticker", "Company Name", "ATR_Volatility_%", "Last_Close"]])
-
