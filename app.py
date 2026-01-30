@@ -226,7 +226,7 @@ with tab3:
 
         try:
             response = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-3.5-turbo",
                 messages=st.session_state.chat_history,
                 temperature=0.7,
                 max_tokens=500
