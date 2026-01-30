@@ -151,7 +151,7 @@ with tab1:
         f"toolbarbg=f1f3f6&"
         f"theme=Light&"
         f"style=9&"  # Hollow candles
-        f"studies=%5B%22MA.Exp%40tv-basicstudies%22,%22Hull%20MA%40tv-basicstudies%22%5D&"
+        f"studies=%5B%22Moving%20Average%20Exponential%40tv-basicstudies%22,%22Hull%20MA%40tv-basicstudies%22%5D&"
         f"studies_overrides=%7B%22MA.Exp.length%22:20,%22Hull%20MA.length%22:20%7D&"
         f"timezone=Etc%2FUTC"
         )
