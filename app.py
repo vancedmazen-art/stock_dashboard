@@ -5,6 +5,7 @@ import requests
 from datetime import datetime, timedelta
 import pytz
 import streamlit.components.v1 as components
+from streamlit_autorefresh import st_autorefresh
 
 
 # ====================================
@@ -35,12 +36,9 @@ st.set_page_config(
 # AUTO REFRESH
 # ====================================
 
-st_autorefresh = st.experimental_rerun
+# Auto refresh every 5 minutes
+st_autorefresh(interval=REFRESH_SEC * 1000, key="refresh")
 
-last_refresh = st.session_state.get("last_refresh")
-
-if not last_refresh or (datetime.now() - last_refresh).seconds > REFRESH_SEC:
-    st.session_state["last_refresh"] = datetime.now()
 
 
 # ====================================
