@@ -129,6 +129,19 @@ with left_col:
         resistance = latest.get("Resistance")
         dist_support = f"{(price - support):.2f}" if price and support else "-"
         dist_resistance = f"{(resistance - price):.2f}" if price and resistance else "-"
+        # Distance to Support/Resistance in percentage
+        if price and support:
+            dist_support_pct = ((price - support) / support) * 100
+            dist_support_pct_str = f"{dist_support_pct:.2f}%"
+        else:
+            dist_support_pct_str = "-"
+
+        if price and resistance:
+            dist_resistance_pct = ((resistance - price) / resistance) * 100
+            dist_resistance_pct_str = f"{dist_resistance_pct:.2f}%"
+        else:
+            dist_resistance_pct_str = "-"
+
         
         # Price relation to S/R
         if price and support and resistance:
@@ -152,6 +165,7 @@ with left_col:
         st.markdown(f"**Distance to Support:** {dist_support} | **Distance to Resistance:** {dist_resistance}")
         st.markdown(f"**Price Position:** {price_vs_sr}")
         st.markdown(f"**Sentiment:** {sentiment}")
+        st.markdown(f"**Distance to Support:** {dist_support_pct_str} | **Distance to Resistance:** {dist_resistance_pct_str}")
 
 
     st.divider()
