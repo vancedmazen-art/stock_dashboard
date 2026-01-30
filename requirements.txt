@@ -5,6 +5,3 @@ requests
 pytz
 numpy
 streamlit-autorefresh
-openai 
-streamlit
-streamlit.components.v1
