@@ -303,3 +303,41 @@ with right_col:
 
     for name, value in metrics_to_show:
         st.markdown(f"**{name}:** {value}")
+
+# ---------------------------
+# Tabs for Main and Aggregates
+# ---------------------------
+tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
+
+with tab1:
+    # Place all your existing left_col + right_col code here
+    st.write("⚡ Your existing stock detail code goes here ⚡")
+
+with tab2:
+    st.subheader("📊 Market Aggregates")
+
+    # Total stocks in trade
+    in_trade_count = df[df["In_Trade"]].shape[0]
+    st.metric("Stocks Currently in Trade", in_trade_count)
+
+    # Top Gainers
+    top_gainers = df.sort_values("Gain_Loss_Today_%", ascending=False).head(3)
+    st.markdown("### 🟢 Top 3 Gainers")
+    st.table(top_gainers[["Ticker", "Company Name", "Gain_Loss_Today_%", "Last_Close"]])
+
+    # Top Losers
+    top_losers = df.sort_values("Gain_Loss_Today_%", ascending=True).head(3)
+    st.markdown("### 🔴 Top 3 Losers")
+    st.table(top_losers[["Ticker", "Company Name", "Gain_Loss_Today_%", "Last_Close"]])
+
+    # Top Near Support
+    df["Dist_To_Support_%"] = ((df["Last_Close"] - df["Support"]) / df["Support"]).abs()
+    top_support = df.sort_values("Dist_To_Support_%").head(3)
+    st.markdown("### ⚠️ Top 3 Near Support")
+    st.table(top_support[["Ticker", "Company Name", "Last_Close", "Support", "Dist_To_Support_%"]])
+
+    # Top ATR
+    top_atr = df.sort_values("ATR_Volatility_%", ascending=False).head(3)
+    st.markdown("### 📈 Top 3 ATR")
+    st.table(top_atr[["Ticker", "Company Name", "ATR_Volatility_%", "Last_Close"]])
+
