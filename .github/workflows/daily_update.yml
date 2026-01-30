@@ -29,4 +29,4 @@ jobs:
 
       # Step 4: Run your stock update script
       - name: Run daily update
-        run: python app.py
+        run: python update_ohlcv.py
