@@ -1,11 +1,32 @@
-﻿name: Test Workflow
+name: Daily Stock Update
 
+# Trigger workflow automatically and manually
 on:
-  workflow_dispatch:   # manual run
+  workflow_dispatch:   # allows manual run
+  schedule:
+    - cron: '0 8 * * *'  # runs every day at 08:00 UTC (adjust as needed)
 
 jobs:
-  test:
+  update:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Say Hello
-        run: echo "✅ Workflow is running!"
+      # Step 1: Checkout your repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'  # adjust to your version
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Step 4: Run your app/script
+      - name: Run daily update
+        run: python app.py
