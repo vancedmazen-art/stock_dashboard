@@ -162,7 +162,7 @@ with left_col:
         col3.metric("Score", score)
         col4.metric("RSI Divergence", rsi_div)
 
-        st.markdown(f"**Distance to Support:** {dist_support} | **Distance to Resistance:** {dist_resistance}")
+        # st.markdown(f"**Distance to Support:** {dist_support} | **Distance to Resistance:** {dist_resistance}")
         st.markdown(f"**Price Position:** {price_vs_sr}")
         st.markdown(f"**Sentiment:** {sentiment}")
         st.markdown(f"**Distance to Support:** {dist_support_pct_str} | **Distance to Resistance:** {dist_resistance_pct_str}")
