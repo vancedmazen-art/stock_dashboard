@@ -156,7 +156,7 @@ with tab1:
             f"style=9&"  # Hollow candles
             f"timezone=Etc%2FUTC"
         )
-        components.iframe(iframe_url, height=600, width=900)
+        st.components.v1.iframe(iframe_url, height=600, width=900)
 
     # ---------------------------
     # Right column: metrics
