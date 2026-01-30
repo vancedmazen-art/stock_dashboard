@@ -152,6 +152,11 @@ with tab1:
         f"theme=Light&"
         f"style=9&"  # Hollow candles
         f"timezone=Etc%2FUTC"
+        f"overrides=%7B"
+        f"%22paneProperties.horzLines%22:%5B"
+        f"%7B%22price%22:{support},%22color%22:%22green%22,%22width%22:2,%22style%22:0%7D,"
+        f"%7B%22price%22:{resistance},%22color%22:%22red%22,%22width%22:2,%22style%22:0%7D"
+        f"%5D%7D"
         )
         components.iframe(iframe_url, height=600, width=900)
 
