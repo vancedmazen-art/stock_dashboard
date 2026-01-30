@@ -150,7 +150,7 @@ with tab1:
         f"saveimage=1&"
         f"toolbarbg=f1f3f6&"
         f"theme=Light&"
-        f"style=4&"  # Hollow candles
+        f"style=0&"  # Hollow candles
         f"studies=%5B%22MA.Exp%40tv-basicstudies%22,%22Hull%20MA%40tv-basicstudies%22%5D&"
         f"studies_overrides=%7B%22MA.Exp.length%22:20,%22Hull%20MA.length%22:20%7D&"
         f"timezone=Etc%2FUTC"
