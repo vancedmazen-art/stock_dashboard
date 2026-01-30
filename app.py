@@ -20,11 +20,7 @@ def load_data():
     # Strip EGX: prefix to match your tickers
     company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
     # Merge on Ticker
-    df = df.merge(
-        company_map,
-        on="Ticker",
-        how="left"
-    )
+    df = df.merge(company_map, on="Ticker", how="left")
     return df
 
 df = load_data()
@@ -75,7 +71,7 @@ def calculate_sentiment(row):
 stock_df_display = stock_df.copy()
 stock_df_display["Sentiment"] = stock_df_display.apply(calculate_sentiment, axis=1)
 
-# Optional: reorder columns to put Sentiment at the end
+# Reorder columns to put Sentiment at the end
 cols = list(stock_df_display.columns)
 if "Sentiment" in cols:
     cols.remove("Sentiment")
@@ -112,29 +108,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.divider()
-
 # ---------------------------
-# Summary Cards
-# ---------------------------
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Last Close", f"{latest['Last_Close']:.2f}" if pd.notna(latest["Last_Close"]) else "-")
-col2.metric("Daily %", f"{latest['Gain_Loss_Today_%']:.2f}%" if pd.notna(latest["Gain_Loss_Today_%"]) else "-")
-col3.metric("Unrealized PnL", f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-")
-col4.metric("Sentiment", sentiment)
-
-st.divider()
-
-# ---------------------------
-# Full Data View of Latest Row
-# ---------------------------
-st.subheader("📋 Latest Stock Metrics")
-display_df = latest.to_frame(name="Value").reset_index()
-display_df.columns = ["Metric", "Value"]
-st.dataframe(display_df, use_container_width=True, hide_index=True)
-
-# ---------------------------
-# Trade Status
+# Trade Status (just below sector)
 # ---------------------------
 st.subheader("💼 Trade Status")
 status_col1, status_col2, status_col3 = st.columns(3)
@@ -147,6 +122,17 @@ status_col3.metric(
     "Entry Price",
     f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
 )
+
+st.divider()
+
+# ---------------------------
+# Summary Cards
+# ---------------------------
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Last Close", f"{latest['Last_Close']:.2f}" if pd.notna(latest["Last_Close"]) else "-")
+col2.metric("Daily %", f"{latest['Gain_Loss_Today_%']:.2f}%" if pd.notna(latest["Gain_Loss_Today_%"]) else "-")
+col3.metric("Unrealized PnL", f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-")
+col4.metric("Sentiment", sentiment)
 
 st.divider()
 
