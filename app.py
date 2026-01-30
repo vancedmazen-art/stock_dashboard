@@ -201,17 +201,24 @@ with tab2:
     st.table(top_atr[["Ticker", "Company Name", "ATR_Volatility_%", "Last_Close"]])
 
 # ---------------------------
-# Tab 3: AI Chat
+# Tab 3: AI Chat (Updated for openai>=1.0)
 # ---------------------------
 with tab3:
     st.subheader("🤖 Ask the AI about stocks")
+
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     user_input = st.text_input("Your question here:")
 
     if st.button("Send") and user_input.strip():
-        # Prepare stock context for AI
+        import os
+        from openai import OpenAI
+
+        # Make sure your OPENAI_API_KEY is set in environment
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+        # Stock context
         stock_summary = latest.to_dict()
         system_msg = f"You are a stock assistant. Here is the latest data for {selected_symbol}: {stock_summary}"
 
@@ -219,13 +226,13 @@ with tab3:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
 
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=st.session_state.chat_history,
-                max_tokens=500,
-                temperature=0.7
+                temperature=0.7,
+                max_tokens=500
             )
-            ai_answer = response["choices"][0]["message"]["content"]
+            ai_answer = response.choices[0].message.content
             st.session_state.chat_history.append({"role": "assistant", "content": ai_answer})
             st.markdown(f"**AI:** {ai_answer}")
         except Exception as e:
