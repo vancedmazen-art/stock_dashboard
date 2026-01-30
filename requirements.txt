@@ -2,7 +2,6 @@ streamlit
 plotly
 numpy
 streamlit-autorefresh
-math
 pandas
 requests
 pytz
