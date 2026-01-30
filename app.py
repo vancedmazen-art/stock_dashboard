@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import streamlit.components.v1 as components  # For iframe
 
 # ---------------------------
 # Page Config
@@ -18,7 +19,6 @@ def load_data():
     company_map = pd.read_csv("egx_company_map.csv")
     # Strip EGX: prefix to match your tickers
     company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
-    # Merge on Ticker
     df = df.merge(
         company_map,
         on="Ticker",
@@ -133,10 +133,14 @@ status_col3.metric(
 st.divider()
 
 # ---------------------------
-# Historical Table
+# TradingView Chart Embed
 # ---------------------------
-st.subheader("🕒 Historical Records")
-st.dataframe(
-    stock_df.sort_values("Report_Date", ascending=False),
-    use_container_width=True
-)
+st.subheader("📈 TradingView Live Chart")
+
+# Generate TradingView URL
+# EGX tickers need "EGX:XXX" format
+tradingview_symbol = f"EGX:{selected_symbol}"
+
+iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview_{selected_symbol}&symbol={tradingview_symbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc%2FUTC"
+
+components.iframe(iframe_url, height=600, width=1200)
