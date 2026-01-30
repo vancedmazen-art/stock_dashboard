@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
-import streamlit.components.v1 as components  # For iframe
+import requests
+from datetime import datetime, timedelta
+import pytz
+import streamlit.components.v1 as components
 
 # ---------------------------
 # Page Config
@@ -19,14 +22,13 @@ def load_data():
     company_map = pd.read_csv("egx_company_map.csv")
     # Strip EGX: prefix to match your tickers
     company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
-    # Merge on Ticker
     df = df.merge(company_map, on="Ticker", how="left")
     return df
 
 df = load_data()
 
 # ---------------------------
-# Sidebar: Stock Selector + Full Metrics
+# Sidebar: Stock Selector + Horizontal Metrics
 # ---------------------------
 st.sidebar.header("🔍 Stock Selector")
 symbols = sorted(df["Ticker"].unique())
@@ -34,6 +36,7 @@ selected_symbol = st.sidebar.selectbox("Choose Stock:", symbols)
 
 # Filter stock
 stock_df = df[df["Ticker"] == selected_symbol]
+latest = stock_df.sort_values("Report_Date").iloc[-1]
 
 # ---------------------------
 # Sentiment Engine
@@ -67,38 +70,30 @@ def calculate_sentiment(row):
     else:
         return "🔴 Strong Bearish"
 
-# Add sentiment column for sidebar table
-stock_df_display = stock_df.copy()
-stock_df_display["Sentiment"] = stock_df_display.apply(calculate_sentiment, axis=1)
+# Add sentiment to latest row
+latest_sentiment = calculate_sentiment(latest)
+latest["Sentiment"] = latest_sentiment
 
-# Reorder columns to put Sentiment at the end
-cols = list(stock_df_display.columns)
-if "Sentiment" in cols:
-    cols.remove("Sentiment")
-cols.append("Sentiment")
-stock_df_display = stock_df_display[cols]
-
-# Display full stock metrics in sidebar
+# Display metrics horizontally in sidebar
 st.sidebar.subheader("📋 Full Stock Metrics")
-st.sidebar.dataframe(
-    stock_df_display.sort_values("Report_Date", ascending=False),
-    use_container_width=True
-)
+metrics = latest.to_dict()
+cols = st.sidebar.columns(len(metrics))
+for i, (metric, value) in enumerate(metrics.items()):
+    # Format floats nicely
+    if isinstance(value, float):
+        value_str = f"{value:.2f}"
+    else:
+        value_str = str(value)
+    cols[i].metric(metric, value_str)
 
 # ---------------------------
-# Latest Record for Main Page
+# Main Page: Stock Info
 # ---------------------------
-latest = stock_df.sort_values("Report_Date").iloc[-1]
-
-# Company Info
 company_name = latest.get("Company Name") or "Unknown Company"
 sector = latest.get("Sector") or "Unknown Sector"
 industry = latest.get("Industry/Subsector") or "Unknown Industry"
-sentiment = calculate_sentiment(latest)
+sentiment = latest_sentiment
 
-# ---------------------------
-# Title Section
-# ---------------------------
 st.markdown(
     f"""
     <h1 style="margin-bottom:0;">📈 {selected_symbol}</h1>
@@ -109,7 +104,7 @@ st.markdown(
 )
 
 # ---------------------------
-# Trade Status (just below sector)
+# Trade Status
 # ---------------------------
 st.subheader("💼 Trade Status")
 status_col1, status_col2, status_col3 = st.columns(3)
@@ -137,12 +132,98 @@ col4.metric("Sentiment", sentiment)
 st.divider()
 
 # ---------------------------
-# TradingView Chart Embed
+# TradingView Chart
 # ---------------------------
 st.subheader("📈 TradingView Live Chart")
-
-# Generate TradingView URL (EGX:XXX format)
 tradingview_symbol = f"EGX:{selected_symbol}"
 iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview_{selected_symbol}&symbol={tradingview_symbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc%2FUTC"
-
 components.iframe(iframe_url, height=600, width=1200)
+
+# ---------------------------
+# Latest 3 News Section
+# ---------------------------
+st.subheader("📰 Latest News")
+
+# ---------------------------
+# News Fetching Function
+# ---------------------------
+DISCORD_WEBHOOK_URL = ""  # Optional: remove if not needed
+
+API_URL = (
+    "https://news-mediator.tradingview.com/news-flow/v2/news?"
+    "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
+)
+
+CAIRO_TZ = pytz.timezone("Africa/Cairo")
+KEYWORD_EMOJI_RULES = [
+    (["bankruptcy", "default", "collapse", "scandal"], "💥"),
+    (["loss", "decline", "drop", "fall", "deficit", "down", "negative", "bear", "lower", "decrease"], "🔻🐻"),
+    (["rise", "up", "positive", "bull", "higher", "increase"], "✅📈🐂"),
+    (["profit", "strong earnings", "strong results", "beat estimates", "surge"], "⬆💰💰💰"),
+    (["dividend", "payout", "distribution"], "💰"),
+    (["loan", "bond", "treasury"], "💳"),
+    (["upgrade"], "⬆️"),
+    (["downgrade"], "⬇️"),
+    (["acquire", "acquisition", "merger", "takeover", "m&a"], "🤝"),
+    (["partnership", "agreement", "deal", "collaboration", "capital"], "🤝"),
+    (["expansion", "growth", "project", "invest", "develop", "establish"], "🚀"),
+    (["layoffs", "cut", "reduce", "reduction"], "⚠️"),
+    (["launch", "introduces", "introduced"], "🆕"),
+    (["approval", "permit", "licence", "license", "regulation"], "📜"),
+    (["ceo", "cfo", "board", "appoint", "appoints", "management"], "👔"),
+    (["forecast", "guidance"], "📈"),
+]
+
+DEFAULT_EMOJI = "📰"
+
+def pick_emoji(headline: str) -> str:
+    h = headline.lower()
+    emojis = []
+    for keywords, emoji in KEYWORD_EMOJI_RULES:
+        if any(k in h for k in keywords):
+            if emoji not in emojis:
+                emojis.append(emoji)
+    if not emojis:
+        return DEFAULT_EMOJI
+    return "".join(emojis)
+
+def fetch_latest_news(symbol: str, max_items=3):
+    try:
+        r = requests.get(API_URL, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        st.warning(f"Failed to fetch news: {e}")
+        return []
+
+    items = data.get("items", [])
+    result = []
+    for news in items:
+        related_symbols = [s.get("symbol", "").replace("EGX:", "") for s in news.get("relatedSymbols", [])]
+        if symbol in related_symbols:
+            title = news.get("title", "")
+            url = news.get("storyPath", "")
+            provider = news.get("provider", {}).get("name", "")
+            ts = news.get("published")
+            if not ts:
+                continue
+            published_dt = datetime.utcfromtimestamp(ts).replace(tzinfo=pytz.UTC).astimezone(CAIRO_TZ)
+            published_str = published_dt.strftime("%Y-%m-%d %H:%M:%S")
+            emoji = pick_emoji(title)
+            result.append({
+                "title": title,
+                "url": f"https://www.tradingview.com{url}",
+                "provider": provider,
+                "published": published_str,
+                "emoji": emoji
+            })
+        if len(result) >= max_items:
+            break
+    return result
+
+news_items = fetch_latest_news(selected_symbol)
+if news_items:
+    for n in news_items:
+        st.markdown(f"{n['emoji']} **{n['title']}**  \nSource: {n['provider']} | Published: {n['published']}  \n[Read More]({n['url']})")
+else:
+    st.info("No news found for this stock.")
