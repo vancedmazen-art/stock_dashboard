@@ -5,7 +5,6 @@ from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
 import os
-from openai import OpenAI  # openai>=1.0
 
 # ---------------------------
 # Page Config
@@ -69,7 +68,7 @@ latest["Sentiment"] = latest_sentiment
 # ---------------------------
 # Tabs: Stock Detail + Market Aggregates + AI Chat
 # ---------------------------
-tab1, tab2, tab3 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates", "🤖 AI Chat"])
+tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
 
 # ---------------------------
 # Tab 1: Stock Detail
@@ -202,37 +201,3 @@ with tab2:
     st.markdown("### 📈 Top 3 ATR")
     st.table(top_atr[["Ticker", "Company Name", "ATR_Volatility_%", "Last_Close"]])
 
-# ---------------------------
-# Tab 3: AI Chat
-# ---------------------------
-with tab3:
-    st.subheader("🤖 Ask the AI about stocks")
-
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    user_input = st.text_input("Your question here:")
-
-    if st.button("Send") and user_input.strip():
-        # Use secret key from Streamlit
-        api_key = st.secrets["OPENAI_API_KEY"]
-        client = OpenAI(api_key=api_key)
-
-        stock_summary = latest.to_dict()
-        system_msg = f"You are a stock assistant. Here is the latest data for {selected_symbol}: {stock_summary}"
-
-        st.session_state.chat_history.append({"role": "system", "content": system_msg})
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-        try:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=st.session_state.chat_history,
-                temperature=0.7,
-                max_tokens=500
-            )
-            ai_answer = response.choices[0].message.content
-            st.session_state.chat_history.append({"role": "assistant", "content": ai_answer})
-            st.markdown(f"**AI:** {ai_answer}")
-        except Exception as e:
-            st.error(f"AI request failed: {e}")
