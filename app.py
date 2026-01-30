@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
-import openai  # Make sure to install openai: pip install openai
+import os
+from openai import OpenAI  # openai>=1.0
 
 # ---------------------------
 # Page Config
@@ -77,7 +78,6 @@ with tab1:
     left_col, right_col = st.columns([3, 1])
 
     with left_col:
-        # Stock Header
         company_name = latest.get("Company Name") or "Unknown Company"
         sector = latest.get("Sector") or "Unknown Sector"
         industry = latest.get("Industry/Subsector") or "Unknown Industry"
@@ -91,17 +91,17 @@ with tab1:
 
         if latest["In_Trade"]:
             st.subheader("💼 Trade Status")
-            status_col1, status_col2, status_col3 = st.columns(3)
-            status_col1.metric("In Trade", "YES ✅")
-            status_col2.metric("Days In Trade", int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-")
-            status_col3.metric("Entry Price", f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("In Trade", "YES ✅")
+            c2.metric("Days In Trade", int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-")
+            c3.metric("Entry Price", f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-")
 
-            if "Entry_Date" in latest and pd.notna(latest["Entry_Date"]):
+            if pd.notna(latest.get("Entry_Date")):
                 st.markdown(f"**Entry Date:** {latest['Entry_Date']}")
 
             st.divider()
 
-            # Summary Cards
+            # Summary
             last_close = latest['Last_Close'] if pd.notna(latest['Last_Close']) else "-"
             unrealized_pnl = f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-"
             score = latest.get("Score", "-")
@@ -139,11 +139,9 @@ with tab1:
             st.markdown(f"**Distance to Support:** {dist_support_pct_str} | **Distance to Resistance:** {dist_resistance_pct_str}")
 
         st.divider()
-
-        # TradingView Chart
+        # TradingView chart
         st.subheader("📈 TradingView Live Chart")
-        tradingview_symbol = f"EGX:{selected_symbol}"
-        iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview_{selected_symbol}&symbol={tradingview_symbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc%2FUTC"
+        iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview_{selected_symbol}&symbol=EGX:{selected_symbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc%2FUTC"
         components.iframe(iframe_url, height=600, width=900)
 
     with right_col:
@@ -169,7 +167,13 @@ with tab1:
         for col, display_name in metric_names.items():
             if col in latest:
                 val = latest[col]
-                val_str = "-" if pd.isna(val) else f"{val:.2f}" if isinstance(val, float) else "Yes ✅" if isinstance(val, bool) and val else "No ❌" if isinstance(val, bool) else str(val)
+                val_str = (
+                    "-" if pd.isna(val)
+                    else f"{val:.2f}" if isinstance(val, float)
+                    else "Yes ✅" if isinstance(val, bool) and val
+                    else "No ❌" if isinstance(val, bool)
+                    else str(val)
+                )
                 st.markdown(f"**{display_name}:** {val_str}")
 
 # ---------------------------
@@ -177,11 +181,9 @@ with tab1:
 # ---------------------------
 with tab2:
     st.subheader("📊 Market Aggregates")
-
     in_trade_count = df[df["In_Trade"]].shape[0]
     st.metric("Stocks Currently in Trade", in_trade_count)
 
-    # Top Gainers / Losers / Near Support / ATR
     top_gainers = df.sort_values("Unrealized_PnL_%", ascending=False).head(3)
     top_losers = df.sort_values("Unrealized_PnL_%", ascending=True).head(3)
     df["Dist_To_Support_%"] = ((df["Last_Close"] - df["Support"]) / df["Support"]).abs()
@@ -201,7 +203,7 @@ with tab2:
     st.table(top_atr[["Ticker", "Company Name", "ATR_Volatility_%", "Last_Close"]])
 
 # ---------------------------
-# Tab 3: AI Chat (Updated for openai>=1.0)
+# Tab 3: AI Chat
 # ---------------------------
 with tab3:
     st.subheader("🤖 Ask the AI about stocks")
@@ -212,13 +214,10 @@ with tab3:
     user_input = st.text_input("Your question here:")
 
     if st.button("Send") and user_input.strip():
-        import os
-        from openai import OpenAI
+        # Use secret key from Streamlit
+        api_key = st.secrets["OPENAI_API_KEY"]
+        client = OpenAI(api_key=api_key)
 
-        # Make sure your OPENAI_API_KEY is set in environment
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-        # Stock context
         stock_summary = latest.to_dict()
         system_msg = f"You are a stock assistant. Here is the latest data for {selected_symbol}: {stock_summary}"
 
