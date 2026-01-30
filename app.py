@@ -74,24 +74,49 @@ latest_sentiment = calculate_sentiment(latest)
 latest["Sentiment"] = latest_sentiment
 
 # ---------------------------
-# Sidebar: Full Metrics Horizontal
+# Main Page: Full Stock Metrics
 # ---------------------------
-st.sidebar.subheader("📋 Full Stock Metrics")
-metrics = latest.to_dict()
-metrics_per_row = 6  # max metrics per row
-metric_items = list(metrics.items())
-for i in range(0, len(metric_items), metrics_per_row):
-    row_metrics = metric_items[i:i + metrics_per_row]
-    cols = st.sidebar.columns(len(row_metrics))
-    for col, (metric, value) in zip(cols, row_metrics):
-        # Format values nicely
-        if isinstance(value, float):
-            value_str = f"{value:.2f}"
-        elif pd.isna(value):
-            value_str = "-"
+st.subheader("📋 Full Stock Metrics")
+
+# Map your DataFrame columns to proper case display names
+metric_names = {
+    "Ticker": "Ticker",
+    "In_Trade": "In Trade",
+    "Last_Close": "Last Close",
+    "Gain_Loss_Today_%": "Daily % Gain/Loss",
+    "Entry_Price": "Entry Price",
+    "Days_In_Trade": "Days In Trade",
+    "Unrealized_PnL_%": "Unrealized PnL %",
+    "Rel_Volume": "Relative Volume",
+    "HMA_above_EMA": "HMA Above EMA",
+    "Accumulation": "Accumulation",
+    "RSI_Divergence": "RSI Divergence",
+    "Market_Structure": "Market Structure",
+    "Sentiment": "Sentiment",
+    "Company Name": "Company Name",
+    "Sector": "Sector",
+    "Industry/Subsector": "Industry/Subsector"
+}
+
+# Collect the metrics we want to display
+metrics_to_show = []
+for col, display_name in metric_names.items():
+    if col in latest:
+        val = latest[col]
+        if pd.isna(val):
+            val_str = "-"
+        elif isinstance(val, float):
+            val_str = f"{val:.2f}"
+        elif isinstance(val, bool):
+            val_str = "Yes ✅" if val else "No ❌"
         else:
-            value_str = str(value)
-        col.metric(label=metric, value=value_str)
+            val_str = str(val)
+        metrics_to_show.append((display_name, val_str))
+
+# Display metrics in vertical list, one per row
+for name, value in metrics_to_show:
+    st.markdown(f"**{name}:** {value}")
+
 
 # ---------------------------
 # Main Page: Stock Info
