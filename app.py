@@ -140,8 +140,23 @@ with tab1:
         st.divider()
         # TradingView chart
         st.subheader("📈 TradingView Live Chart")
-        iframe_url = f"https://s.tradingview.com/widgetembed/?frameElementId=tradingview_{selected_symbol}&symbol=EGX:{selected_symbol}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc%2FUTC"
+        iframe_url = (
+        f"https://s.tradingview.com/widgetembed/?"
+        f"frameElementId=tradingview_{selected_symbol}&"
+        f"symbol=EGX:{selected_symbol}&"
+        f"interval=D&"
+        f"hidesidetoolbar=1&"
+        f"symboledit=1&"
+        f"saveimage=1&"
+        f"toolbarbg=f1f3f6&"
+        f"theme=Light&"
+        f"style=2&"  # Hollow candles
+        f"studies=%5B%22MA.Exp%40tv-basicstudies%22,%22Hull%20MA%40tv-basicstudies%22%5D&"
+        f"studies_overrides=%7B%22MA.Exp.length%22:20,%22Hull%20MA.length%22:20%7D&"
+        f"timezone=Etc%2FUTC"
+        )
         components.iframe(iframe_url, height=600, width=900)
+
 
     with right_col:
         st.subheader("📋 Full Stock Metrics")
