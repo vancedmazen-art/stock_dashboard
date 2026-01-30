@@ -230,8 +230,7 @@ with right_col:
         "HMA_above_EMA": "HMA Above EMA",
         "Accumulation": "Accumulation",
         "RSI_Divergence": "RSI Divergence",
-        "Market_Structure": "Market Structure",
-        "Sentiment": "Sentiment"
+        "Market_Structure": "Market Structure"
     }
 
     metrics_to_show = []
