@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 from datetime import datetime
 import pytz
-import streamlit.components.v1 as components
 import os
 import math
 
@@ -144,19 +143,6 @@ with tab1:
         # TradingView chart with hollow candles + support/resistance
         # ---------------------------
         st.subheader("📈 TradingView Live Chart")
-        horz_lines = []
-
-        if support is not None and not math.isnan(support):
-            horz_lines.append(
-                f'%7B%22price%22:{support},%22color%22:%22green%22,%22width%22:2,%22style%22:0%7D'
-            )
-
-        if resistance is not None and not math.isnan(resistance):
-            horz_lines.append(
-                f'%7B%22price%22:{resistance},%22color%22:%22red%22,%22width%22:2,%22style%22:0%7D'
-            )
-
-        horz_lines_str = ",".join(horz_lines)
         iframe_url = (
             f"https://s.tradingview.com/widgetembed/?"
             f"frameElementId=tradingview_{selected_symbol}&"
@@ -170,10 +156,6 @@ with tab1:
             f"style=9&"  # Hollow candles
             f"timezone=Etc%2FUTC"
         )
-
-        if horz_lines_str:
-            iframe_url += f"&overrides=%7B%22paneProperties.horzLines%22:%5B{horz_lines_str}%5D%7D"
-
         components.iframe(iframe_url, height=600, width=900)
 
     # ---------------------------
