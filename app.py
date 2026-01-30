@@ -18,12 +18,16 @@ def load_data():
     company_map = pd.read_csv("egx_company_map.csv")
     # Strip EGX: prefix to match your tickers
     company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
+    # Merge on Ticker
     df = df.merge(
         company_map,
         on="Ticker",
         how="left"
     )
     return df
+
+df = load_data()
+
 # ---------------------------
 # Sidebar
 # ---------------------------
@@ -40,9 +44,9 @@ latest = stock_df.sort_values("Report_Date").iloc[-1]
 # ---------------------------
 # Company Info
 # ---------------------------
-company_name = latest.get("Company Name", "Unknown Company")
-sector = latest.get("Sector", "Unknown Sector")
-industry = latest.get("Industry/Subsector", "Unknown Industry")
+company_name = latest.get("Company Name") or "Unknown Company"
+sector = latest.get("Sector") or "Unknown Sector"
+industry = latest.get("Industry/Subsector") or "Unknown Industry"
 
 # ---------------------------
 # Title Section
@@ -63,20 +67,22 @@ st.divider()
 # ---------------------------
 def calculate_sentiment(row):
     score = 0
-    if row["Unrealized_PnL_%"] and row["Unrealized_PnL_%"] > 0:
-        score += 2
-    elif row["Unrealized_PnL_%"] and row["Unrealized_PnL_%"] < 0:
-        score -= 2
-    if row["Rel_Volume"] and row["Rel_Volume"] > 1.5:
+    if pd.notna(row["Unrealized_PnL_%"]):
+        if row["Unrealized_PnL_%"] > 0:
+            score += 2
+        elif row["Unrealized_PnL_%"] < 0:
+            score -= 2
+    if pd.notna(row["Rel_Volume"]) and row["Rel_Volume"] > 1.5:
         score += 1
-    if row["HMA_above_EMA"]:
+    if row.get("HMA_above_EMA", False):
         score += 1
-    if row["Accumulation"]:
+    if row.get("Accumulation", False):
         score += 1
-    if row["RSI_Divergence"]:
+    if row.get("RSI_Divergence", False):
         score += 1
-    if row["Market_Structure"]:
+    if row.get("Market_Structure", False):
         score += 1
+
     if score >= 4:
         return "🟢 Strong Bullish"
     elif score >= 2:
@@ -94,9 +100,9 @@ sentiment = calculate_sentiment(latest)
 # Summary Cards
 # ---------------------------
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Last Close", f"{latest['Last_Close']:.2f}")
-col2.metric("Daily %", f"{latest['Gain_Loss_Today_%']:.2f}%")
-col3.metric("Unrealized PnL", f"{latest['Unrealized_PnL_%']:.2f}%")
+col1.metric("Last Close", f"{latest['Last_Close']:.2f}" if pd.notna(latest["Last_Close"]) else "-")
+col2.metric("Daily %", f"{latest['Gain_Loss_Today_%']:.2f}%" if pd.notna(latest["Gain_Loss_Today_%"]) else "-")
+col3.metric("Unrealized PnL", f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-")
 col4.metric("Sentiment", sentiment)
 
 st.divider()
@@ -107,12 +113,7 @@ st.divider()
 st.subheader("📋 Full Stock Metrics")
 display_df = latest.to_frame(name="Value").reset_index()
 display_df.columns = ["Metric", "Value"]
-
-st.dataframe(
-    display_df,
-    use_container_width=True,
-    hide_index=True
-)
+st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 # ---------------------------
 # Trade Status
@@ -122,11 +123,11 @@ status_col1, status_col2, status_col3 = st.columns(3)
 status_col1.metric("In Trade", "YES ✅" if latest["In_Trade"] else "NO ❌")
 status_col2.metric(
     "Days In Trade",
-    int(latest["Days_In_Trade"]) if not pd.isna(latest["Days_In_Trade"]) else "-"
+    int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-"
 )
 status_col3.metric(
     "Entry Price",
-    f"{latest['Entry_Price']:.2f}" if not pd.isna(latest["Entry_Price"]) else "-"
+    f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-"
 )
 
 st.divider()
