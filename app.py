@@ -15,18 +15,15 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     df = pd.read_csv("StockQuotes.csv")
-    company_map = pd.read_csv("egx_company_map.csv")  # your GitHub-uploaded CSV
-    # Merge on Ticker/Symbol
+    company_map = pd.read_csv("egx_company_map.csv")
+    # Strip EGX: prefix to match your tickers
+    company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
     df = df.merge(
         company_map,
-        left_on="Ticker",
-        right_on="Symbol",
+        on="Ticker",
         how="left"
     )
     return df
-
-df = load_data()
-
 # ---------------------------
 # Sidebar
 # ---------------------------
