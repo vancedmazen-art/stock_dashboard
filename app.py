@@ -166,42 +166,7 @@ with tab1:
             f"timezone=Etc%2FUTC"
         )
         st.components.v1.iframe(iframe_url, height=600, width=900)
-
-    # ---------------------------
-    # Right column: metrics
-    # ---------------------------
-    with right_col:
-        st.subheader("📋 Full Stock Metrics")
-        metric_names = {
-            "In_Trade": "In Trade",
-            "Last_Close": "Last Close",
-            "Gain_Loss_Today_%": "Daily % Gain/Loss",
-            "Entry_Price": "Entry Price",
-            "Days_In_Trade": "Days In Trade",
-            "Unrealized_PnL_%": "Unrealized PnL %",
-            "Rel_Volume": "Relative Volume",
-            "HMA_above_EMA": "HMA Above EMA",
-            "Accumulation": "Accumulation",
-            "RSI_Divergence": "RSI Divergence",
-            "Market_Structure": "Market Structure",
-            "Score": "Score",
-            "Support": "Support",
-            "Resistance": "Resistance",
-            "ATR_Volatility_%": "ATR"
-        }
-
-        for col, display_name in metric_names.items():
-            if col in latest:
-                val = latest[col]
-                val_str = (
-                    "-" if pd.isna(val)
-                    else f"{val:.2f}" if isinstance(val, float)
-                    else "Yes ✅" if isinstance(val, bool) and val
-                    else "No ❌" if isinstance(val, bool)
-                    else str(val)
-                )
-                st.markdown(f"**{display_name}:** {val_str}")
-    st.divider()
+        st.divider()
 
         # Latest 3 News
         st.subheader("📰 Latest News")
@@ -284,6 +249,42 @@ with tab1:
                 )
         else:
             st.info("No news found for this stock.")
+
+    # ---------------------------
+    # Right column: metrics
+    # ---------------------------
+    with right_col:
+        st.subheader("📋 Full Stock Metrics")
+        metric_names = {
+            "In_Trade": "In Trade",
+            "Last_Close": "Last Close",
+            "Gain_Loss_Today_%": "Daily % Gain/Loss",
+            "Entry_Price": "Entry Price",
+            "Days_In_Trade": "Days In Trade",
+            "Unrealized_PnL_%": "Unrealized PnL %",
+            "Rel_Volume": "Relative Volume",
+            "HMA_above_EMA": "HMA Above EMA",
+            "Accumulation": "Accumulation",
+            "RSI_Divergence": "RSI Divergence",
+            "Market_Structure": "Market Structure",
+            "Score": "Score",
+            "Support": "Support",
+            "Resistance": "Resistance",
+            "ATR_Volatility_%": "ATR"
+        }
+
+        for col, display_name in metric_names.items():
+            if col in latest:
+                val = latest[col]
+                val_str = (
+                    "-" if pd.isna(val)
+                    else f"{val:.2f}" if isinstance(val, float)
+                    else "Yes ✅" if isinstance(val, bool) and val
+                    else "No ❌" if isinstance(val, bool)
+                    else str(val)
+                )
+                st.markdown(f"**{display_name}:** {val_str}")
+   
 # ---------------------------
 # Tab 2: Market Aggregates
 # ---------------------------
