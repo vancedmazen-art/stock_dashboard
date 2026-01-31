@@ -75,7 +75,7 @@ with tab1:
     # Filter stock
     stock_df = df[df["Ticker"] == selected_symbol]
     latest = stock_df.sort_values("Report_Date").iloc[-1]
-        left_col, right_col = st.columns([3, 1])
+    left_col, right_col = st.columns([3, 1])
 
     with left_col:
         company_name = latest.get("Company Name") or "Unknown Company"
