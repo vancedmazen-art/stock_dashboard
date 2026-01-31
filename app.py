@@ -57,8 +57,8 @@ def calculate_sentiment(row):
     else:
         return "🔴 Strong Bearish"
 
-latest_sentiment = calculate_sentiment(latest)
-latest["Sentiment"] = latest_sentiment
+# latest_sentiment = calculate_sentiment(latest)
+# latest["Sentiment"] = latest_sentiment
 
 # ---------------------------
 # Tabs: Stock Detail + Market Aggregates
@@ -70,12 +70,20 @@ tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
 # ---------------------------
 with tab1:
     symbols = sorted(df["Ticker"].unique())
-    selected_symbol = st.selectbox("Choose Stock:", symbols)
+
+    # ✅ Selector inside tab (not sidebar)
+    selected_symbol = st.selectbox("🔍 Choose Stock:", symbols)
 
     # Filter stock
     stock_df = df[df["Ticker"] == selected_symbol]
     latest = stock_df.sort_values("Report_Date").iloc[-1]
+
+    # ✅ Now calculate sentiment AFTER latest exists
+    latest_sentiment = calculate_sentiment(latest)
+    latest["Sentiment"] = latest_sentiment
+
     left_col, right_col = st.columns([3, 1])
+
 
     with left_col:
         company_name = latest.get("Company Name") or "Unknown Company"
