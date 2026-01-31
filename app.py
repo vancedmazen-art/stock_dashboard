@@ -30,13 +30,8 @@ df = load_data()
 # ---------------------------
 # Sidebar: Stock Selector
 # ---------------------------
-st.sidebar.header("🔍 Stock Selector")
-symbols = sorted(df["Ticker"].unique())
-selected_symbol = st.sidebar.selectbox("Choose Stock:", symbols)
+# st.sidebar.header("🔍 Stock Selector")
 
-# Filter stock
-stock_df = df[df["Ticker"] == selected_symbol]
-latest = stock_df.sort_values("Report_Date").iloc[-1]
 
 # ---------------------------
 # Sentiment Engine
@@ -74,7 +69,13 @@ tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
 # Tab 1: Stock Detail
 # ---------------------------
 with tab1:
-    left_col, right_col = st.columns([3, 1])
+    symbols = sorted(df["Ticker"].unique())
+    selected_symbol = st.sidebar.selectbox("Choose Stock:", symbols)
+
+    # Filter stock
+    stock_df = df[df["Ticker"] == selected_symbol]
+    latest = stock_df.sort_values("Report_Date").iloc[-1]
+        left_col, right_col = st.columns([3, 1])
 
     with left_col:
         company_name = latest.get("Company Name") or "Unknown Company"
