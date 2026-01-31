@@ -70,7 +70,7 @@ tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
 # ---------------------------
 with tab1:
     symbols = sorted(df["Ticker"].unique())
-    selected_symbol = st.sidebar.selectbox("Choose Stock:", symbols)
+    selected_symbol = st.selectbox("Choose Stock:", symbols)
 
     # Filter stock
     stock_df = df[df["Ticker"] == selected_symbol]
