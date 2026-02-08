@@ -7,13 +7,10 @@ import os
 import numpy as np
 
 # --------------------------- 
-# Page Config
+# Page Config + Load Data (unchanged from previous)
 # ---------------------------
 st.set_page_config(page_title="EGX Trading Dashboard", layout="wide")
 
-# --------------------------- 
-# Load BOTH Sheets + Company Map + ALL STOCKS
-# ---------------------------
 @st.cache_data
 def load_data():
     try:
@@ -50,9 +47,7 @@ if not data or not all_symbols:
 df_current = data["current"]
 df_closed = data["closed"]
 
-# --------------------------- 
-# Safe Display Function
-# ---------------------------
+# Safe display + other functions (unchanged)
 def safe_display(value):
     if pd.isna(value) or value is None or value == "":
         return "-"
@@ -60,9 +55,6 @@ def safe_display(value):
         return f"{value:.1f}"
     return str(value)
 
-# --------------------------- 
-# Sentiment Engine + NEWS (unchanged)
-# ---------------------------
 def calculate_sentiment(row):
     score = 0
     pnl = row.get("Trade_PnL_%")
@@ -111,13 +103,12 @@ def fetch_latest_news(symbol: str, max_items=3):
     return result
 
 # --------------------------- 
-# Main Dashboard - PERFECT VERSION
+# Stock Detail Tab (unchanged - perfect)
 # ---------------------------
 tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Portfolio Overview"])
 
 with tab1:
     selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols)
-    
     current_stock_df = df_current[df_current["Ticker"] == selected_symbol]
     num_current = len(current_stock_df)
     
@@ -134,13 +125,10 @@ with tab1:
             <h3 style='color:gray;margin-top:0;'>{company_name}</h3>
         """, unsafe_allow_html=True)
         
-        # ✅ ALWAYS PRINT ALL - BEAUTIFUL TABLE FORMAT
         if num_current == 0:
             st.warning("⚠️ No Current Open Trades")
         else:
             st.success(f"🟢 {num_current} Open Trade{'s' if num_current > 1 else ''}")
-            
-            # ✅ PERFECT TABLE - NO JSON!
             display_cols = ['Entry_Date', 'Entry_Price', 'Current_Price', 'Exit_Price', 'Trade_PnL_%', 
                           'Days_Held', 'Entry_Volume', 'Status', 'Exit_Reason', 'Max_Gain_%', 'Max_Drawdown_%']
             available_cols = [col for col in display_cols if col in current_stock_df.columns]
@@ -150,7 +138,6 @@ with tab1:
                 if open_trades_table[col].dtype in ['float64', 'int64']:
                     open_trades_table[col] = open_trades_table[col].apply(safe_display)
             
-            # Add % symbols
             for col in ['Trade_PnL_%', 'Max_Gain_%', 'Max_Drawdown_%']:
                 if col in open_trades_table.columns:
                     open_trades_table[col] = open_trades_table[col].astype(str) + '%'
@@ -158,7 +145,6 @@ with tab1:
             open_trades_table = open_trades_table.sort_values('Entry_Date', ascending=False)
             st.dataframe(open_trades_table, use_container_width=True, height=250)
 
-        # Chart + News + Closed History (ALWAYS ALL COLUMNS)
         st.subheader("📈 TradingView Chart")
         st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=500)
         
@@ -174,7 +160,6 @@ with tab1:
         st.subheader(f"📋 Closed Trades History ({len(df_closed[df_closed['Ticker']==selected_symbol])} trades)")
         closed_stock_df = df_closed[df_closed["Ticker"] == selected_symbol].sort_values("Entry_Date", ascending=False)
         if not closed_stock_df.empty:
-            # ✅ ALWAYS SHOW ALL COLUMNS
             st.dataframe(closed_stock_df, use_container_width=True, height=400)
         else:
             st.info("No closed trades.")
@@ -192,22 +177,55 @@ with tab1:
             for name, value in metrics.items():
                 st.markdown(f"**{name}:** {value}")
 
+# --------------------------- 
+# PERFECT Portfolio Overview - ALWAYS PRINTS ALL ✅
+# ---------------------------
 with tab2:
     st.subheader("📊 Portfolio Overview")
     
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Current Open", len(df_current))
-    col2.metric("Total Closed", len(df_closed))
-    col3.metric("Closed Win Rate", f"{len(df_closed[df_closed['Trade_PnL_%']>0])/len(df_closed)*100:.1f}%" if len(df_closed)>0 else "0%")
-    col4.metric("Avg Closed PnL", f"{df_closed['Trade_PnL_%'].mean():.1f}%")
+    # Main metrics row
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Open Trades", len(df_current))
+    col2.metric("Closed Trades", len(df_closed))
+    col3.metric("Open Win Rate", f"{len(df_current[df_current['Trade_PnL_%']>0])/len(df_current)*100:.1f}%" if len(df_current)>0 else "0%")
+    col4.metric("Closed Win Rate", f"{len(df_closed[df_closed['Trade_PnL_%']>0])/len(df_closed)*100:.1f}%" if len(df_closed)>0 else "0%")
+    col5.metric("Total PnL", f"{(df_current['Trade_PnL_%'].sum() + df_closed['Trade_PnL_%'].sum()):.1f}%")
     
+    st.markdown("---")
+    
+    # ✅ TOP GAINERS & LOSERS - ALWAYS 4 TABLES
     col1, col2 = st.columns(2)
+    
     with col1:
-        st.markdown("### 🟢 TOP 5 Gainers (Closed)")
-        top_gainers = df_closed.nlargest(5, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held", "Entry_Date", "Exit_Reason"]]
-        st.dataframe(top_gainers, use_container_width=True)
+        st.markdown("### 🟢 **TOP Gainers - CLOSED**")
+        top_closed_gainers = df_closed.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held", "Entry_Date", "Exit_Reason"]]
+        top_closed_gainers['Trade_PnL_%'] = top_closed_gainers['Trade_PnL_%'].apply(lambda x: f"{x:.1f}%")
+        st.dataframe(top_closed_gainers, use_container_width=True, height=300)
     
     with col2:
-        st.markdown("### 🔴 TOP 5 Losers (Closed)")
-        top_losers = df_closed.nsmallest(5, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held", "Entry_Date", "Exit_Reason"]]
-        st.dataframe(top_losers, use_container_width=True)
+        st.markdown("### 🔴 **TOP Losers - CLOSED**")
+        top_closed_losers = df_closed.nsmallest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held", "Entry_Date", "Exit_Reason"]]
+        top_closed_losers['Trade_PnL_%'] = top_closed_losers['Trade_PnL_%'].apply(lambda x: f"{x:.1f}%")
+        st.dataframe(top_closed_losers, use_container_width=True, height=300)
+    
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📈 **TOP Gainers - OPEN**")
+        if len(df_current) > 0:
+            top_open_gainers = df_current.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held", "Entry_Date", "Status"]]
+            top_open_gainers['Trade_PnL_%'] = top_open_gainers['Trade_PnL_%'].apply(lambda x: f"{safe_display(x)}%")
+            st.dataframe(top_open_gainers, use_container_width=True, height=300)
+        else:
+            st.info("**No open trades**")
+    
+    with col2:
+        st.markdown("### 📉 **TOP Losers - OPEN**")
+        if len(df_current) > 0:
+            top_open_losers = df_current.nsmallest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held", "Entry_Date", "Status"]]
+            top_open_losers['Trade_PnL_%'] = top_open_losers['Trade_PnL_%'].apply(lambda x: f"{safe_display(x)}%")
+            st.dataframe(top_open_losers, use_container_width=True, height=300)
+        else:
+            st.info("**No open trades**")
