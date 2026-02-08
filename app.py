@@ -89,8 +89,8 @@ tab1, tab2, tab3, tab4 = st.tabs(["⚡ **TODAY'S ACTIONS**", "📊 **STOCK DETAI
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     
-    df_current['Entry_Date'] = pd.to_datetime(df_current['Entry_Date'], errors='coerce')
-    max_entry_date = df_current['Entry_Date'].max().date()
+    df_current['Entry_Date'] = pd.to_datetime(df_current['Entry_Date'], errors='coerce').dt.date
+    max_entry_date = df_current['Entry_Date'].max()
     new_buys = df_current[df_current['Entry_Date'].dt.date == max_entry_date].copy()
     
     st.markdown("#### 🆕 **Fresh BUYS**")
@@ -100,8 +100,8 @@ with tab1:
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
     st.dataframe(new_buys[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Entry_Volume', 'Status']], use_container_width=True, height=200)
     
-    df_closed['Exit_Date'] = pd.to_datetime(df_closed['Exit_Date'], errors='coerce')
-    max_exit_date = df_closed['Exit_Date'].max().date()
+    df_closed['Exit_Date'] = pd.to_datetime(df_closed['Exit_Date'], errors='coerce').dt.date
+    max_exit_date = df_closed['Exit_Date'].max()
     close_now = df_closed[df_closed['Exit_Date'].dt.date == max_exit_date].copy()
     
     st.markdown("#### ❌ **CLOSE NOW**")
