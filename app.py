@@ -263,18 +263,6 @@ with tab5:
     c1, c2, c3, c4, c5 = st.columns(5)
 
     c1.metric("📊 Open", len(df_current_egx30))
-    c2.metric("📋 Closed", len(df_closed_egx30))
-
-    win_rate = (
-        len(df_closed_egx30[df_closed_egx30['Trade_PnL_%'] > 0]) /
-        len(df_closed_egx30) * 100
-        if len(df_closed_egx30) > 0 else 0
-    )
-
-    c3.metric("✅ Win Rate", f"{win_rate:.1f}%")
-    c4.metric("💰 Avg PnL", f"{df_closed_egx30['Trade_PnL_%'].mean():.2f}%")
-    c5.metric("📈 Active Ratio",
-              f"{len(df_current_egx30)/(len(df_closed_egx30)+1)*100:.1f}%")
 
     st.divider()
 
