@@ -190,7 +190,9 @@ with tab1:
             col4.metric("Exit", safe_display(latest_current.get("Exit_Price")))
             
             st.markdown(f"**Status:** {safe_display(latest_current.get('Status'))}")
-            st.markdown(f"**Exit Reason:** {safe_display(latest_current.get('Exit_Reason'))}")
+            st.markdown(f"**EntryVolume:** {safe_display(latest_current.get('Entry_Volume'))}")
+            st.markdown(f"**Entry Crosses Resistance:** {safe_display(latest_current.get('Entry_Crosses_Resistance'))}")
+            st.markdown(f"**Gain Loss Entry Day %:** {safe_display(latest_current.get('Gain_Loss_Entry_Day_%'))}")
 
         st.subheader("📈 TradingView Chart")
         iframe_url = f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9"
