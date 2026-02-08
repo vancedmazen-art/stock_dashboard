@@ -421,6 +421,9 @@ with st.sidebar:
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M EET')}")
     #st.divider()
+    st.markdown(
+        f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**"
+    )
     #st.markdown("### 📊 **EGX30 STATUS**")
     #st.metric("📊 Open", len(df_current_egx30))
     #st.metric("📋 Closed", len(df_closed_egx30))
