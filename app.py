@@ -249,71 +249,173 @@ with tab4:
     st.dataframe(full_history, use_container_width=True, height=600)
 
 # 🔥 TAB 5: OVERALL MARKET SENTIMENT (EGX30 ONLY) - COMPREHENSIVE
+# 🔥 TAB 5: OVERALL MARKET SENTIMENT (EGX30 ONLY) - REFINED LAYOUT
 with tab5:
-    st.markdown("### 📊 **Overall Market Sentiment - EGX30**")
-    
-    # Main metrics row
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("📊 Open Trades", len(df_current_egx30))
-    col2.metric("📋 Closed Trades", len(df_closed_egx30))
-    col3.metric("✅ Win Rate", f"{len(df_closed_egx30[df_closed_egx30['Trade_PnL_%']>0])/len(df_closed_egx30)*100:.1f}%" if len(df_closed_egx30)>0 else "0%")
-    col4.metric("💰 Avg PnL", f"{df_closed_egx30['Trade_PnL_%'].mean():.1f}%" if len(df_closed_egx30)>0 else "0%")
-    
-    # Strategy metrics
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### 🎯 **Best Strategy**")
+
+    st.markdown("## 📊 **EGX30 – Market Overview & Sentiment**")
+    st.caption("Live performance • Strategy health • Technical view • Market news")
+
+    st.divider()
+
+    # =========================
+    # 🔹 TOP SUMMARY BAR
+    # =========================
+    c1, c2, c3, c4, c5 = st.columns(5)
+
+    c1.metric("📊 Open", len(df_current_egx30))
+    c2.metric("📋 Closed", len(df_closed_egx30))
+
+    win_rate = (
+        len(df_closed_egx30[df_closed_egx30['Trade_PnL_%'] > 0]) /
+        len(df_closed_egx30) * 100
+        if len(df_closed_egx30) > 0 else 0
+    )
+
+    c3.metric("✅ Win Rate", f"{win_rate:.1f}%")
+    c4.metric("💰 Avg PnL", f"{df_closed_egx30['Trade_PnL_%'].mean():.2f}%")
+    c5.metric("📈 Active Ratio",
+              f"{len(df_current_egx30)/(len(df_closed_egx30)+1)*100:.1f}%")
+
+    st.divider()
+
+    # =========================
+    # 🔹 MAIN BODY (LEFT / RIGHT)
+    # =========================
+    left, right = st.columns([2.2, 1])
+
+    # =========================
+    # 📈 LEFT SIDE (CHART + TABLES)
+    # =========================
+    with left:
+
+        # ----------- CHART -----------
+        st.markdown("### 📈 **EGX30 Technical Chart**")
+
+        st.components.v1.iframe(
+            "https://s.tradingview.com/widgetembed/?symbol=EGX:EGX30&interval=D&theme=Light&style=9",
+            height=480
+        )
+
+        st.divider()
+
+        # ----------- OPEN TRADES -----------
+        st.markdown("### 🟢 **Open Positions**")
+
+        if len(df_current_egx30) > 0:
+
+            st.dataframe(
+                fix_pyarrow_df(
+                    df_current_egx30[[
+                        'Entry_Date',
+                        'Entry_Price',
+                        'Trade_PnL_%',
+                        'Days_Held',
+                        'Status',
+                        'BUY_REASON'
+                    ]]
+                ),
+                use_container_width=True,
+                height=220
+            )
+
+        else:
+            st.info("No open EGX30 trades")
+
+        st.divider()
+
+        # ----------- HISTORY -----------
+        st.markdown("### 📋 **Closed History**")
+
+        if len(df_closed_egx30) > 0:
+
+            st.dataframe(
+                fix_pyarrow_df(
+                    df_closed_egx30
+                    .sort_values("Exit_Date", ascending=False)[[
+                        'Entry_Date',
+                        'Exit_Date',
+                        'Entry_Price',
+                        'Exit_Price',
+                        'Trade_PnL_%',
+                        'Days_Held',
+                        'Exit_Reason'
+                    ]]
+                ),
+                use_container_width=True,
+                height=260
+            )
+
+        else:
+            st.info("No closed EGX30 trades")
+
+    # =========================
+    # 📊 RIGHT SIDE (METRICS + NEWS)
+    # =========================
+    with right:
+
+        # ----------- STRATEGY BLOCK -----------
+        st.markdown("### 🎯 **Strategy Health**")
+
         if len(df_strategy_egx30) > 0:
+
             strat = df_strategy_egx30.iloc[0]
-            st.metric("🏆 Strategy", strat['Best_Strategy'])
-            st.metric("📊 Score", f"{safe_display(strat['score'])}")
-            st.metric("✅ Win Rate", f"{safe_display(strat['win_rate'])}%")
-            st.metric("🎯 Median PnL", f"{safe_display(strat['median_pnl'])}%")
+
+            st.metric("🏆 Best", strat['Best_Strategy'])
+            st.metric("📊 Score", safe_display(strat['score']))
+            st.metric("✅ Win", f"{safe_display(strat['win_rate'])}%")
+            st.metric("🎯 Median", f"{safe_display(strat['median_pnl'])}%")
+            st.metric("📈 Trades", safe_display(strat['total_trades']))
+
         else:
-            st.info("No strategy metrics available")
-    
-    # OPEN TRADES GRID
-    st.markdown("#### 🟢 **OPEN TRADES**")
-    if len(df_current_egx30) > 0:
-        st.dataframe(fix_pyarrow_df(df_current_egx30[['Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Days_Held', 'Status', 'BUY_REASON']]), 
-                    use_container_width=True, height=200)
-    else:
-        st.info("No open EGX30 trades")
-    
-    # HISTORY GRID
-    st.markdown("#### 📋 **CLOSED TRADES HISTORY**")
-    if len(df_closed_egx30) > 0:
-        st.dataframe(fix_pyarrow_df(df_closed_egx30.sort_values("Entry_Date", ascending=False)[
-            ['Entry_Date', 'Exit_Date', 'Entry_Price', 'Exit_Price', 'Trade_PnL_%', 'Days_Held', 'Exit_Reason']
-        ]), use_container_width=True, height=250)
-    else:
-        st.info("No closed EGX30 trades")
-    
-    # MAIN CHART
-    st.markdown("#### 📈 **EGX30 CHART**")
-    st.components.v1.iframe("https://s.tradingview.com/widgetembed/?symbol=EGX:EGX30&interval=D&theme=Light&style=9", height=500)
-    
-    # SUPPORT & RESISTANCE + NEWS
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### 🎯 **SUPPORT & RESISTANCE**")
-        st.info("🔧 Support/Resistance levels would be calculated here using technical analysis")
-        st.caption("• Recent pivot points")
-        st.caption("• Key support/resistance levels")
-        st.caption("• Volume profile analysis")
-    
-    with col2:
-        st.markdown("#### 🛡️ **SUPPORT & RESISTANCE**")
-        # Get the latest open EGX30 trade (max Entry_Date)
-        latest_open_trade = df_current_egx30.loc[df_current_egx30['Entry_Date'].idxmax()] if len(df_current_egx30) > 0 else None
-        
-        if latest_open_trade is not None and 'exit_support' in latest_open_trade and 'exit_resistance' in latest_open_trade:
-            st.metric("🟢 Support", f"{safe_display(latest_open_trade['exit_support'])}")
-            st.metric("🔴 Resistance", f"{safe_display(latest_open_trade['exit_resistance'])}")
-            st.metric("📊 Current PnL", f"{safe_display(latest_open_trade['Trade_PnL_%'])}%")
-            st.caption(f"📅 Entry: {latest_open_trade['Entry_Date'].strftime('%Y-%m-%d')}")
+            st.warning("No strategy metrics")
+
+        st.divider()
+
+        # ----------- SUPPORT / RESISTANCE -----------
+        st.markdown("### 🧭 **Support / Resistance**")
+
+        latest = None
+
+        if len(df_current_egx30) > 0:
+            latest = df_current_egx30.loc[
+                df_current_egx30['Entry_Date'].idxmax()
+            ]
+
+        if latest is not None and \
+           'exit_support' in latest and \
+           'exit_resistance' in latest:
+
+            st.metric("🟢 Support", safe_display(latest['exit_support']))
+            st.metric("🔴 Resistance", safe_display(latest['exit_resistance']))
+            st.metric("📊 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
+
+            st.caption(f"📅 Entry: {latest['Entry_Date']}")
+
         else:
-            st.warning("⚠️ No open EGX30 trade with S/R levels found")
+            st.info("No S/R levels available")
+
+        st.divider()
+
+        # ----------- MARKET NEWS -----------
+        st.markdown("### 📰 **Market News**")
+
+        news = fetch_latest_news("EGX30", max_items=5)
+
+        if news:
+
+            for n in news:
+
+                st.markdown(f"**{n['title']}**")
+                st.caption(f"{n['provider']}")
+                st.markdown(
+                    f"[Read more]({n['url']})",
+                    unsafe_allow_html=True
+                )
+                st.divider()
+
+        else:
+            st.info("No recent EGX30 news")
+
 
 # 🔥 SIDEBAR (EGX30 excluded from counts)
 new_buys_other = df_current_other[df_current_internal['Entry_Date'] == df_current_internal['Entry_Date'].max()]
