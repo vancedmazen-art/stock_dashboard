@@ -24,7 +24,7 @@ def load_data():
             return pd.DataFrame()
         
         # Read both sheets
-        trades_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Sheet1")  # Adjust sheet name if needed
+        trades_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Open_Trades")  # Adjust sheet name if needed
         company_map = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Sheet2")  # Adjust sheet name if needed
         
         # Ensure Ticker column exists
