@@ -151,7 +151,7 @@ with tab1:
     col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Exit_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held', 'Exit_Reason']]), 
+    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held', 'BUY_REASON']]), 
                 use_container_width=True, height=200)
     
     holds = df_current_other[df_current_internal['Entry_Date'] != max_entry_date].copy()
@@ -182,7 +182,7 @@ with tab2:
         
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
-            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date', 'Entry_Price', 'Trade_PnL_%', 
+            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','BUY_REASON', 'Entry_Price', 'Trade_PnL_%', 
                                                          'Days_Held', 'Status']]), use_container_width=True, height=200)
         else:
             st.info("⚠️ No current open trades")
@@ -303,14 +303,17 @@ with tab5:
         st.caption("• Volume profile analysis")
     
     with col2:
-        st.markdown("#### 📰 **MARKET SENTIMENT NEWS**")
-        news_items = fetch_latest_news("EGX30")
-        if news_items:
-            for n in news_items:
-                st.markdown(f"**{n['title']}**")
-                st.caption(f"{n['provider']}")
+        st.markdown("#### 🛡️ **SUPPORT & RESISTANCE**")
+        # Get the latest open EGX30 trade (max Entry_Date)
+        latest_open_trade = df_current_egx30.loc[df_current_egx30['Entry_Date'].idxmax()] if len(df_current_egx30) > 0 else None
+        
+        if latest_open_trade is not None and 'exit_support' in latest_open_trade and 'exit_resistance' in latest_open_trade:
+            st.metric("🟢 Support", f"{safe_display(latest_open_trade['exit_support'])}")
+            st.metric("🔴 Resistance", f"{safe_display(latest_open_trade['exit_resistance'])}")
+            st.metric("📊 Current PnL", f"{safe_display(latest_open_trade['Trade_PnL_%'])}%")
+            st.caption(f"📅 Entry: {latest_open_trade['Entry_Date'].strftime('%Y-%m-%d')}")
         else:
-            st.info("No recent EGX30 news")
+            st.warning("⚠️ No open EGX30 trade with S/R levels found")
 
 # 🔥 SIDEBAR (EGX30 excluded from counts)
 new_buys_other = df_current_other[df_current_internal['Entry_Date'] == df_current_internal['Entry_Date'].max()]
@@ -321,7 +324,7 @@ with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M EET')}")
-    st.divider()
-    st.markdown("### 📊 **EGX30 STATUS**")
-    st.metric("📊 Open", len(df_current_egx30))
-    st.metric("📋 Closed", len(df_closed_egx30))
+    #st.divider()
+    #st.markdown("### 📊 **EGX30 STATUS**")
+    #st.metric("📊 Open", len(df_current_egx30))
+    #st.metric("📋 Closed", len(df_closed_egx30))
