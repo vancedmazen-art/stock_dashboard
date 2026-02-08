@@ -12,39 +12,45 @@ import numpy as np
 st.set_page_config(page_title="EGX Trading Dashboard", layout="wide")
 
 # --------------------------- 
-# Load Data + Company Map
+# Load BOTH Sheets + Company Map
 # ---------------------------
 @st.cache_data
 def load_data():
     try:
         if not os.path.exists("Complete_Trades_Metrics.xlsx"):
             st.error("❌ Complete_Trades_Metrics.xlsx missing!")
-            return pd.DataFrame()
+            return {}, pd.DataFrame()
         
-        trades_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
+        # Load SHEET 0 (closed trades history)
+        closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
         
+        # Load SHEET 1 (current data - what you're using now)
+        current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
+        
+        # Load company map
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
             if "Symbol" in company_map.columns:
                 company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
-            df = trades_df.merge(company_map, on="Ticker", how="left")
+            closed_trades = closed_trades.merge(company_map, on="Ticker", how="left")
+            current_trades = current_trades.merge(company_map, on="Ticker", how="left")
         else:
-            df = trades_df.copy()
+            closed_trades = closed_trades.copy()
+            current_trades = current_trades.copy()
         
-        if "Ticker" not in df.columns:
-            st.error(f"❌ 'Ticker' column missing!")
-            return pd.DataFrame()
-            
-        st.success(f"✅ Loaded {len(df)} trades")
-        return df
+        st.success(f"✅ Loaded {len(current_trades)} current + {len(closed_trades)} closed trades")
+        return {"closed": closed_trades, "current": current_trades}
         
     except Exception as e:
         st.error(f"❌ Load failed: {e}")
-        return pd.DataFrame()
+        return {}, pd.DataFrame()
 
-df = load_data()
-if df.empty:
+data = load_data()
+if not data or data["current"].empty:
     st.stop()
+
+df_current = data["current"]  # Sheet 1 (your current data)
+df_closed = data["closed"]    # Sheet 0 (closed trades history)
 
 # --------------------------- 
 # Safe Display Function
@@ -80,7 +86,7 @@ def calculate_sentiment(row):
     return "🔴 Strong Bearish"
 
 # --------------------------- 
-# NEWS SECTION (Your Original Code Restored!)
+# NEWS SECTION
 # ---------------------------
 CAIRO_TZ = pytz.timezone("Africa/Cairo")
 
@@ -149,43 +155,48 @@ def fetch_latest_news(symbol: str, max_items=3):
     return result
 
 # --------------------------- 
-# Main Dashboard with NEWS!
+# Main Dashboard
 # ---------------------------
 tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Portfolio Overview"])
 
 with tab1:
-    symbols = sorted(df["Ticker"].unique())
+    symbols = sorted(df_current["Ticker"].unique())
     selected_symbol = st.selectbox("🔍 Choose Stock:", symbols)
     
-    stock_df = df[df["Ticker"] == selected_symbol]
-    latest = stock_df.sort_values("Entry_Date", ascending=False).iloc[0]
-    
-    sentiment = calculate_sentiment(latest)
+    # Current trade (Sheet 1)
+    current_stock_df = df_current[df_current["Ticker"] == selected_symbol]
+    if not current_stock_df.empty:
+        latest_current = current_stock_df.sort_values("Entry_Date", ascending=False).iloc[0]
+        sentiment = calculate_sentiment(latest_current)
+    else:
+        latest_current = pd.Series()
+        sentiment = "🟡 No Current Trade"
     
     left_col, right_col = st.columns([3, 1])
     
     with left_col:
-        company_name = safe_display(latest.get("Company Name", selected_symbol))
+        company_name = safe_display(latest_current.get("Company Name", selected_symbol))
         st.markdown(f"""
             <h1 style='margin-bottom:0;'>📈 {selected_symbol}</h1>
             <h3 style='color:gray;margin-top:0;'>{company_name}</h3>
             <h4 style='color:#4CAF50;'>{sentiment}</h4>
         """, unsafe_allow_html=True)
 
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("PnL", f"{safe_display(latest.get('Trade_PnL_%'))}%")
-        col2.metric("Days", safe_display(latest.get("Days_Held")))
-        col3.metric("Entry", safe_display(latest.get("Entry_Price")))
-        col4.metric("Exit", safe_display(latest.get("Exit_Price")))
-
-        st.markdown(f"**Status:** {safe_display(latest.get('Status'))}")
-        st.markdown(f"**Exit Reason:** {safe_display(latest.get('Exit_Reason'))}")
+        if not latest_current.empty:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("PnL", f"{safe_display(latest_current.get('Trade_PnL_%'))}%")
+            col2.metric("Days", safe_display(latest_current.get("Days_Held")))
+            col3.metric("Entry", safe_display(latest_current.get("Entry_Price")))
+            col4.metric("Exit", safe_display(latest_current.get("Exit_Price")))
+            
+            st.markdown(f"**Status:** {safe_display(latest_current.get('Status'))}")
+            st.markdown(f"**Exit Reason:** {safe_display(latest_current.get('Exit_Reason'))}")
 
         st.subheader("📈 TradingView Chart")
         iframe_url = f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9"
         st.components.v1.iframe(iframe_url, height=500)
         
-        # 🔥 NEWS SECTION HERE!
+        # 🔥 NEWS SECTION
         st.subheader("📰 Latest News")
         news_items = fetch_latest_news(selected_symbol)
         if news_items:
@@ -199,37 +210,56 @@ with tab1:
         else:
             st.info("No news found for this stock.")
 
+        # 🔥 CLOSED TRADES HISTORY (Sheet 0) - BELOW CHART!
+        st.subheader(f"📋 Closed Trades History ({len(df_closed[df_closed['Ticker']==selected_symbol])} trades)")
+        closed_stock_df = df_closed[df_closed["Ticker"] == selected_symbol].copy()
+        
+        if not closed_stock_df.empty:
+            # Select key columns and sort by Entry_Date (newest first)
+            display_cols = ["Entry_Date", "Exit_Date", "Entry_Price", "Exit_Price", "Trade_PnL_%", "Days_Held", "Exit_Reason"]
+            available_cols = [col for col in display_cols if col in closed_stock_df.columns]
+            closed_stock_df = closed_stock_df[available_cols].sort_values("Entry_Date", ascending=False)
+            
+            # Format numeric columns
+            for col in closed_stock_df.columns:
+                if closed_stock_df[col].dtype in ['float64', 'int64']:
+                    closed_stock_df[col] = closed_stock_df[col].apply(safe_display)
+            
+            st.dataframe(closed_stock_df, use_container_width=True, height=300)
+        else:
+            st.info("No closed trades found.")
+
     with right_col:
         st.subheader("📋 Key Metrics")
-        metrics = {
-            "Max Gain %": latest.get("Max_Gain_%"),
-            "Max DD %": latest.get("Max_Drawdown_%"),
-            "Entry Vol": latest.get("Entry_Volume"),
-            "Rel Vol": latest.get("Entry_Rel_Volume_20")
-        }
-        for name, value in metrics.items():
-            st.markdown(f"**{name}:** {safe_display(value)}")
+        if not latest_current.empty:
+            metrics = {
+                "Max Gain %": latest_current.get("Max_Gain_%"),
+                "Max DD %": latest_current.get("Max_Drawdown_%"),
+                "Entry Vol": latest_current.get("Entry_Volume"),
+                "Rel Vol": latest_current.get("Entry_Rel_Volume_20")
+            }
+            for name, value in metrics.items():
+                st.markdown(f"**{name}:** {safe_display(value)}")
 
 with tab2:
-    st.subheader("📊 Portfolio Stats")
-    
-    total_trades = len(df)
-    winners = len(df[df["Trade_PnL_%"] > 0])
-    win_rate = (winners/total_trades*100) if total_trades > 0 else 0
+    # Portfolio stats from CURRENT trades (Sheet 1)
+    total_current = len(df_current)
+    winners_current = len(df_current[df_current["Trade_PnL_%"] > 0])
+    win_rate_current = (winners_current/total_current*100) if total_current > 0 else 0
     
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Trades", total_trades)
-    col2.metric("Win Rate", f"{win_rate:.1f}%")
-    col3.metric("Avg PnL", f"{df['Trade_PnL_%'].mean():.1f}%")
-    col4.metric("Best Trade", f"{df['Trade_PnL_%'].max():.1f}%")
+    col1.metric("Current Trades", total_current)
+    col2.metric("Current Win Rate", f"{win_rate_current:.1f}%")
+    col3.metric("Avg Current PnL", f"{df_current['Trade_PnL_%'].mean():.1f}%")
+    col4.metric("Best Current", f"{df_current['Trade_PnL_%'].max():.1f}%")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### 🟢 Top 5 Winners")
-        top5 = df.nlargest(5, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]]
-        st.dataframe(top5, use_container_width=True)
+    # Closed trades stats
+    total_closed = len(df_closed)
+    winners_closed = len(df_closed[df_closed["Trade_PnL_%"] > 0])
+    win_rate_closed = (winners_closed/total_closed*100) if total_closed > 0 else 0
     
-    with col2:
-        st.markdown("### 🔴 Top 5 Losers")
-        bottom5 = df.nsmallest(5, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]]
-        st.dataframe(bottom5, use_container_width=True)
+    st.markdown("### 📊 Closed Trades Summary")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Closed", total_closed)
+    col2.metric("Closed Win Rate", f"{win_rate_closed:.1f}%")
+    col3.metric("Avg Closed PnL", f"{df_closed['Trade_PnL_%'].mean():.1f}%")
