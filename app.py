@@ -50,7 +50,6 @@ if df.empty:
 # Safe Display Function
 # ---------------------------
 def safe_display(value):
-    """Safely format any value for display"""
     if pd.isna(value) or value is None or value == "":
         return "-"
     if isinstance(value, (int, float)):
@@ -81,7 +80,76 @@ def calculate_sentiment(row):
     return "🔴 Strong Bearish"
 
 # --------------------------- 
-# Main Dashboard
+# NEWS SECTION (Your Original Code Restored!)
+# ---------------------------
+CAIRO_TZ = pytz.timezone("Africa/Cairo")
+
+KEYWORD_EMOJI_RULES = [
+    (["bankruptcy", "default", "collapse", "scandal"], "💥"),
+    (["loss", "decline", "drop", "fall", "deficit", "down", "negative", "bear", "lower", "decrease"], "🔻🐻"),
+    (["rise", "up", "positive", "bull", "higher", "increase"], "✅📈🐂"),
+    (["profit", "strong earnings", "strong results", "beat estimates", "surge"], "⬆💰💰💰"),
+    (["dividend", "payout", "distribution"], "💰"),
+    (["loan", "bond", "treasury"], "💳"),
+    (["upgrade"], "⬆️"),
+    (["downgrade"], "⬇️"),
+    (["acquire", "acquisition", "merger", "takeover", "m&a"], "🤝"),
+    (["partnership", "agreement", "deal", "collaboration", "capital"], "🤝"),
+    (["expansion", "growth", "project", "invest", "develop", "establish"], "🚀"),
+    (["layoffs", "cut", "reduce", "reduction"], "⚠️"),
+    (["launch", "introduces", "introduced"], "🆕"),
+    (["approval", "permit", "licence", "license", "regulation"], "📜"),
+    (["ceo", "cfo", "board", "appoint", "appoints", "management"], "👔"),
+    (["forecast", "guidance"], "📈"),
+]
+
+def pick_emoji(headline: str) -> str:
+    h = headline.lower()
+    emojis = []
+    for keywords, emoji in KEYWORD_EMOJI_RULES:
+        if any(k in h for k in keywords):
+            if emoji not in emojis:
+                emojis.append(emoji)
+    return "".join(emojis) if emojis else "📰"
+
+def fetch_latest_news(symbol: str, max_items=3):
+    try:
+        API_URL = (
+            "https://news-mediator.tradingview.com/news-flow/v2/news?"
+            "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
+        )
+        r = requests.get(API_URL, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        st.warning(f"Failed to fetch news: {e}")
+        return []
+
+    items = data.get("items", [])
+    result = []
+    for news in items:
+        related_symbols = [s.get("symbol", "").replace("EGX:", "") for s in news.get("relatedSymbols", [])]
+        if symbol in related_symbols:
+            title = news.get("title", "")
+            url = news.get("storyPath", "")
+            provider = news.get("provider", {}).get("name", "")
+            ts = news.get("published")
+            if not ts: continue
+                
+            published_dt = datetime.utcfromtimestamp(ts).replace(tzinfo=pytz.UTC).astimezone(CAIRO_TZ)
+            published_str = published_dt.strftime("%Y-%m-%d %H:%M")
+            
+            emoji = pick_emoji(title)
+            result.append({
+                "title": title, "url": f"https://www.tradingview.com{url}",
+                "provider": provider, "published": published_str, "emoji": emoji
+            })
+        if len(result) >= max_items:
+            break
+    return result
+
+# --------------------------- 
+# Main Dashboard with NEWS!
 # ---------------------------
 tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Portfolio Overview"])
 
@@ -116,6 +184,20 @@ with tab1:
         st.subheader("📈 TradingView Chart")
         iframe_url = f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9"
         st.components.v1.iframe(iframe_url, height=500)
+        
+        # 🔥 NEWS SECTION HERE!
+        st.subheader("📰 Latest News")
+        news_items = fetch_latest_news(selected_symbol)
+        if news_items:
+            for n in news_items:
+                st.markdown(
+                    f"{n['emoji']} **{n['title']}**  \n"
+                    f"Source: {n['provider']} | {n['published']}  \n"
+                    f"[Read More]({n['url']})"
+                )
+                st.divider()
+        else:
+            st.info("No news found for this stock.")
 
     with right_col:
         st.subheader("📋 Key Metrics")
