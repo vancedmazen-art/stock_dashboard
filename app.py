@@ -124,7 +124,7 @@ with tab1:
     col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Entry_Volume', 'Status']]), 
+    st.dataframe(fix_pyarrow_df(new_buys[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Entry_Volume', 'Status', 'BUY_REASON']]), 
                 use_container_width=True, height=200)
     
     max_exit_date = df_closed_internal['Exit_Date'].max()
