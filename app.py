@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 # --------------------------- 
-# LOAD DATA
+# LOAD DATA 
 # ---------------------------
 @st.cache_data
 def load_data():
