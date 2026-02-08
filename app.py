@@ -237,8 +237,3 @@ with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys)} | ❌ Closed: {len(close_now)} | ✅ Holds: {len(holds)}")
     st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M EET')}")
-
-# 🔥 DEBUG
-st.sidebar.markdown("### 🔍 **DEBUG**")
-st.sidebar.write(f"Strategy metrics: {len(df_strategy)} stocks")
-st.sidebar.dataframe(df_strategy[['Ticker', 'Best_Strategy', 'score']].head())
