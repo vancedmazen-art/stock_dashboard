@@ -383,14 +383,14 @@ with tab5:
 
         if latest is not None:
 
-            has_support = 'exit_support' in latest and pd.notna(latest['exit_support'])
-            has_resistance = 'exit_resistance' in latest and pd.notna(latest['exit_resistance'])
+            has_support = 'Exit_Support' in latest and pd.notna(latest['Exit_Support'])
+            has_resistance = 'Exit_Resistance' in latest and pd.notna(latest['Exit_Resistance'])
 
             if has_support:
-                st.metric("🟢 Support", safe_display(latest['exit_support']))
+                st.metric("🟢 Support", safe_display(latest['Exit_Support']))
 
             if has_resistance:
-                st.metric("🔴 Resistance", safe_display(latest['exit_resistance']))
+                st.metric("🔴 Resistance", safe_display(latest['Exit_Resistance']))
 
             # Always show PnL if available
             if 'Trade_PnL_%' in latest and pd.notna(latest['Trade_PnL_%']):
