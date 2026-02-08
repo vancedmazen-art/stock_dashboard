@@ -253,7 +253,12 @@ with tab4:
 with tab5:
 
     st.markdown("## 📊 **EGX30 – Market Overview & Sentiment**")
-    st.caption("Live performance • Strategy health • Technical view • Market news")
+    if open_trades > 0:
+        sentiment_text = "🟢 Positive"
+        sentiment_emoji = "🚀📈"
+    else:
+        sentiment_text = "🔴 Neutral / Cautious"
+        sentiment_emoji = "⚠️📉"
 
     st.divider()
 
