@@ -4,9 +4,8 @@ import requests
 from datetime import datetime
 import pytz
 import os
-import math
 
-# ---------------------------
+# ---------------------------  
 # Page Config
 # ---------------------------
 st.set_page_config(
@@ -14,309 +13,142 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------------------------
-# Load Data + Company Map
+# --------------------------- 
+# Load Data from Excel
 # ---------------------------
 @st.cache_data
 def load_data():
     try:
-        if not os.path.exists("StockQuotes.csv"):
-            st.error("❌ StockQuotes.csv missing from repo root!")
-            return pd.DataFrame()
-        if not os.path.exists("egx_company_map.csv"):
-            st.error("❌ egx_company_map.csv missing from repo root!")
+        if not os.path.exists("Complete_Trades_Metrics.xlsx"):
+            st.error("❌ Complete_Trades_Metrics.xlsx missing from repo root!")
             return pd.DataFrame()
         
-        df = pd.read_csv("StockQuotes.csv")
-        company_map = pd.read_csv("egx_company_map.csv")
-        company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
-        df = df.merge(company_map, on="Ticker", how="left")
+        # Read both sheets
+        trades_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Sheet1")  # Adjust sheet name if needed
+        company_map = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Sheet2")  # Adjust sheet name if needed
+        
+        # Ensure Ticker column exists
+        if "Ticker" not in trades_df.columns:
+            st.error(f"❌ 'Ticker' column missing from trades sheet. Found: {list(trades_df.columns)}")
+            return pd.DataFrame()
+            
+        # Process company map (adjust column names based on your Sheet2)
+        if "Symbol" in company_map.columns:
+            company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
+        elif "Company" in company_map.columns:
+            company_map["Ticker"] = company_map["Company"].str.replace("EGX:", "", regex=False)
+        else:
+            st.warning("No Symbol/Company column found in company map - skipping merge")
+            return trades_df
+        
+        # Merge data
+        df = trades_df.merge(company_map, on="Ticker", how="left")
         return df
+        
     except Exception as e:
         st.error(f"❌ Data load failed: {e}")
         return pd.DataFrame()
 
+# Load and validate data
+df = load_data()
 
-# ---------------------------
-# Sidebar: Stock Selector
-# ---------------------------
-# st.sidebar.header("🔍 Stock Selector")
+if df.empty:
+    st.error("❌ No data loaded! Upload Complete_Trades_Metrics.xlsx to repo root.")
+    st.stop()
 
+if "Ticker" not in df.columns:
+    st.error(f"❌ Missing 'Ticker' column. Available: {list(df.columns)}")
+    st.stop()
 
-# ---------------------------
-# Sentiment Engine
+st.success(f"✅ Loaded {len(df)} trades from {len(df['Ticker'].unique())} stocks")
+
+# --------------------------- 
+# Sentiment Engine (unchanged)
 # ---------------------------
 def calculate_sentiment(row):
     score = 0
-    if pd.notna(row.get("Unrealized_PnL_%")):
-        score += 2 if row["Unrealized_PnL_%"] > 0 else -2
-    if pd.notna(row.get("Rel_Volume")) and row["Rel_Volume"] > 1.5:
+    if pd.notna(row.get("Trade_PnL_%")):
+        score += 2 if row["Trade_PnL_%"] > 0 else -2
+    # Adapt to your Excel columns - adjust as needed
+    if pd.notna(row.get("Entry_Rel_Volume_20")) and row["Entry_Rel_Volume_20"] > 1.5:
         score += 1
-    for key in ["HMA_above_EMA", "Accumulation", "RSI_Divergence", "Market_Structure"]:
+    for key in ["Entry_Market_Structure", "Entry_Crosses_Resistance"]:
         if row.get(key, False):
             score += 1
 
-    if score >= 4:
-        return "🟢 Strong Bullish"
-    elif score >= 2:
-        return "🟢 Bullish"
-    elif score >= 0:
-        return "🟡 Neutral"
-    elif score >= -2:
-        return "🔴 Bearish"
-    else:
-        return "🔴 Strong Bearish"
+    if score >= 4: return "🟢 Strong Bullish"
+    elif score >= 2: return "🟢 Bullish" 
+    elif score >= 0: return "🟡 Neutral"
+    elif score >= -2: return "🔴 Bearish"
+    else: return "🔴 Strong Bearish"
 
-# latest_sentiment = calculate_sentiment(latest)
-# latest["Sentiment"] = latest_sentiment
+# --------------------------- 
+# Tabs
+# ---------------------------
+tab1, tab2 = st.tabs(["📊 Trade Detail", "📈 Portfolio Summary"])
 
-# ---------------------------
-# Tabs: Stock Detail + Market Aggregates
-# ---------------------------
-tab1, tab2 = st.tabs(["📊 Stock Detail", "📈 Market Aggregates"])
-
-# ---------------------------
-# Tab 1: Stock Detail
-# ---------------------------
 with tab1:
     symbols = sorted(df["Ticker"].unique())
-
-    # ✅ Selector inside tab (not sidebar)
     selected_symbol = st.selectbox("🔍 Choose Stock:", symbols)
-
-    # Filter stock
+    
+    # Filter & get latest trade
     stock_df = df[df["Ticker"] == selected_symbol]
-    latest = stock_df.sort_values("Report_Date").iloc[-1]
-
-    # ✅ Now calculate sentiment AFTER latest exists
+    latest = stock_df.sort_values("Entry_Date", ascending=False).iloc[0]  # Most recent trade
+    
     latest_sentiment = calculate_sentiment(latest)
-    latest["Sentiment"] = latest_sentiment
-
+    
     left_col, right_col = st.columns([3, 1])
-
-
+    
     with left_col:
-        company_name = latest.get("Company Name") or "Unknown Company"
-        sector = latest.get("Sector") or "Unknown Sector"
-        industry = latest.get("Industry/Subsector") or "Unknown Industry"
+        company_name = latest.get("Company Name", "Unknown") or "Unknown Company"
+        st.markdown(f"""
+            <h1 style='margin-bottom:0;'>📈 {selected_symbol}</h1>
+            <h3 style='color:gray;margin-top:0;'>{company_name}</h3>
+            <h4 style='color:#4CAF50;'>{latest.get("Status", "CLOSED")}</h4>
+        """, unsafe_allow_html=True)
 
-        st.markdown(
-            f"<h1 style='margin-bottom:0;'>📈 {selected_symbol}</h1>"
-            f"<h3 style='color:gray;margin-top:0;'>{company_name}</h3>"
-            f"<h4 style='color:#4CAF50;margin-top:5px;'>🏭 Sector: {sector} | 🏷 Industry: {industry}</h4>",
-            unsafe_allow_html=True
-        )
+        # Key trade metrics from your Excel
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Trade PnL", f"{latest.get('Trade_PnL_%', 0):.1f}%")
+        col2.metric("Days Held", latest.get("Days_Held", 0))
+        col3.metric("Entry Price", f"{latest.get('Entry_Price', 0):.2f}")
+        col4.metric("Exit Price", f"{latest.get('Exit_Price', 0):.2f}")
+        
+        st.markdown(f"**Sentiment:** {latest_sentiment}")
+        st.markdown(f"**Exit Reason:** {latest.get('Exit_Reason', '-')}")
+        
+        # TradingView chart
+        st.subheader("📈 TradingView Chart")
+        iframe_url = f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9"
+        st.components.v1.iframe(iframe_url, height=500)
 
-        if latest["In_Trade"]:
-            st.subheader("💼 Trade Status")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("In Trade", "YES ✅")
-            c2.metric("Days In Trade", int(latest["Days_In_Trade"]) if pd.notna(latest["Days_In_Trade"]) else "-")
-            c3.metric("Entry Price", f"{latest['Entry_Price']:.2f}" if pd.notna(latest["Entry_Price"]) else "-")
-
-            if pd.notna(latest.get("Entry_Date")):
-                st.markdown(f"**Entry Date:** {latest['Entry_Date']}")
-
-            st.divider()
-
-            # Summary
-            last_close = latest['Last_Close'] if pd.notna(latest['Last_Close']) else None
-            unrealized_pnl = f"{latest['Unrealized_PnL_%']:.2f}%" if pd.notna(latest["Unrealized_PnL_%"]) else "-"
-            score = latest.get("Score", "-")
-            rsi_div = "Yes ✅" if latest.get("RSI_Divergence", False) else "No ❌"
-
-            price = latest['Last_Close'] if pd.notna(latest['Last_Close']) else None
-            support = latest.get("Support")
-            resistance = latest.get("Resistance")
-
-            dist_support_pct_str = f"{((price - support) / support) * 100:.2f}%" if price and support else "-"
-            dist_resistance_pct_str = f"{((resistance - price) / resistance) * 100:.2f}%" if price and resistance else "-"
-
-            if price and support and resistance:
-                if price < support:
-                    price_vs_sr = "Below Support 🔻"
-                elif price > resistance:
-                    price_vs_sr = "Above Resistance ⬆️"
-                elif abs(price - support) / support < 0.01:
-                    price_vs_sr = "Near Support ⚠️"
-                elif abs(price - resistance) / resistance < 0.01:
-                    price_vs_sr = "Near Resistance ⚠️"
-                else:
-                    price_vs_sr = "Between Support & Resistance"
-            else:
-                price_vs_sr = "-"
-
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Last Close", last_close)
-            col2.metric("Unrealized PnL", unrealized_pnl)
-            col3.metric("Score", score)
-            col4.metric("RSI Divergence", rsi_div)
-
-            st.markdown(f"**Price Position:** {price_vs_sr}")
-            st.markdown(f"**Sentiment:** {latest_sentiment}")
-            st.markdown(f"**Distance to Support:** {dist_support_pct_str} | **Distance to Resistance:** {dist_resistance_pct_str}")
-
-        st.divider()
-
-        # ---------------------------
-        # TradingView chart with hollow candles + support/resistance
-        # ---------------------------
-        st.subheader("📈 TradingView Live Chart")
-        iframe_url = (
-            f"https://s.tradingview.com/widgetembed/?"
-            f"frameElementId=tradingview_{selected_symbol}&"
-            f"symbol=EGX:{selected_symbol}&"
-            f"interval=D&"
-            f"hidesidetoolbar=1&"
-            f"symboledit=1&"
-            f"saveimage=1&"
-            f"toolbarbg=f1f3f6&"
-            f"theme=Light&"
-            f"style=9&"  # Hollow candles
-            f"timezone=Etc%2FUTC"
-        )
-        st.components.v1.iframe(iframe_url, height=600, width=900)
-        st.divider()
-
-        # Latest 3 News
-        st.subheader("📰 Latest News")
-        API_URL = (
-            "https://news-mediator.tradingview.com/news-flow/v2/news?"
-            "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
-        )
-        CAIRO_TZ = pytz.timezone("Africa/Cairo")
-        KEYWORD_EMOJI_RULES = [
-            (["bankruptcy", "default", "collapse", "scandal"], "💥"),
-            (["loss", "decline", "drop", "fall", "deficit", "down", "negative", "bear", "lower", "decrease"], "🔻🐻"),
-            (["rise", "up", "positive", "bull", "higher", "increase"], "✅📈🐂"),
-            (["profit", "strong earnings", "strong results", "beat estimates", "surge"], "⬆💰💰💰"),
-            (["dividend", "payout", "distribution"], "💰"),
-            (["loan", "bond", "treasury"], "💳"),
-            (["upgrade"], "⬆️"),
-            (["downgrade"], "⬇️"),
-            (["acquire", "acquisition", "merger", "takeover", "m&a"], "🤝"),
-            (["partnership", "agreement", "deal", "collaboration", "capital"], "🤝"),
-            (["expansion", "growth", "project", "invest", "develop", "establish"], "🚀"),
-            (["layoffs", "cut", "reduce", "reduction"], "⚠️"),
-            (["launch", "introduces", "introduced"], "🆕"),
-            (["approval", "permit", "licence", "license", "regulation"], "📜"),
-            (["ceo", "cfo", "board", "appoint", "appoints", "management"], "👔"),
-            (["forecast", "guidance"], "📈"),
-        ]
-
-        DEFAULT_EMOJI = "📰"
-
-        def pick_emoji(headline: str) -> str:
-            h = headline.lower()
-            emojis = []
-            for keywords, emoji in KEYWORD_EMOJI_RULES:
-                if any(k in h for k in keywords):
-                    if emoji not in emojis:
-                        emojis.append(emoji)
-            return "".join(emojis) if emojis else DEFAULT_EMOJI
-
-        def fetch_latest_news(symbol: str, max_items=3):
-            try:
-                r = requests.get(API_URL, timeout=10)
-                r.raise_for_status()
-                data = r.json()
-            except Exception as e:
-                st.warning(f"Failed to fetch news: {e}")
-                return []
-
-            items = data.get("items", [])
-            result = []
-            for news in items:
-                related_symbols = [s.get("symbol", "").replace("EGX:", "") for s in news.get("relatedSymbols", [])]
-                if symbol in related_symbols:
-                    title = news.get("title", "")
-                    url = news.get("storyPath", "")
-                    provider = news.get("provider", {}).get("name", "")
-                    ts = news.get("published")
-                    if not ts:
-                        continue
-                    published_dt = datetime.utcfromtimestamp(ts).replace(tzinfo=pytz.UTC).astimezone(CAIRO_TZ)
-                    published_str = published_dt.strftime("%Y-%m-%d %H:%M:%S")
-                    emoji = pick_emoji(title)
-                    result.append({
-                        "title": title,
-                        "url": f"https://www.tradingview.com{url}",
-                        "provider": provider,
-                        "published": published_str,
-                        "emoji": emoji
-                    })
-                if len(result) >= max_items:
-                    break
-            return result
-
-        news_items = fetch_latest_news(selected_symbol)
-        if news_items:
-            for n in news_items:
-                st.markdown(
-                    f"{n['emoji']} **{n['title']}**  \n"
-                    f"Source: {n['provider']} | Published: {n['published']}  \n"
-                    f"[Read More]({n['url']})"
-                )
-        else:
-            st.info("No news found for this stock.")
-
-    # ---------------------------
-    # Right column: metrics
-    # ---------------------------
     with right_col:
-        st.subheader("📋 Full Stock Metrics")
-        metric_names = {
-            "In_Trade": "In Trade",
-            "Last_Close": "Last Close",
-            "Gain_Loss_Today_%": "Daily % Gain/Loss",
-            "Entry_Price": "Entry Price",
-            "Days_In_Trade": "Days In Trade",
-            "Unrealized_PnL_%": "Unrealized PnL %",
-            "Rel_Volume": "Relative Volume",
-            "HMA_above_EMA": "HMA Above EMA",
-            "Accumulation": "Accumulation",
-            "RSI_Divergence": "RSI Divergence",
-            "Market_Structure": "Market Structure",
-            "Score": "Score",
-            "Support": "Support",
-            "Resistance": "Resistance",
-            "ATR_Volatility_%": "ATR"
-        }
-
-        for col, display_name in metric_names.items():
+        st.subheader("📋 Trade Metrics")
+        for col in ["Max_Gain_%", "Max_Drawdown_%", "Entry_Volume", "Status"]:
             if col in latest:
                 val = latest[col]
-                val_str = (
-                    "-" if pd.isna(val)
-                    else f"{val:.2f}" if isinstance(val, float)
-                    else "Yes ✅" if isinstance(val, bool) and val
-                    else "No ❌" if isinstance(val, bool)
-                    else str(val)
-                )
-                st.markdown(f"**{display_name}:** {val_str}")
-   
-# ---------------------------
-# Tab 2: Market Aggregates
-# ---------------------------
+                st.markdown(f"**{col}:** {val}")
+
 with tab2:
-    st.subheader("📊 Market Aggregates")
-    in_trade_count = df[df["In_Trade"]].shape[0]
-    st.metric("Stocks Currently in Trade", in_trade_count)
-
-    top_gainers = df.sort_values("Unrealized_PnL_%", ascending=False).head(3)
-    top_losers = df.sort_values("Unrealized_PnL_%", ascending=True).head(3)
-    df["Dist_To_Support_%"] = ((df["Last_Close"] - df["Support"]) / df["Support"]).abs()
-    top_support = df.sort_values("Dist_To_Support_%").head(3)
-    top_atr = df.sort_values("ATR_Volatility_%", ascending=False).head(3)
-
-    st.markdown("### 🟢 Top 3 Gainers")
-    st.table(top_gainers[["Ticker", "Company Name", "Unrealized_PnL_%", "Last_Close"]])
-
-    st.markdown("### 🔴 Top 3 Losers")
-    st.table(top_losers[["Ticker", "Company Name", "Unrealized_PnL_%", "Last_Close"]])
-
-    st.markdown("### ⚠️ Top 3 Near Support")
-    st.table(top_support[["Ticker", "Company Name", "Last_Close", "Support", "Dist_To_Support_%"]])
-
-    st.markdown("### 📈 Top 3 ATR")
-    st.table(top_atr[["Ticker", "Company Name", "ATR_Volatility_%", "Last_Close"]])
+    st.subheader("📊 Portfolio Summary")
+    
+    # Key portfolio metrics
+    total_trades = len(df)
+    winners = len(df[df["Trade_PnL_%"] > 0])
+    win_rate = (winners / total_trades * 100) if total_trades > 0 else 0
+    avg_pnl = df["Trade_PnL_%"].mean()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Trades", total_trades)
+    col2.metric("Win Rate", f"{win_rate:.1f}%")
+    col3.metric("Avg PnL", f"{avg_pnl:.1f}%")
+    col4.metric("Best Trade", f"{df['Trade_PnL_%'].max():.1f}%")
+    
+    # Top performers
+    st.markdown("### 🟢 Top 5 Winners")
+    top_winners = df.nlargest(5, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]]
+    st.table(top_winners)
+    
+    st.markdown("### 🔴 Biggest Losers") 
+    top_losers = df.nsmallest(5, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]]
+    st.table(top_losers)
