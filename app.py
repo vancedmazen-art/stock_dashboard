@@ -18,7 +18,10 @@ def load_data():
             return {}, [], []
         
         closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
+        closed_trades = closed_trades[closed_trades['Entry_Crosses_Resistance'] == 'TRUE']
         current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
+        current_trades = current_trades[current_trades['Entry_Crosses_Resistance'] == 'TRUE']
+        
         
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
