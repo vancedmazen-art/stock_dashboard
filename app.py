@@ -19,13 +19,23 @@ st.set_page_config(
 # ---------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("StockQuotes.csv")
-    company_map = pd.read_csv("egx_company_map.csv")
-    company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
-    df = df.merge(company_map, on="Ticker", how="left")
-    return df
+    try:
+        if not os.path.exists("StockQuotes.csv"):
+            st.error("❌ StockQuotes.csv missing from repo root!")
+            return pd.DataFrame()
+        if not os.path.exists("egx_company_map.csv"):
+            st.error("❌ egx_company_map.csv missing from repo root!")
+            return pd.DataFrame()
+        
+        df = pd.read_csv("StockQuotes.csv")
+        company_map = pd.read_csv("egx_company_map.csv")
+        company_map["Ticker"] = company_map["Symbol"].str.replace("EGX:", "", regex=False)
+        df = df.merge(company_map, on="Ticker", how="left")
+        return df
+    except Exception as e:
+        st.error(f"❌ Data load failed: {e}")
+        return pd.DataFrame()
 
-df = load_data()
 
 # ---------------------------
 # Sidebar: Stock Selector
