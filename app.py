@@ -253,6 +253,7 @@ with tab4:
 with tab5:
 
     st.markdown("## 📊 **EGX30 – Market Overview & Sentiment**")
+    open_trades = len(df_current_egx30)
     if open_trades > 0:
         sentiment_text = "🟢 Positive"
         sentiment_emoji = "🚀📈"
