@@ -257,14 +257,6 @@ with tab5:
 
     st.divider()
 
-    # =========================
-    # 🔹 TOP SUMMARY BAR
-    # =========================
-    c1, c2, c3, c4, c5 = st.columns(5)
-
-    c1.metric("📊 Open", len(df_current_egx30))
-
-    st.divider()
 
     # =========================
     # 🔹 MAIN BODY (LEFT / RIGHT)
@@ -379,14 +371,6 @@ with tab5:
 
             if has_resistance:
                 st.metric("🔴 Resistance", safe_display(latest['Exit_Resistance']))
-
-            # Always show PnL if available
-            if 'Trade_PnL_%' in latest and pd.notna(latest['Trade_PnL_%']):
-                st.metric("📊 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
-
-            # Entry date
-            if 'Entry_Date' in latest and pd.notna(latest['Entry_Date']):
-                st.caption(f"📅 Entry: {latest['Entry_Date']}")
 
             # If neither exists
             if not has_support and not has_resistance:
