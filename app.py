@@ -25,7 +25,7 @@ def load_data():
             return pd.DataFrame()
         
         # Read trades data (first sheet)
-        trades_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
+        trades_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
         
         # Try to load company map (CSV)
         if os.path.exists("egx_company_map.csv"):
