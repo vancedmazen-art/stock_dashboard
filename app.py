@@ -7,20 +7,21 @@ import os
 import numpy as np
 
 # --------------------------- 
-# LOAD DATA 
+# LOAD ALL 3 SHEETS + Strategy Metrics
 # ---------------------------
-#@st.cache_data
 def load_data():
     try:
         if not os.path.exists("Complete_Trades_Metrics.xlsx"):
             st.error("❌ Complete_Trades_Metrics.xlsx missing!")
             st.stop()
-            return {}, [], []
+            return {}, [], [], pd.DataFrame()
         
+        # Sheet 0: Closed trades
         closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
-        #closed_trades = closed_trades[closed_trades['Entry_Crosses_Resistance'] == True]
+        # Sheet 1: Current trades  
         current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
-        #current_trades = current_trades[current_trades['Entry_Crosses_Resistance'] == True]
+        # 🔥 SHEET 3: STRATEGY METRICS (NEW!)
+        strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=2)
         
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
@@ -34,41 +35,39 @@ def load_data():
             current_trades['Ticker'].dropna()
         ]).drop_duplicates().sort_values().str.strip().tolist()
         
-        st.success(f"✅ Loaded {len(current_trades)} current + {len(closed_trades)} closed trades")
-        return {"closed": closed_trades, "current": current_trades}, all_tickers
+        st.success(f"✅ Loaded {len(current_trades)} current + {len(closed_trades)} closed + Strategy metrics")
+        return {"closed": closed_trades, "current": current_trades}, all_tickers, strategy_metrics
         
     except Exception as e:
         st.error(f"❌ Load failed: {e}")
         st.stop()
-        return {}, [], []
+        return {}, [], [], pd.DataFrame()
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
-data, all_symbols = load_data()
+
+# 🔥 REFRESH BUTTON
+col1, col2 = st.columns([3,1])
+with col2:
+    if st.button("🔄 **FORCE RELOAD**", type="primary"):
+        st.rerun()
+
+data, all_symbols, df_strategy = load_data()
 df_current = data["current"].copy()
 df_closed = data["closed"].copy()
 
 # --------------------------- 
-# ✅ FIX PYARROW: Convert date columns to string before display
+# FIX PYARROW
 # ---------------------------
 def fix_pyarrow_df(df):
-    """Convert problematic columns to string for Streamlit display"""
     df_display = df.copy()
-    
-    # Convert date columns to string (YYYY-MM-DD format)
     date_cols = ['Entry_Date', 'Exit_Date']
     for col in date_cols:
         if col in df_display.columns:
             df_display[col] = pd.to_datetime(df_display[col], errors='coerce').dt.strftime('%Y-%m-%d')
-    
-    # Convert any object columns with mixed types to string
     for col in df_display.select_dtypes(include=['object']).columns:
         df_display[col] = df_display[col].astype(str)
-    
     return df_display
 
-# --------------------------- 
-# HELPER FUNCTIONS
-# ---------------------------
 def safe_display(value):
     if pd.isna(value) or value is None or value == "":
         return "-"
@@ -97,12 +96,9 @@ def fetch_latest_news(symbol: str, max_items=3):
         if len(result) >= max_items: break
     return result
 
-# --------------------------- 
-# 🔥 DATE PROCESSING (for internal filtering - keep datetime)
-# ---------------------------
+# 🔥 DATE PROCESSING
 df_current_internal = df_current.copy()
 df_closed_internal = df_closed.copy()
-
 df_current_internal['Entry_Date'] = pd.to_datetime(df_current_internal['Entry_Date'], errors='coerce').dt.date
 df_closed_internal['Entry_Date'] = pd.to_datetime(df_closed_internal['Entry_Date'], errors='coerce').dt.date
 df_closed_internal['Exit_Date'] = pd.to_datetime(df_closed_internal['Exit_Date'], errors='coerce').dt.date
@@ -110,21 +106,25 @@ df_closed_internal['Exit_Date'] = pd.to_datetime(df_closed_internal['Exit_Date']
 # --------------------------- 
 # 🔥 4-TAB DASHBOARD
 # ---------------------------
-tab1, tab2, tab3, tab4 = st.tabs(["⚡ **TODAY'S ACTIONS**", "📊 **STOCK DETAIL**", "📈 **PORTFOLIO**", "📋 **FULL HISTORY**"])
+tab1, tab2, tab3, tab4 = st.tabs(["⚡ **TODAY'S ACTIONS**", "📊 **STOCK DETAIL**", "📈 **PORTFOLIO**", "📋 **HISTORY**"])
 
-# 🔥 TAB 1: TODAY'S ACTIONS
+# 🔥 TAB 1: TODAY'S ACTIONS + Best_Strategy
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     
     max_entry_date = df_current_internal['Entry_Date'].max()
     new_buys = df_current[df_current_internal['Entry_Date'] == max_entry_date].copy()
     
+    # 🔥 MERGE Best_Strategy from sheet 3
+    new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
+    
     st.markdown("#### 🆕 **Fresh BUYS**")
     col1, col2, col3 = st.columns(3)
     col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Entry_Volume', 'Status', 'BUY_REASON']]), 
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 
+                                                       'Entry_Volume', 'Status', 'Best_Strategy']]), 
                 use_container_width=True, height=200)
     
     max_exit_date = df_closed_internal['Exit_Date'].max()
@@ -139,20 +139,25 @@ with tab1:
                 use_container_width=True, height=200)
     
     holds = df_current[df_current_internal['Entry_Date'] != max_entry_date].copy()
+    holds_with_strategy = holds.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
+    
     st.markdown("#### ✅ **HOLDS**")
     col1, col2, col3 = st.columns(3)
     col1.metric("✅ Holds", len(holds))
-    col2.metric("💰 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
+    col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(fix_pyarrow_df(holds[['Ticker', 'Entry_Date', 'Trade_PnL_%', 'Days_Held', 'Status']]), 
-                use_container_width=True, height=300)
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'Entry_Date', 'Trade_PnL_%', 'Days_Held', 
+                                                    'Status', 'Best_Strategy']]), use_container_width=True, height=300)
 
-# 🔥 TAB 2: STOCK DETAIL
+# 🔥 TAB 2: STOCK DETAIL + SHEET 3 METRICS (NEW!)
 with tab2:
     selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols)
     
     current_stock_df = df_current[df_current["Ticker"] == selected_symbol]
     stock_history = df_closed[df_closed["Ticker"] == selected_symbol].sort_values("Entry_Date", ascending=False)
+    
+    # 🔥 SHEET 3 STRATEGY METRICS for this stock
+    strategy_for_stock = df_strategy[df_strategy["Ticker"] == selected_symbol]
     
     left_col, right_col = st.columns([3, 1])
     
@@ -161,8 +166,8 @@ with tab2:
         
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
-            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Days_Held', 'Status']]), 
-                        use_container_width=True, height=200)
+            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date', 'Entry_Price', 'Trade_PnL_%', 
+                                                         'Days_Held', 'Status']]), use_container_width=True, height=200)
         else:
             st.info("⚠️ No current open trades")
         
@@ -179,38 +184,49 @@ with tab2:
         
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
         if len(stock_history) > 0:
-            st.dataframe(fix_pyarrow_df(stock_history), use_container_width=True, height=300)
+            st.dataframe(fix_pyarrow_df(stock_history), use_container_width=True, height=250)
     
     with right_col:
-        st.markdown("#### 📊 **METRICS**")
+        st.markdown("#### 🎯 **STRATEGY METRICS**")
+        if len(strategy_for_stock) > 0:
+            strat = strategy_for_stock.iloc[0]
+            st.metric("🏆 Best Strategy", strat['Best_Strategy'])
+            st.metric("📊 Score", f"{safe_display(strat['score'])}")
+            st.metric("✅ Win Rate", f"{safe_display(strat['win_rate'])}%")
+            st.metric("🎯 Median PnL", f"{safe_display(strat['median_pnl'])}%")
+            st.metric("📈 Total Trades", safe_display(strat['total_trades']))
+        else:
+            st.info("No strategy metrics")
+        
+        st.markdown("---")
+        st.markdown("#### 📊 **TRADE METRICS**")
         if len(current_stock_df) > 0:
             latest = current_stock_df.iloc[0]
-            st.metric("PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
-            st.metric("Days", safe_display(latest['Days_Held']))
-            st.metric("Vol", safe_display(latest.get('Entry_Volume', '-')))
+            st.metric("💰 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
+            st.metric("⏳ Days", safe_display(latest['Days_Held']))
 
-# 🔥 TAB 3: PORTFOLIO
+# 🔥 TAB 3: PORTFOLIO + TOP STRATEGIES
 with tab3:
-    st.markdown("### 📈 **PORTFOLIO**")
+    st.markdown("### 📈 **PORTFOLIO OVERVIEW**")
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Open", len(df_current))
-    col2.metric("Closed", len(df_closed))
-    col3.metric("Win Rate", f"{len(df_closed[df_closed['Trade_PnL_%']>0])/len(df_closed)*100:.1f}%" if len(df_closed)>0 else "0%")
-    col4.metric("Avg PnL", f"{df_closed['Trade_PnL_%'].mean():.1f}%")
+    col1.metric("📊 Open", len(df_current))
+    col2.metric("📋 Closed", len(df_closed))
+    col3.metric("✅ Win Rate", f"{len(df_closed[df_closed['Trade_PnL_%']>0])/len(df_closed)*100:.1f}%" if len(df_closed)>0 else "0%")
+    col4.metric("💰 Avg PnL", f"{df_closed['Trade_PnL_%'].mean():.1f}%")
     
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🟢 **TOP GAINERS**")
-        top_gainers = fix_pyarrow_df(df_closed.nlargest(15, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]])
+        top_gainers = fix_pyarrow_df(df_closed.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]])
         top_gainers['Trade_PnL_%'] = top_gainers['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
         st.dataframe(top_gainers, use_container_width=True)
+    
     with col2:
-        st.markdown("### 🔴 **TOP LOSERS**")
-        top_losers = fix_pyarrow_df(df_closed.nsmallest(15, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]])
-        top_losers['Trade_PnL_%'] = top_losers['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
-        st.dataframe(top_losers, use_container_width=True)
+        st.markdown("### 🏆 **TOP STRATEGIES**")
+        top_strategies = fix_pyarrow_df(df_strategy.nlargest(10, "score")[['Ticker', 'Best_Strategy', 'score', 'win_rate']])
+        st.dataframe(top_strategies, use_container_width=True)
 
-# 🔥 TAB 4: FULL HISTORY (✅ FIXED!)
+# 🔥 TAB 4: FULL HISTORY
 with tab4:
     st.markdown("### 📋 **COMPLETE HISTORY**")
     full_history = fix_pyarrow_df(pd.concat([df_current, df_closed]).sort_values("Entry_Date", ascending=False))
@@ -218,6 +234,11 @@ with tab4:
 
 # 🔥 SIDEBAR
 with st.sidebar:
-    st.markdown("### 🎛️ **STATUS**")
+    st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys)} | ❌ Closed: {len(close_now)} | ✅ Holds: {len(holds)}")
     st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M EET')}")
+
+# 🔥 DEBUG
+st.sidebar.markdown("### 🔍 **DEBUG**")
+st.sidebar.write(f"Strategy metrics: {len(df_strategy)} stocks")
+st.sidebar.dataframe(df_strategy[['Ticker', 'Best_Strategy', 'score']].head())
