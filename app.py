@@ -381,20 +381,34 @@ with tab5:
                 df_current_egx30['Entry_Date'].idxmax()
             ]
 
-        if latest is not None and \
-           'exit_support' in latest and \
-           'exit_resistance' in latest:
+        if latest is not None:
 
-            st.metric("🟢 Support", safe_display(latest['exit_support']))
-            st.metric("🔴 Resistance", safe_display(latest['exit_resistance']))
-            st.metric("📊 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
+            has_support = 'exit_support' in latest and pd.notna(latest['exit_support'])
+            has_resistance = 'exit_resistance' in latest and pd.notna(latest['exit_resistance'])
 
-            st.caption(f"📅 Entry: {latest['Entry_Date']}")
+            if has_support:
+                st.metric("🟢 Support", safe_display(latest['exit_support']))
+
+            if has_resistance:
+                st.metric("🔴 Resistance", safe_display(latest['exit_resistance']))
+
+            # Always show PnL if available
+            if 'Trade_PnL_%' in latest and pd.notna(latest['Trade_PnL_%']):
+                st.metric("📊 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
+
+            # Entry date
+            if 'Entry_Date' in latest and pd.notna(latest['Entry_Date']):
+                st.caption(f"📅 Entry: {latest['Entry_Date']}")
+
+            # If neither exists
+            if not has_support and not has_resistance:
+                st.info("No support / resistance levels found")
 
         else:
-            st.info("No S/R levels available")
+            st.info("No open EGX30 trades")
 
         st.divider()
+
 
         # ----------- MARKET NEWS -----------
         st.markdown("### 📰 **Market News**")
@@ -426,7 +440,7 @@ with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M EET')}")
-    st.divider()
-    st.markdown("### 📊 **EGX30 STATUS**")
-    st.metric("📊 Open", len(df_current_egx30))
-    st.metric("📋 Closed", len(df_closed_egx30))
+    #st.divider()
+    #st.markdown("### 📊 **EGX30 STATUS**")
+    #st.metric("📊 Open", len(df_current_egx30))
+    #st.metric("📋 Closed", len(df_closed_egx30))
