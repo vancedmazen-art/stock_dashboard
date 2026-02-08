@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 # --------------------------- 
-# LOAD DATA (your filtered version - perfect!)
+# LOAD DATA (your filtered version)
 # ---------------------------
 @st.cache_data
 def load_data():
@@ -44,8 +44,8 @@ def load_data():
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
 data, all_symbols = load_data()
-df_current = data["current"]
-df_closed = data["closed"]
+df_current = data["current"].copy()
+df_closed = data["closed"].copy()
 
 # --------------------------- 
 # HELPER FUNCTIONS
@@ -81,52 +81,59 @@ def fetch_latest_news(symbol: str, max_items=3):
     return result
 
 # --------------------------- 
+# 🔥 DATE PROCESSING - DATE ONLY (FIXED!)
+# ---------------------------
+# Convert to DATE ONLY at the top (no time displayed)
+df_current['Entry_Date'] = pd.to_datetime(df_current['Entry_Date'], errors='coerce').dt.date
+df_closed['Entry_Date'] = pd.to_datetime(df_closed['Entry_Date'], errors='coerce').dt.date
+df_closed['Exit_Date'] = pd.to_datetime(df_closed['Exit_Date'], errors='coerce').dt.date
+
+# --------------------------- 
 # 🔥 4-TAB DASHBOARD
 # ---------------------------
 tab1, tab2, tab3, tab4 = st.tabs(["⚡ **TODAY'S ACTIONS**", "📊 **STOCK DETAIL**", "📈 **PORTFOLIO**", "📋 **FULL HISTORY**"])
 
-# TAB 1: TODAY'S ACTIONS (unchanged)
+# 🔥 TAB 1: TODAY'S ACTIONS (DATE ONLY ✅)
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     
-    df_current['Entry_Date'] = pd.to_datetime(df_current['Entry_Date'], errors='coerce').dt.date
+    # ✅ DATE ONLY filtering (no .dt.date needed anymore)
     max_entry_date = df_current['Entry_Date'].max()
-    new_buys = df_current[df_current['Entry_Date'].dt.date == max_entry_date].copy()
+    new_buys = df_current[df_current['Entry_Date'] == max_entry_date].copy()
     
     st.markdown("#### 🆕 **Fresh BUYS**")
     col1, col2, col3 = st.columns(3)
     col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(new_buys[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Entry_Volume', 'Status']], use_container_width=True, height=200)
+    st.dataframe(new_buys[['Ticker', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Entry_Volume', 'Status']], 
+                use_container_width=True, height=200)
     
-    df_closed['Exit_Date'] = pd.to_datetime(df_closed['Exit_Date'], errors='coerce').dt.date
     max_exit_date = df_closed['Exit_Date'].max()
-    close_now = df_closed[df_closed['Exit_Date'].dt.date == max_exit_date].copy()
+    close_now = df_closed[df_closed['Exit_Date'] == max_exit_date].copy()
     
     st.markdown("#### ❌ **CLOSE NOW**")
     col1, col2, col3 = st.columns(3)
     col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    st.dataframe(close_now[['Ticker', 'Exit_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held', 'Exit_Reason']], use_container_width=True, height=200)
+    st.dataframe(close_now[['Ticker', 'Exit_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held', 'Exit_Reason']], 
+                use_container_width=True, height=200)
     
-    holds = df_current[df_current['Entry_Date'].dt.date != max_entry_date].copy()
+    holds = df_current[df_current['Entry_Date'] != max_entry_date].copy()
     st.markdown("#### ✅ **HOLDS**")
     col1, col2, col3 = st.columns(3)
     col1.metric("✅ Holds", len(holds))
     col2.metric("💰 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(holds[['Ticker', 'Entry_Date', 'Trade_PnL_%', 'Days_Held', 'Status']], use_container_width=True, height=300)
+    st.dataframe(holds[['Ticker', 'Entry_Date', 'Trade_PnL_%', 'Days_Held', 'Status']], 
+                use_container_width=True, height=300)
 
-# 🔥 TAB 2: STOCK DETAIL + HISTORY FILTERED BY TICKER (NEW!)
+# 🔥 TAB 2: STOCK DETAIL + FILTERED HISTORY
 with tab2:
     selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols)
     
-    # Current trades for selected stock
     current_stock_df = df_current[df_current["Ticker"] == selected_symbol]
-    
-    # 🔥 HISTORY: Closed trades FILTERED by selected stock
     stock_history = df_closed[df_closed["Ticker"] == selected_symbol].sort_values("Entry_Date", ascending=False)
     
     left_col, right_col = st.columns([3, 1])
@@ -134,7 +141,6 @@ with tab2:
     with left_col:
         st.markdown(f"### 📈 **{selected_symbol}**")
         
-        # Current open trades
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
             st.dataframe(current_stock_df[['Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Days_Held', 'Status']], 
@@ -142,11 +148,9 @@ with tab2:
         else:
             st.info("⚠️ No current open trades")
         
-        # TradingView Chart
         st.markdown("#### 📊 **CHART**")
         st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=400)
         
-        # News
         st.markdown("#### 📰 **NEWS**")
         news_items = fetch_latest_news(selected_symbol)
         if news_items:
@@ -154,28 +158,24 @@ with tab2:
                 st.markdown(f"**{n['title']}**")
                 st.caption(f"{n['provider']}")
                 st.divider()
-        else:
-            st.info("No news available")
         
-        # 🔥 HISTORY FILTERED BY THIS STOCK (under chart!)
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
         if len(stock_history) > 0:
             st.dataframe(stock_history, use_container_width=True, height=300)
         else:
-            st.info("No closed trades for this stock")
+            st.info("No closed trades")
     
     with right_col:
-        st.markdown("#### 📊 **KEY METRICS**")
+        st.markdown("#### 📊 **METRICS**")
         if len(current_stock_df) > 0:
             latest = current_stock_df.iloc[0]
             st.metric("PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
-            st.metric("Days Held", safe_display(latest['Days_Held']))
-            st.metric("Entry Vol", safe_display(latest.get('Entry_Volume', '-')))
-            st.metric("Rel Vol", safe_display(latest.get('Entry_Rel_Volume_20', '-')))
+            st.metric("Days", safe_display(latest['Days_Held']))
+            st.metric("Vol", safe_display(latest.get('Entry_Volume', '-')))
 
-# TAB 3: PORTFOLIO (unchanged)
+# 🔥 TAB 3: PORTFOLIO
 with tab3:
-    st.markdown("### 📈 **PORTFOLIO OVERVIEW**")
+    st.markdown("### 📈 **PORTFOLIO**")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Open", len(df_current))
     col2.metric("Closed", len(df_closed))
@@ -194,14 +194,18 @@ with tab3:
         top_losers['Trade_PnL_%'] = top_losers['Trade_PnL_%'].apply(lambda x: f"{x:.1f}%")
         st.dataframe(top_losers, use_container_width=True)
 
-# TAB 4: FULL HISTORY (KEEP UNFILTERED)
+# 🔥 TAB 4: FULL HISTORY
 with tab4:
-    st.markdown("### 📋 **COMPLETE HISTORY** (All stocks)")
+    st.markdown("### 📋 **COMPLETE HISTORY**")
     full_history = pd.concat([df_current, df_closed]).sort_values("Entry_Date", ascending=False)
     st.dataframe(full_history, use_container_width=True, height=600)
 
-# SIDEBAR
+# 🔥 SIDEBAR (variables defined globally now)
+new_buys_count = len(new_buys) if 'new_buys' in locals() else 0
+close_now_count = len(close_now) if 'close_now' in locals() else 0
+holds_count = len(holds) if 'holds' in locals() else 0
+
 with st.sidebar:
-    st.markdown("### 🎛️ **TRADING STATUS**")
-    st.info(f"🆕 New: {len(new_buys)} | ❌ Closed: {len(close_now)} | ✅ Holds: {len(holds)}")
+    st.markdown("### 🎛️ **STATUS**")
+    st.info(f"🆕 New: {new_buys_count} | ❌ Closed: {close_now_count} | ✅ Holds: {holds_count}")
     st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M EET')}")
