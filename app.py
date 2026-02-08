@@ -296,11 +296,15 @@ with tab5:
     # SUPPORT & RESISTANCE + NEWS
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("#### 🎯 **SUPPORT & RESISTANCE**")
-        st.info("🔧 Support/Resistance levels would be calculated here using technical analysis")
-        st.caption("• Recent pivot points")
-        st.caption("• Key support/resistance levels")
-        st.caption("• Volume profile analysis")
+        st.markdown("#### 🎯 **Best Strategy**")
+        if len(df_strategy_egx30) > 0:
+            strat = df_strategy_egx30.iloc[0]
+            st.metric("🏆 Strategy", strat['Best_Strategy'])
+            st.metric("📊 Score", f"{safe_display(strat['score'])}")
+            st.metric("✅ Win Rate", f"{safe_display(strat['win_rate'])}%")
+            st.metric("🎯 Median PnL", f"{safe_display(strat['median_pnl'])}%")
+        else:
+            st.info("No strategy metrics available")
     
     with col2:
         st.markdown("#### 🛡️ **SUPPORT & RESISTANCE**")
