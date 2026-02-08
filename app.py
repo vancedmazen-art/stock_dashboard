@@ -9,7 +9,7 @@ import numpy as np
 # --------------------------- 
 # LOAD DATA 
 # ---------------------------
-@st.cache_data
+#@st.cache_data
 def load_data():
     try:
         if not os.path.exists("Complete_Trades_Metrics.xlsx"):
