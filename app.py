@@ -260,7 +260,9 @@ with tab5:
     else:
         sentiment_text = "🔴 Neutral / Cautious"
         sentiment_emoji = "⚠️📉"
-
+    st.markdown(
+        f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**"
+    )
     st.divider()
 
 
