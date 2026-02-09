@@ -246,17 +246,6 @@ with tab2:
 				st.divider()
 		else:
 			st.info("📰 No recent news for this stock")
-		
-		# Tab 5 - EGX30 News  
-		st.markdown("### 📰 **EGX30 NEWS** (Top 5)")
-		news = fetch_latest_news("EGX30", max_items=5)
-		if news:
-			for i, n in enumerate(news, 1):
-				st.markdown(f"**{i}. {n['title']}**")
-				st.caption(f"📅 **{n['date']}** | {n['provider']} | [Read more]({n['url']})")
-				st.divider()
-		else:
-			st.info("No recent EGX30 news")
 
         
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
