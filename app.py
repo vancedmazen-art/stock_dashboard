@@ -304,7 +304,7 @@ with tab4:
     with col1:
         ticker_filter = st.selectbox(
             "🔍 Ticker", 
-            options=['ALL'] + sorted(full_history_raw['Ticker'].dropna().unique().tolist()),
+            options=['ALL'] + sorted(closed_trades['Ticker'].dropna().unique().tolist()),
             index=0,
             key="ticker_filter"
         )
@@ -312,7 +312,7 @@ with tab4:
     with col2:
         buy_reason_filter = st.selectbox(
             "📝 Buy Reason", 
-            options=['ALL'] + sorted(full_history_raw['BUY_REASON'].dropna().unique().tolist()),
+            options=['ALL'] + sorted(closed_trades['BUY_REASON'].dropna().unique().tolist()),
             index=0,
             key="buy_reason_filter"
         )
@@ -320,7 +320,7 @@ with tab4:
     with col3:
         resistance_filter = st.selectbox(
             "📊 Entry Crosses Resistance", 
-            options=['ALL'] + sorted(full_history_raw['Entry_Crosses_Resistance'].dropna().unique().tolist()),
+            options=['ALL'] + sorted(closed_trades['Entry_Crosses_Resistance'].dropna().unique().tolist()),
             index=0,
             key="resistance_filter"
         )
