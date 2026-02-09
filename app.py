@@ -421,7 +421,7 @@ with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     refresh_date = refresh_df['refresh_date'].iloc[0].strftime('%Y-%m-%d')
-    sst.caption(f"Updated: {refresh_date}")
+    st.caption(f"Updated: {refresh_date}")
     #st.divider()
     st.markdown(
         f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**"
