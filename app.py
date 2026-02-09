@@ -23,6 +23,7 @@ def load_data():
         # 🔥 SHEET 3: STRATEGY METRICS (NEW!)
         strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=3)
         refresh_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=4)
+        refresh_date = pd.to_datetime(refresh_df['refresh_date'].iloc[0]).strftime('%Y-%m-%d')
         
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
@@ -420,7 +421,6 @@ holds_other = df_current_other[df_current_internal['Entry_Date'] != df_current_i
 with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
-    refresh_date = refresh_df['refresh_date'].iloc[0].strftime('%Y-%m-%d')
     st.caption(f"Updated: {refresh_date}")
     #st.divider()
     st.markdown(
