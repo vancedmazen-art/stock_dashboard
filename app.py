@@ -347,8 +347,6 @@ with st.sidebar:
     st.caption(f"📅 Updated: {refresh_date_str}")
     
     # 🔥 EGX30 Status in sidebar
-    open_egx30 = len(df_current_egx30)
-    if open_egx30 > 0:
-        st.success(f"🚀 EGX30: **{open_egx30} Open**")
-    else:
-        st.warning("⚠️ EGX30: No Open Positions")
+    st.markdown(
+        f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**"
+    )
