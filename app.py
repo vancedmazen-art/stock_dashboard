@@ -22,7 +22,7 @@ def load_data():
         current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
         # 🔥 SHEET 3: STRATEGY METRICS (NEW!)
         strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=3)
-        refresh_date = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=4)
+        refresh_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=4)
         
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
