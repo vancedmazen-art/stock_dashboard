@@ -39,7 +39,7 @@ def load_data():
             current_trades['Ticker'].dropna()
         ]).drop_duplicates().sort_values().str.strip().tolist()
         
-        st.success(f"✅ Loaded {len(current_trades)} current + {len(closed_trades)} closed + Strategy metrics")
+        st.success(f"✅ Load Completed..")
         return {"closed": closed_trades, "current": current_trades}, all_tickers, strategy_metrics, refresh_date_obj, refresh_date_str
         
     except Exception as e:
@@ -166,7 +166,7 @@ with tab1:
     
     st.markdown("#### 🆕 **Fresh BUYS**")
     col1, col2, col3 = st.columns(3)
-    col1.metric("🆕 New Buys", len(new_buys))
+    #col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
     st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 
@@ -179,7 +179,7 @@ with tab1:
     
     st.markdown("#### ❌ **CLOSE NOW**")
     col1, col2, col3 = st.columns(3)
-    col1.metric("❌ Closed Today", len(close_now))
+    #col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
     st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 
@@ -192,7 +192,7 @@ with tab1:
     
     st.markdown("#### ✅ **HOLDS**")
     col1, col2, col3 = st.columns(3)
-    col1.metric("✅ Holds", len(holds))
+    #col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
     st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
