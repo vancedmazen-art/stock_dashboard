@@ -100,16 +100,46 @@ def fetch_latest_news(symbol: str, max_items=3):
     
     items = data.get("items", [])
     result = []
+    
+    # 🔥 FIXED: Collect ALL matching news FIRST, THEN take latest 3
     for news in items:
         related_symbols = [s.get("symbol", "").replace("EGX:", "") for s in news.get("relatedSymbols", [])]
         if symbol in related_symbols:
             title = news.get("title", "")
             url = news.get("storyPath", "")
             provider = news.get("provider", {}).get("name", "")
-            result.append({"title": title, "url": f"https://www.tradingview.com{url}", "provider": provider})
-        if len(result) >= max_items: 
-            break
+            
+            # 🔥 TRY TO EXTRACT DATE (multiple possible fields)
+            news_date = None
+            for date_field in ['publishTime', 'date', 'datetime', 'publishedAt']:
+                if date_field in news and news[date_field]:
+                    try:
+                        news_date = pd.to_datetime(news[date_field]).strftime('%Y-%m-%d %H:%M')
+                        break
+                    except:
+                        continue
+            
+            # Fallback to relative time or "Recent"
+            if not news_date:
+                news_date = news.get('age', 'Recent')
+            
+            result.append({
+                "title": title, 
+                "url": f"https://www.tradingview.com{url}", 
+                "provider": provider,
+                "date": news_date  # ✅ Added date
+            })
+    
+    # 🔥 FIXED: Sort by publish time (newest first) and take top 3
+    if result:
+        # Try to sort by date if available, otherwise keep API order
+        try:
+            result = sorted(result, key=lambda x: x['date'], reverse=True)[:max_items]
+        except:
+            result = result[:max_items]  # Fallback to first 3
+    
     return result
+
 
 # 🔥 DATE PROCESSING
 df_current_internal = df_current_other.copy()
