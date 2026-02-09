@@ -14,7 +14,7 @@ def load_data():
         if not os.path.exists("Complete_Trades_Metrics.xlsx"):
             st.error("❌ Complete_Trades_Metrics.xlsx missing!")
             st.stop()
-            return {}, [], [], pd.DataFrame(), None, None
+            return {}, [], pd.DataFrame(), None, None
         
         # Sheet 0: Closed trades
         closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
@@ -45,7 +45,7 @@ def load_data():
     except Exception as e:
         st.error(f"❌ Load failed: {e}")
         st.stop()
-        return {}, [], [], pd.DataFrame(), None, None
+        return {}, [], pd.DataFrame(), None, None
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
 
@@ -69,8 +69,8 @@ df_current_other = df_current[df_current['Ticker'] != 'EGX30'].copy()
 df_closed_other = df_closed[df_closed['Ticker'] != 'EGX30'].copy()
 all_symbols_other = [s for s in all_symbols if s != 'EGX30']
 
-# --------------------------- 
-# FIX PYARROW
+# ---------------------------
+# FIX PYARROW & HELPERS
 # ---------------------------
 def fix_pyarrow_df(df):
     df_display = df.copy()
@@ -105,27 +105,20 @@ def fetch_latest_news(symbol: str, max_items=3):
     result = []
     
     for news in items:
-        # ✅ news_id for uniqueness (like your Discord code)
         news_id = news.get("id")
         if not news_id:
             continue
             
-        # 🔥 EXACT SAME SYMBOL EXTRACTION as your Discord code
         symbols = []
         for s in news.get("relatedSymbols", []):
             sym = s.get("symbol", "")
             if sym.startswith("EGX:"):
                 symbols.append(sym.replace("EGX:", ""))
         
-        # ✅ Case-insensitive exact match
         if symbol.upper() in [s.upper() for s in symbols]:
-            # 🔥 PROVEN DATE FIELD from your Discord code: "published"
             published_ts = news.get("published")
             if published_ts:
                 try:
-                    # ✅ UNIX timestamp → Cairo time (exactly like your Discord code)
-                    from datetime import datetime
-                    import pytz
                     CAIRO_TZ = pytz.timezone("Africa/Cairo")
                     published_dt = datetime.utcfromtimestamp(published_ts).replace(tzinfo=pytz.UTC).astimezone(CAIRO_TZ)
                     news_date = published_dt.strftime('%Y-%m-%d %H:%M')
@@ -139,15 +132,12 @@ def fetch_latest_news(symbol: str, max_items=3):
                 "url": f"https://www.tradingview.com{news.get('storyPath', '')}",
                 "provider": news.get("provider", {}).get("name", ""),
                 "date": news_date,
-                "id": news_id  # For deduplication if needed
+                "id": news_id
             })
     
-    # ✅ Return latest max_items (API already sorted newest first)
     return result[:max_items]
 
-
-
-# 🔥 DATE PROCESSING
+# 🔥 DATE PROCESSING - Fixed variable usage
 df_current_internal = df_current_other.copy()
 df_closed_internal = df_closed_other.copy()
 df_current_internal['Entry_Date'] = pd.to_datetime(df_current_internal['Entry_Date'], errors='coerce').dt.date
@@ -155,7 +145,7 @@ df_closed_internal['Entry_Date'] = pd.to_datetime(df_closed_internal['Entry_Date
 df_closed_internal['Exit_Date'] = pd.to_datetime(df_closed_internal['Exit_Date'], errors='coerce').dt.date
 
 # --------------------------- 
-# 🔥 5-TAB DASHBOARD (Added EGX30 tab)
+# 🔥 5-TAB DASHBOARD
 # ---------------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "⚡ **TODAY'S ACTIONS**", 
@@ -165,12 +155,12 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 **Overall Market Sentiment**"
 ])
 
-# 🔥 TAB 1: TODAY'S ACTIONS + Best_Strategy (EGX30 excluded)
+# 🔥 TAB 1: TODAY'S ACTIONS (EGX30 excluded)
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     st.caption(f"📅 Refresh Date: {refresh_date_str}")
     
-    # 🔥 NEW BUYS - Fixed filter
+    # 🔥 NEW BUYS - Fixed filter using correct df
     new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj].copy()
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
@@ -210,7 +200,7 @@ with tab1:
                                                      'Current_Crosses_Resistance', 'Best_Strategy']]), 
                  use_container_width=True, height=300)
 
-# 🔥 TAB 2: STOCK DETAIL + SHEET 3 METRICS (EGX30 excluded) - 3 NEWS ITEMS
+# 🔥 TAB 2: STOCK DETAIL (EGX30 excluded)
 with tab2:
     selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols_other)
     
@@ -235,18 +225,15 @@ with tab2:
         st.markdown("#### 📊 **CHART**")
         st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=400)
         
-        # Tab 2 News
-       		# Tab 2 - Individual Stock News
-		st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
-		news_items = fetch_latest_news(selected_symbol, max_items=3)
-		if news_items:
-			for i, n in enumerate(news_items, 1):
-				st.markdown(f"**{i}. {n['title']}**")
-				st.caption(f"📅 **{n['date']}** | {n['provider']} | [Read more]({n['url']})")
-				st.divider()
-		else:
-			st.info("📰 No recent news for this stock")
-
+        st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
+        news_items = fetch_latest_news(selected_symbol, max_items=3)
+        if news_items:
+            for i, n in enumerate(news_items, 1):
+                st.markdown(f"**{i}. {n['title']}**")
+                st.caption(f"📅 **{n['date']}** | {n['provider']} | [Read more]({n['url']})")
+                st.divider()
+        else:
+            st.info("📰 No recent news for this stock")
         
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
         if len(stock_history) > 0:
@@ -271,7 +258,7 @@ with tab2:
             st.metric("💰 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
             st.metric("⏳ Days", safe_display(latest['Days_Held']))
 
-# 🔥 TAB 3: PORTFOLIO + TOP STRATEGIES (EGX30 excluded)
+# 🔥 TAB 3: PORTFOLIO (EGX30 excluded)
 with tab3:
     st.markdown("### 📈 **PORTFOLIO OVERVIEW**")
     col1, col2, col3, col4 = st.columns(4)
@@ -298,7 +285,7 @@ with tab4:
     full_history = fix_pyarrow_df(pd.concat([df_current_other, df_closed_other]).sort_values("Entry_Date", ascending=False))
     st.dataframe(full_history, use_container_width=True, height=600)
 
-# 🔥 TAB 5: OVERALL MARKET SENTIMENT (EGX30 ONLY) - FULL VERSION WITH SUPPORT/RESISTANCE
+# 🔥 TAB 5: EGX30 MARKET SENTIMENT
 with tab5:
     st.markdown("## 📊 **EGX30 – Market Overview & Sentiment**")
     open_trades = len(df_current_egx30)
@@ -344,7 +331,6 @@ with tab5:
             st.warning("No strategy metrics")
         st.divider()
 
-        # 🔥 SUPPORT / RESISTANCE ✅ RESTORED
         st.markdown("### 🧭 **Support / Resistance**")
         latest = None
         if len(df_current_egx30) > 0:
@@ -375,7 +361,7 @@ with tab5:
         else:
             st.info("No recent EGX30 news")
 
-# 🔥 FIXED SIDEBAR using refresh_date_obj
+# 🔥 FIXED SIDEBAR - Variables defined before use
 new_buys_other = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj]
 close_now_other = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj]
 holds_other = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj]
@@ -385,7 +371,5 @@ with st.sidebar:
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     st.caption(f"📅 Updated: {refresh_date_str}")
     
-    # 🔥 EGX30 Status in sidebar
-    st.markdown(
-        f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**"
-    )
+    # 🔥 EGX30 Status in sidebar - Variables now defined
+    st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
