@@ -285,8 +285,12 @@ with tab3:
         # st.dataframe(top_gainers, use_container_width=True)
     
     with col1:
-        st.markdown("### 🏆 **ALL STRATEGIES**")
-        top_strategies = fix_pyarrow_df(df_strategy[df_strategy['Ticker'][['Ticker', 'Best_Strategy', 'score', 'win_rate', 'median_pnl']].sort_values('win_rate', ascending=False))
+    st.markdown("### 🏆 **ALL STRATEGIES**")
+        top_strategies = fix_pyarrow_df(
+            df_strategy[df_strategy['Ticker'] != 'EGX30']  # Filter first
+            [['Ticker', 'Best_Strategy', 'score', 'win_rate', 'median_pnl']]  # Select columns
+            .sort_values('win_rate', ascending=False)  # Sort by win_rate DESC
+        )
         st.dataframe(top_strategies, use_container_width=True)
 
 
