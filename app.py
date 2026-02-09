@@ -291,10 +291,81 @@ with tab3:
 
 
 # 🔥 TAB 4: FULL HISTORY (EGX30 excluded)
+# 🔥 TAB 4: FULL HISTORY WITH FILTERS & AGGREGATES
 with tab4:
-    st.markdown("### 📋 **COMPLETE HISTORY**")
-    full_history = fix_pyarrow_df(pd.concat([df_current_other, df_closed_other]).sort_values("Entry_Date", ascending=False))
-    st.dataframe(full_history, use_container_width=True, height=600)
+    st.markdown("### 📋 **COMPLETE HISTORY** - Filtered View")
+    
+    # 🔥 FULL HISTORY DATA
+    full_history_raw = pd.concat([df_current_other, df_closed_other]).copy()
+    
+    # 🔥 3 DROPDOWN FILTERS (side by side)
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        ticker_filter = st.selectbox(
+            "🔍 Ticker", 
+            options=['ALL'] + sorted(full_history_raw['Ticker'].dropna().unique().tolist()),
+            index=0,
+            key="ticker_filter"
+        )
+    
+    with col2:
+        buy_reason_filter = st.selectbox(
+            "📝 Buy Reason", 
+            options=['ALL'] + sorted(full_history_raw['BUY_REASON'].dropna().unique().tolist()),
+            index=0,
+            key="buy_reason_filter"
+        )
+    
+    with col3:
+        resistance_filter = st.selectbox(
+            "📊 Entry Crosses Resistance", 
+            options=['ALL'] + sorted(full_history_raw['Entry_Crosses_Resistance'].dropna().unique().tolist()),
+            index=0,
+            key="resistance_filter"
+        )
+    
+    # 🔥 APPLY FILTERS AUTOMATICALLY
+    filtered_history = full_history_raw.copy()
+    
+    if ticker_filter != 'ALL':
+        filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
+    
+    if buy_reason_filter != 'ALL':
+        filtered_history = filtered_history[filtered_history['BUY_REASON'] == buy_reason_filter]
+    
+    if resistance_filter != 'ALL':
+        filtered_history = filtered_history[filtered_history['Entry_Crosses_Resistance'] == resistance_filter]
+    
+    # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
+    if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
+        filtered_pnl = pd.to_numeric(filtered_history['Trade_PnL_%'], errors='coerce').dropna()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            win_rate = len(filtered_pnl[filtered_pnl > 0]) / len(filtered_pnl) * 100 if len(filtered_pnl) > 0 else 0
+            st.metric("✅ Win Rate", f"{win_rate:.1f}%")
+        
+        with col2:
+            median_pnl = filtered_pnl.median() if len(filtered_pnl) > 0 else 0
+            st.metric("🎯 Median PnL", f"{median_pnl:.1f}%")
+        
+        with col3:
+            st.metric("📈 Total Trades", f"{len(filtered_pnl):,}")
+    else:
+        st.info("📊 Select filters to see aggregate metrics")
+    
+    st.divider()
+    
+    # 🔥 FILTERED DATAFRAME DISPLAY
+    if len(filtered_history) > 0:
+        filtered_display = fix_pyarrow_df(filtered_history.sort_values("Entry_Date", ascending=False))
+        st.dataframe(filtered_display, use_container_width=True, height=500)
+        st.caption(f"📋 Showing {len(filtered_history):,} of {len(full_history_raw):,} total trades")
+    else:
+        st.warning("⚠️ No trades match your filters")
+        st.caption("💡 Try broader filter selections")
+
 
 # 🔥 TAB 5: EGX30 MARKET SENTIMENT
 with tab5:
