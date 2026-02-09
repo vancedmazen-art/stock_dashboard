@@ -130,11 +130,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # 🔥 TAB 1: TODAY'S ACTIONS + Best_Strategy (EGX30 excluded)
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
+    st.caption(f"📅 Refresh Date: {refresh_date_obj}")  # ✅ Now accessible
     
-    max_entry_date = df_current_internal['Entry_Date'].max()
+    # 🔥 NEW BUYS - Fixed filter
     new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj].copy()
-    
-    # 🔥 MERGE Best_Strategy from sheet 3
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
     st.markdown("#### 🆕 **Fresh BUYS**")
@@ -142,11 +141,12 @@ with tab1:
     col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 
-                                                       'Entry_Volume', 'Status','Entry_Crosses_Resistance', 'Best_Strategy']]), 
-                use_container_width=True, height=200)
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 
+                                                         'Trade_PnL_%', 'Entry_Volume', 'Status',
+                                                         'Entry_Crosses_Resistance', 'Best_Strategy']]), 
+                 use_container_width=True, height=200)
     
-    max_exit_date = df_closed_internal['Exit_Date'].max()
+    # 🔥 CLOSE NOW - Fixed filter
     close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
     
     st.markdown("#### ❌ **CLOSE NOW**")
@@ -154,9 +154,11 @@ with tab1:
     col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON']]), 
-                use_container_width=True, height=200)
+    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 
+                                           'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON']]), 
+                 use_container_width=True, height=200)
     
+    # 🔥 HOLDS - Fixed filter
     holds = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj].copy()
     holds_with_strategy = holds.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
@@ -165,8 +167,10 @@ with tab1:
     col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 'Days_Held', 
-                                                    'Status','Entry_Crosses_Resistance','Current_Crosses_Resistance', 'Best_Strategy']]), use_container_width=True, height=300)
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
+                                                     'Days_Held', 'Status','Entry_Crosses_Resistance',
+                                                     'Current_Crosses_Resistance', 'Best_Strategy']]), 
+                 use_container_width=True, height=300)
 
 # 🔥 TAB 2: STOCK DETAIL + SHEET 3 METRICS (EGX30 excluded)
 with tab2:
