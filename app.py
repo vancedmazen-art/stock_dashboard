@@ -140,7 +140,7 @@ with tab1:
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
     st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 
-                                                       'Entry_Volume', 'Status', 'Best_Strategy']]), 
+                                                       'Entry_Volume', 'Status','Entry_Crosses_Resistance', 'Best_Strategy']]), 
                 use_container_width=True, height=200)
     
     max_exit_date = df_closed_internal['Exit_Date'].max()
@@ -151,7 +151,7 @@ with tab1:
     col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held', 'BUY_REASON']]), 
+    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON']]), 
                 use_container_width=True, height=200)
     
     holds = df_current_other[df_current_internal['Entry_Date'] != max_entry_date].copy()
@@ -163,7 +163,7 @@ with tab1:
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
     st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 'Days_Held', 
-                                                    'Status', 'Best_Strategy']]), use_container_width=True, height=300)
+                                                    'Status','Entry_Crosses_Resistance','Current_Crosses_Resistance', 'Best_Strategy']]), use_container_width=True, height=300)
 
 # 🔥 TAB 2: STOCK DETAIL + SHEET 3 METRICS (EGX30 excluded)
 with tab2:
