@@ -229,15 +229,16 @@ with tab2:
         st.markdown("#### 📊 **CHART**")
         st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=400)
         
-        st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
-        news_items = fetch_latest_news(selected_symbol, max_items=3)  # ✅ 3 news items
+        # Tab 2 News
+        st.markdown("#### 📰 **LATEST NEWS**")
+        news_items = fetch_latest_news(selected_symbol, max_items=3)
         if news_items:
             for i, n in enumerate(news_items, 1):
-                st.markdown(f"**{i}. {n['title']}**")
-                st.caption(f"📢 {n['provider']} | [Read more]({n['url']})")
-                st.divider()
+                with st.container():
+                    st.markdown(f"**{i}. {n['title']}**")
+                    st.caption(f"📅 {n['date']} • {n['provider']} [→]({n['url']})")
         else:
-            st.info("📰 No recent news found")
+            st.info("📰 No recent news")
         
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
         if len(stock_history) > 0:
