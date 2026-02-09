@@ -285,7 +285,7 @@ with tab3:
         # st.dataframe(top_gainers, use_container_width=True)
     
     with col1:
-    st.markdown("### 🏆 **ALL STRATEGIES**")
+        st.markdown("### 🏆 **ALL STRATEGIES**")
         top_strategies = fix_pyarrow_df(
             df_strategy[df_strategy['Ticker'] != 'EGX30']  # Filter first
             [['Ticker', 'Best_Strategy', 'score', 'win_rate', 'median_pnl']]  # Select columns
