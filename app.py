@@ -283,8 +283,23 @@ with tab3:
         top_gainers = fix_pyarrow_df(display_df)  # ✅ Apply LAST
         
         st.dataframe(top_gainers, use_container_width=True)
+    with col2:  # Right column for Top Losers
+        st.markdown("### 🔴 **TOP LOSERS**")
     
-    with col2:
+        # 🔥 GROUP BY TICKER and get MIN PnL per stock (worst performing)
+        min_per_stock = df_closed_other.groupby('Ticker')['Trade_PnL_%'].min().reset_index()
+        min_per_stock['Days_Held'] = df_closed_other.loc[
+            df_closed_other.groupby('Ticker')['Trade_PnL_%'].idxmin()
+        ]['Days_Held'].values
+    
+        # Format FIRST, then apply fix_pyarrow_df
+        display_df = min_per_stock.nsmallest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]].copy()
+        display_df['Trade_PnL_%'] = display_df['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
+        top_losers = fix_pyarrow_df(display_df)  # ✅ Apply LAST
+    
+        st.dataframe(top_losers, use_container_width=True)
+
+    with col3:
         st.markdown("### 🏆 **TOP STRATEGIES**")
         top_strategies = fix_pyarrow_df(df_strategy[df_strategy['Ticker'] != 'EGX30'].nlargest(10, "score")[['Ticker', 'Best_Strategy', 'score', 'win_rate']])
         st.dataframe(top_strategies, use_container_width=True)
