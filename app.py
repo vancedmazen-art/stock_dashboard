@@ -268,25 +268,25 @@ with tab3:
     col4.metric("💰 Avg PnL", f"{df_closed_other['Trade_PnL_%'].mean():.1f}%")
     
     col1, col2 = st.columns(2)
-    with col1:  # ✅ Fixed indentation
-        st.markdown("### 🟢 **TOP GAINERS**")
-        
+    # with col1:  # ✅ Fixed indentation
+        # st.markdown("### 🟢 **TOP GAINERS**")
+        # 
         # 🔥 GROUP BY TICKER and get MAX PnL per stock
-        max_per_stock = df_closed_other.groupby('Ticker')['Trade_PnL_%'].max().reset_index()
-        max_per_stock['Days_Held'] = df_closed_other.loc[
-            df_closed_other.groupby('Ticker')['Trade_PnL_%'].idxmax()
-        ]['Days_Held'].values
-        
+        # max_per_stock = df_closed_other.groupby('Ticker')['Trade_PnL_%'].max().reset_index()
+        # max_per_stock['Days_Held'] = df_closed_other.loc[
+            # df_closed_other.groupby('Ticker')['Trade_PnL_%'].idxmax()
+        # ]['Days_Held'].values
+        # 
         # Format FIRST, then apply fix_pyarrow_df
-        display_df = max_per_stock.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]].copy()
-        display_df['Trade_PnL_%'] = display_df['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
-        top_gainers = fix_pyarrow_df(display_df)  # ✅ Apply LAST
-        
-        st.dataframe(top_gainers, use_container_width=True)
+        # display_df = max_per_stock.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]].copy()
+        # display_df['Trade_PnL_%'] = display_df['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
+        # top_gainers = fix_pyarrow_df(display_df)  # ✅ Apply LAST
+        # 
+        # st.dataframe(top_gainers, use_container_width=True)
     
-    with col2:
-        st.markdown("### 🏆 **TOP STRATEGIES**")
-        top_strategies = fix_pyarrow_df(df_strategy[df_strategy['Ticker'] != 'EGX30'].nlargest(10, "score")[['Ticker', 'Best_Strategy', 'score', 'win_rate']])
+    with col1:
+        st.markdown("### 🏆 **ALL STRATEGIES**")
+        top_strategies = fix_pyarrow_df(df_strategy[df_strategy['Ticker'][['Ticker', 'Best_Strategy', 'score', 'win_rate', 'median_pnl']].sort_values('win_rate', ascending=False))
         st.dataframe(top_strategies, use_container_width=True)
 
 
