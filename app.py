@@ -14,7 +14,7 @@ def load_data():
         if not os.path.exists("Complete_Trades_Metrics.xlsx"):
             st.error("❌ Complete_Trades_Metrics.xlsx missing!")
             st.stop()
-            return {}, [], [], pd.DataFrame(), None
+            return {}, [], [], pd.DataFrame(), None, None
         
         # Sheet 0: Closed trades
         closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
@@ -107,7 +107,8 @@ def fetch_latest_news(symbol: str, max_items=3):
             url = news.get("storyPath", "")
             provider = news.get("provider", {}).get("name", "")
             result.append({"title": title, "url": f"https://www.tradingview.com{url}", "provider": provider})
-        if len(result) >= max_items: break
+        if len(result) >= max_items: 
+            break
     return result
 
 # 🔥 DATE PROCESSING
@@ -173,7 +174,7 @@ with tab1:
                                                      'Current_Crosses_Resistance', 'Best_Strategy']]), 
                  use_container_width=True, height=300)
 
-# 🔥 TAB 2: STOCK DETAIL + SHEET 3 METRICS (EGX30 excluded)
+# 🔥 TAB 2: STOCK DETAIL + SHEET 3 METRICS (EGX30 excluded) - 3 NEWS ITEMS
 with tab2:
     selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols_other)
     
@@ -198,13 +199,15 @@ with tab2:
         st.markdown("#### 📊 **CHART**")
         st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=400)
         
-        st.markdown("#### 📰 **NEWS**")
-        news_items = fetch_latest_news(selected_symbol)
+        st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
+        news_items = fetch_latest_news(selected_symbol, max_items=3)  # ✅ 3 news items
         if news_items:
-            for n in news_items:
-                st.markdown(f"**{n['title']}**")
-                st.caption(f"{n['provider']}")
+            for i, n in enumerate(news_items, 1):
+                st.markdown(f"**{i}. {n['title']}**")
+                st.caption(f"📢 {n['provider']} | [Read more]({n['url']})")
                 st.divider()
+        else:
+            st.info("📰 No recent news found")
         
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
         if len(stock_history) > 0:
@@ -256,7 +259,7 @@ with tab4:
     full_history = fix_pyarrow_df(pd.concat([df_current_other, df_closed_other]).sort_values("Entry_Date", ascending=False))
     st.dataframe(full_history, use_container_width=True, height=600)
 
-# 🔥 TAB 5: OVERALL MARKET SENTIMENT (EGX30 ONLY)
+# 🔥 TAB 5: OVERALL MARKET SENTIMENT (EGX30 ONLY) - FULL VERSION WITH SUPPORT/RESISTANCE
 with tab5:
     st.markdown("## 📊 **EGX30 – Market Overview & Sentiment**")
     open_trades = len(df_current_egx30)
@@ -302,13 +305,33 @@ with tab5:
             st.warning("No strategy metrics")
         st.divider()
 
-        st.markdown("### 📰 **Market News**")
+        # 🔥 SUPPORT / RESISTANCE ✅ RESTORED
+        st.markdown("### 🧭 **Support / Resistance**")
+        latest = None
+        if len(df_current_egx30) > 0:
+            latest = df_current_egx30.loc[df_current_egx30['Entry_Date'].idxmax()]
+
+        if latest is not None:
+            has_support = 'Exit_Support' in latest and pd.notna(latest['Exit_Support'])
+            has_resistance = 'Exit_Resistance' in latest and pd.notna(latest['Exit_Resistance'])
+
+            if has_support:
+                st.metric("🟢 Support", safe_display(latest['Exit_Support']))
+            if has_resistance:
+                st.metric("🔴 Resistance", safe_display(latest['Exit_Resistance']))
+            
+            if not has_support and not has_resistance:
+                st.info("No support / resistance levels found")
+        else:
+            st.info("No open EGX30 trades")
+        st.divider()
+
+        st.markdown("### 📰 **Market News** (Top 5)")
         news = fetch_latest_news("EGX30", max_items=5)
         if news:
-            for n in news:
-                st.markdown(f"**{n['title']}**")
-                st.caption(f"{n['provider']}")
-                st.markdown(f"[Read more]({n['url']})", unsafe_allow_html=True)
+            for i, n in enumerate(news, 1):
+                st.markdown(f"**{i}. {n['title']}**")
+                st.caption(f"📢 {n['provider']} | [Read more]({n['url']})")
                 st.divider()
         else:
             st.info("No recent EGX30 news")
@@ -322,4 +345,10 @@ with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     st.caption(f"📅 Updated: {refresh_date_str}")
-    st.markdown(f"### {sentiment_emoji} **Market Sentiment: {sentiment_text}**")
+    
+    # 🔥 EGX30 Status in sidebar
+    open_egx30 = len(df_current_egx30)
+    if open_egx30 > 0:
+        st.success(f"🚀 EGX30: **{open_egx30} Open**")
+    else:
+        st.warning("⚠️ EGX30: No Open Positions")
