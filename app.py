@@ -384,3 +384,19 @@ with st.sidebar:
     
     # 🔥 EGX30 Status in sidebar - Variables now defined
     st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
+# Add at VERY END of file (after sidebar)
+st.markdown("---")
+st.markdown(
+    """
+    <div style='text-align: center; color: #666; font-size: 12px; 
+                padding: 20px; margin-top: 40px;'>
+    <strong>⚠️ Important Disclaimer</strong><br>
+    This EGX Trading Dashboard provides market data for educational purposes only. 
+    It does <strong>NOT</strong> constitute financial, investment, or trading advice. 
+    All trading carries significant risk of loss. 
+    Consult a licensed financial advisor before making any investment decisions.
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
