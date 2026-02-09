@@ -24,7 +24,7 @@ def load_data():
         strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=3)
         refresh_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=4)
         refresh_date = pd.to_datetime(refresh_df['refresh_date'].iloc[0]).strftime('%Y-%m-%d')
-        
+        refresh_date_obj = pd.to_datetime(refresh_date).date()
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
             if "Symbol" in company_map.columns:
@@ -131,7 +131,7 @@ with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     
     max_entry_date = df_current_internal['Entry_Date'].max()
-    new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date].copy()
+    new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj].copy()
     
     # 🔥 MERGE Best_Strategy from sheet 3
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
@@ -146,7 +146,7 @@ with tab1:
                 use_container_width=True, height=200)
     
     max_exit_date = df_closed_internal['Exit_Date'].max()
-    close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date].copy()
+    close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
     
     st.markdown("#### ❌ **CLOSE NOW**")
     col1, col2, col3 = st.columns(3)
@@ -156,7 +156,7 @@ with tab1:
     st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON']]), 
                 use_container_width=True, height=200)
     
-    holds = df_current_other[df_current_internal['Entry_Date'] != refresh_date].copy()
+    holds = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj].copy()
     holds_with_strategy = holds.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
     st.markdown("#### ✅ **HOLDS**")
