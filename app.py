@@ -54,7 +54,7 @@ with col2:
     if st.button("🔄 **FORCE RELOAD**", type="primary"):
         st.rerun()
 
-data, all_symbols, df_strategy = load_data()
+data, all_symbols, df_strategy, refresh_date_obj  = load_data()
 df_current = data["current"].copy()
 df_closed = data["closed"].copy()
 
