@@ -70,7 +70,7 @@ df_closed_other = df_closed[df_closed['Ticker'] != 'EGX30'].copy()
 all_symbols_other = [s for s in all_symbols if s != 'EGX30']
 
 # ---------------------------
-# FIX PYARROW & HELPERS - OPTIMIZED
+# FIX PYARROW & HELPERS
 # ---------------------------
 def fix_pyarrow_df(df):
     df_display = df.copy()
@@ -88,50 +88,6 @@ def safe_display(value):
     if isinstance(value, (int, float)):
         return f"{value:.1f}"
     return str(value)
-
-# 🔥 CLICKABLE GRID FUNCTION - ROW CLICK → TAB 2
-def display_clickable_grid(df, columns, title, height=200):
-    """Fast selectable grid: Click row → Stock Detail tab"""
-    if len(df) == 0:
-        st.info(f"No {title.lower()}")
-        return None
-    
-    df_display = fix_pyarrow_df(df[columns].copy())
-    
-    # Format PnL column safely
-    if 'Trade_PnL_%' in df_display.columns:
-        df_display['Trade_PnL_%'] = df_display['Trade_PnL_%'].apply(
-            lambda x: f"{float(x):.1f}%" if pd.notna(x) and x != '' else "-"
-        )
-    
-    # Make Ticker column look special
-    if 'Ticker' in df_display.columns:
-        df_display['Ticker'] = "💹 " + df_display['Ticker']
-    
-    # 🔥 SELECTABLE GRID with stable key
-    safe_key = f"{title.replace(' ', '_')}_{len(df_display)}_{hash(tuple(sorted(columns)))}"
-    selected_rows = st.data_editor(
-        df_display,
-        column_config={
-            "Ticker": st.column_config.TextColumn("💹 Ticker", help="👆 Click ROW → Stock Detail tab"),
-        },
-        selection_mode="single-row",
-        use_container_width=True,
-        height=height,
-        hide_index=True,
-        key=safe_key
-    )
-    
-    # Handle selection → Update Tab 2
-    if selected_rows is not None and len(selected_rows) > 0:
-        ticker_raw = selected_rows['Ticker'].iloc[0] if isinstance(selected_rows, pd.DataFrame) else selected_rows.get('Ticker', [None])[0]
-        ticker = ticker_raw.replace("💹 ", "") if ticker_raw else None  # Remove emoji
-        if ticker and ticker in all_symbols_other:
-            st.session_state.selected_symbol = ticker
-            st.session_state.click_source = title
-            # st.rerun()  # Let Streamlit handle tab switching naturally
-    
-    return selected_rows
 
 def fetch_latest_news(symbol: str, max_items=3):
     try:
@@ -181,20 +137,16 @@ def fetch_latest_news(symbol: str, max_items=3):
     
     return result[:max_items]
 
-# 🔥 SESSION STATE - Initialize once
-if 'selected_symbol' not in st.session_state:
-    st.session_state.selected_symbol = all_symbols_other[0] if all_symbols_other else None
-if 'click_source' not in st.session_state:
-    st.session_state.click_source = "Manual"
-
-# 🔥 DATE PROCESSING
+# 🔥 DATE PROCESSING - Fixed variable usage
 df_current_internal = df_current_other.copy()
 df_closed_internal = df_closed_other.copy()
 df_current_internal['Entry_Date'] = pd.to_datetime(df_current_internal['Entry_Date'], errors='coerce').dt.date
 df_closed_internal['Entry_Date'] = pd.to_datetime(df_closed_internal['Entry_Date'], errors='coerce').dt.date
 df_closed_internal['Exit_Date'] = pd.to_datetime(df_closed_internal['Exit_Date'], errors='coerce').dt.date
 
+# --------------------------- 
 # 🔥 5-TAB DASHBOARD
+# ---------------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "⚡ **TODAY'S ACTIONS**", 
     "📊 **STOCK DETAIL**", 
@@ -203,12 +155,12 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 **Overall Market Sentiment**"
 ])
 
-# 🔥 TAB 1: TODAY'S ACTIONS - FAST & CLICKABLE
+# 🔥 TAB 1: TODAY'S ACTIONS (EGX30 excluded)
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     st.caption(f"📅 Refresh Date: {refresh_date_str}")
     
-    # NEW BUYS
+    # 🔥 NEW BUYS - Fixed filter using correct df
     new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj].copy()
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
@@ -217,24 +169,24 @@ with tab1:
     col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    display_clickable_grid(new_buys_with_strategy, 
-                          ['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 
-                           'Trade_PnL_%', 'Entry_Volume', 'Status', 'Best_Strategy'], 
-                          "Fresh Buys", 200)
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 
+                                                         'Trade_PnL_%', 'Entry_Volume', 'Status',
+                                                         'Entry_Crosses_Resistance', 'Best_Strategy']]), 
+                 use_container_width=True, height=200)
     
-    # CLOSE NOW
+    # 🔥 CLOSE NOW - Fixed filter
     close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
+    
     st.markdown("#### ❌ **CLOSE NOW**")
     col1, col2, col3 = st.columns(3)
     col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    display_clickable_grid(close_now, 
-                          ['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 
-                           'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON'], 
-                          "Close Now", 200)
+    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 
+                                           'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON']]), 
+                 use_container_width=True, height=200)
     
-    # HOLDS
+    # 🔥 HOLDS - Fixed filter
     holds = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj].copy()
     holds_with_strategy = holds.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
@@ -243,33 +195,25 @@ with tab1:
     col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    display_clickable_grid(holds_with_strategy, 
-                          ['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
-                           'Days_Held', 'Status', 'Entry_Crosses_Resistance', 'Best_Strategy'], 
-                          "Holds", 300)
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
+                                                     'Days_Held', 'Status','Entry_Crosses_Resistance',
+                                                     'Current_Crosses_Resistance', 'Best_Strategy']]), 
+                 use_container_width=True, height=300)
 
-# 🔥 TAB 2: STOCK DETAIL - AUTO SYNC FROM CLICKS
+# 🔥 TAB 2: STOCK DETAIL (EGX30 excluded)
 with tab2:
-    # Auto-select from clicks or default to first
-    default_idx = 0
-    if st.session_state.selected_symbol in all_symbols_other:
-        default_idx = all_symbols_other.index(st.session_state.selected_symbol)
-    
-    selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols_other, 
-                                 index=default_idx, key="stock_select_main")
-    
-    # Update session state
-    st.session_state.selected_symbol = selected_symbol
+    selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols_other)
     
     current_stock_df = df_current_other[df_current_other["Ticker"] == selected_symbol]
     stock_history = df_closed_other[df_closed_other["Ticker"] == selected_symbol].sort_values("Entry_Date", ascending=False)
+    
+    # 🔥 SHEET 3 STRATEGY METRICS for this stock
     strategy_for_stock = df_strategy[df_strategy["Ticker"] == selected_symbol]
     
     left_col, right_col = st.columns([3, 1])
     
     with left_col:
-        st.markdown(f"### 📈 **{selected_symbol}** 🔥")
-        st.caption(f"*Selected from: {st.session_state.click_source}*")
+        st.markdown(f"### 📈 **{selected_symbol}**")
         
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
@@ -314,7 +258,7 @@ with tab2:
             st.metric("💰 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
             st.metric("⏳ Days", safe_display(latest['Days_Held']))
 
-# 🔥 TAB 3: PORTFOLIO - TOP GAINERS CLICKABLE
+# 🔥 TAB 3: PORTFOLIO (EGX30 excluded)
 with tab3:
     st.markdown("### 📈 **PORTFOLIO OVERVIEW**")
     col1, col2, col3, col4 = st.columns(4)
@@ -324,27 +268,33 @@ with tab3:
     col4.metric("💰 Avg PnL", f"{df_closed_other['Trade_PnL_%'].mean():.1f}%")
     
     col1, col2 = st.columns(2)
-    with col1:
+    with col1:  # ✅ Fixed indentation
         st.markdown("### 🟢 **TOP GAINERS**")
+        
+        # 🔥 GROUP BY TICKER and get MAX PnL per stock
         max_per_stock = df_closed_other.groupby('Ticker')['Trade_PnL_%'].max().reset_index()
         max_per_stock['Days_Held'] = df_closed_other.loc[
             df_closed_other.groupby('Ticker')['Trade_PnL_%'].idxmax()
         ]['Days_Held'].values
         
+        # Format FIRST, then apply fix_pyarrow_df
         display_df = max_per_stock.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]].copy()
         display_df['Trade_PnL_%'] = display_df['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
-        display_clickable_grid(display_df, ["Ticker", "Trade_PnL_%", "Days_Held"], "Top Gainers", 300)
+        top_gainers = fix_pyarrow_df(display_df)  # ✅ Apply LAST
+        
+        st.dataframe(top_gainers, use_container_width=True)
     
     with col2:
         st.markdown("### 🏆 **TOP STRATEGIES**")
         top_strategies = fix_pyarrow_df(df_strategy[df_strategy['Ticker'] != 'EGX30'].nlargest(10, "score")[['Ticker', 'Best_Strategy', 'score', 'win_rate']])
-        display_clickable_grid(top_strategies, ['Ticker', 'Best_Strategy', 'score', 'win_rate'], "Top Strategies", 300)
+        st.dataframe(top_strategies, use_container_width=True)
 
-# 🔥 TAB 4: FULL HISTORY
+
+# 🔥 TAB 4: FULL HISTORY (EGX30 excluded)
 with tab4:
     st.markdown("### 📋 **COMPLETE HISTORY**")
     full_history = fix_pyarrow_df(pd.concat([df_current_other, df_closed_other]).sort_values("Entry_Date", ascending=False))
-    display_clickable_grid(full_history, full_history.columns.tolist()[:8], "Full History", 600)
+    st.dataframe(full_history, use_container_width=True, height=600)
 
 # 🔥 TAB 5: EGX30 MARKET SENTIMENT
 with tab5:
@@ -422,7 +372,7 @@ with tab5:
         else:
             st.info("No recent EGX30 news")
 
-# 🔥 SIDEBAR STATUS
+# 🔥 FIXED SIDEBAR - Variables defined before use
 new_buys_other = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj]
 close_now_other = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj]
 holds_other = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj]
@@ -432,20 +382,9 @@ with st.sidebar:
     st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
     st.caption(f"📅 Updated: {refresh_date_str}")
     
+    # 🔥 EGX30 Status in sidebar - Variables now defined
     st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
-    
-    st.markdown("---")
-    st.markdown("""
-    <div style='color: orange; font-size: 11px; padding: 10px; 
-                border: 1px solid orange; border-radius: 5px;'>
-    ⚠️ **NOT FINANCIAL ADVICE**<br>
-    • For informational use only<br>
-    • Past performance ≠ future results<br>
-    • Trading involves risk of loss
-    </div>
-    """, unsafe_allow_html=True)
-
-# 🔥 DISCLAIMER FOOTER
+# Add at VERY END of file (after sidebar)
 st.markdown("---")
 st.markdown(
     """
