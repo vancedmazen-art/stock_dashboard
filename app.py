@@ -91,7 +91,10 @@ def safe_display(value):
 
 def fetch_latest_news(symbol: str, max_items=3):
     try:
-        API_URL = "https://news-mediator.tradingview.com/news-flow/v2/news?filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
+        API_URL = (
+            "https://news-mediator.tradingview.com/news-flow/v2/news?"
+            "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener"
+        )
         r = requests.get(API_URL, timeout=10)
         r.raise_for_status()
         data = r.json()
@@ -101,44 +104,47 @@ def fetch_latest_news(symbol: str, max_items=3):
     items = data.get("items", [])
     result = []
     
-    # 🔥 FIXED: Collect ALL matching news FIRST, THEN take latest 3
     for news in items:
-        related_symbols = [s.get("symbol", "").replace("EGX:", "") for s in news.get("relatedSymbols", [])]
-        if symbol in related_symbols:
-            title = news.get("title", "")
-            url = news.get("storyPath", "")
-            provider = news.get("provider", {}).get("name", "")
+        # ✅ news_id for uniqueness (like your Discord code)
+        news_id = news.get("id")
+        if not news_id:
+            continue
             
-            # 🔥 TRY TO EXTRACT DATE (multiple possible fields)
-            news_date = None
-            for date_field in ['publishTime', 'date', 'datetime', 'publishedAt']:
-                if date_field in news and news[date_field]:
-                    try:
-                        news_date = pd.to_datetime(news[date_field]).strftime('%Y-%m-%d %H:%M')
-                        break
-                    except:
-                        continue
-            
-            # Fallback to relative time or "Recent"
-            if not news_date:
-                news_date = news.get('age', 'Recent')
+        # 🔥 EXACT SAME SYMBOL EXTRACTION as your Discord code
+        symbols = []
+        for s in news.get("relatedSymbols", []):
+            sym = s.get("symbol", "")
+            if sym.startswith("EGX:"):
+                symbols.append(sym.replace("EGX:", ""))
+        
+        # ✅ Case-insensitive exact match
+        if symbol.upper() in [s.upper() for s in symbols]:
+            # 🔥 PROVEN DATE FIELD from your Discord code: "published"
+            published_ts = news.get("published")
+            if published_ts:
+                try:
+                    # ✅ UNIX timestamp → Cairo time (exactly like your Discord code)
+                    from datetime import datetime
+                    import pytz
+                    CAIRO_TZ = pytz.timezone("Africa/Cairo")
+                    published_dt = datetime.utcfromtimestamp(published_ts).replace(tzinfo=pytz.UTC).astimezone(CAIRO_TZ)
+                    news_date = published_dt.strftime('%Y-%m-%d %H:%M')
+                except:
+                    news_date = "Recent"
+            else:
+                news_date = "Recent"
             
             result.append({
-                "title": title, 
-                "url": f"https://www.tradingview.com{url}", 
-                "provider": provider,
-                "date": news_date  # ✅ Added date
+                "title": news.get("title", ""),
+                "url": f"https://www.tradingview.com{news.get('storyPath', '')}",
+                "provider": news.get("provider", {}).get("name", ""),
+                "date": news_date,
+                "id": news_id  # For deduplication if needed
             })
     
-    # 🔥 FIXED: Sort by publish time (newest first) and take top 3
-    if result:
-        # Try to sort by date if available, otherwise keep API order
-        try:
-            result = sorted(result, key=lambda x: x['date'], reverse=True)[:max_items]
-        except:
-            result = result[:max_items]  # Fallback to first 3
-    
-    return result
+    # ✅ Return latest max_items (API already sorted newest first)
+    return result[:max_items]
+
 
 
 # 🔥 DATE PROCESSING
@@ -230,15 +236,28 @@ with tab2:
         st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=400)
         
         # Tab 2 News
-        st.markdown("#### 📰 **LATEST NEWS**")
-        news_items = fetch_latest_news(selected_symbol, max_items=3)
-        if news_items:
-            for i, n in enumerate(news_items, 1):
-                with st.container():
-                    st.markdown(f"**{i}. {n['title']}**")
-                    st.caption(f"📅 {n['date']} • {n['provider']} [→]({n['url']})")
-        else:
-            st.info("📰 No recent news")
+       		# Tab 2 - Individual Stock News
+		st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
+		news_items = fetch_latest_news(selected_symbol, max_items=3)
+		if news_items:
+			for i, n in enumerate(news_items, 1):
+				st.markdown(f"**{i}. {n['title']}**")
+				st.caption(f"📅 **{n['date']}** | {n['provider']} | [Read more]({n['url']})")
+				st.divider()
+		else:
+			st.info("📰 No recent news for this stock")
+		
+		# Tab 5 - EGX30 News  
+		st.markdown("### 📰 **EGX30 NEWS** (Top 5)")
+		news = fetch_latest_news("EGX30", max_items=5)
+		if news:
+			for i, n in enumerate(news, 1):
+				st.markdown(f"**{i}. {n['title']}**")
+				st.caption(f"📅 **{n['date']}** | {n['provider']} | [Read more]({n['url']})")
+				st.divider()
+		else:
+			st.info("No recent EGX30 news")
+
         
         st.markdown(f"#### 📋 **HISTORY** ({len(stock_history)} closed trades)")
         if len(stock_history) > 0:
