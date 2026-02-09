@@ -268,11 +268,23 @@ with tab3:
     col4.metric("💰 Avg PnL", f"{df_closed_other['Trade_PnL_%'].mean():.1f}%")
     
     col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### 🟢 **TOP GAINERS**")
-        top_gainers = fix_pyarrow_df(df_closed_other.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]])
-        top_gainers['Trade_PnL_%'] = top_gainers['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
-        st.dataframe(top_gainers, use_container_width=True)
+   	with col1:
+		st.markdown("### 🟢 **TOP GAINERS**")
+		
+		# 🔥 GROUP BY TICKER and get MAX PnL per stock
+		max_per_stock = df_closed_other.groupby('Ticker')['Trade_PnL_%'].max().reset_index()
+		max_per_stock['Days_Held'] = df_closed_other.loc[
+			df_closed_other.groupby('Ticker')['Trade_PnL_%'].idxmax()
+		]['Days_Held'].values
+		
+		# Get top 10 stocks by max PnL
+		top_gainers = fix_pyarrow_df(max_per_stock.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]])
+		
+		# Format PnL column
+		top_gainers['Trade_PnL_%'] = top_gainers['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
+		
+		st.dataframe(top_gainers, use_container_width=True)
+	
     
     with col2:
         st.markdown("### 🏆 **TOP STRATEGIES**")
