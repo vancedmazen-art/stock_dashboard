@@ -169,7 +169,7 @@ with tab1:
     #col1.metric("🆕 New Buys", len(new_buys))
     col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','BUY_REASON', 'Entry_Date', 'Entry_Price', 
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','Current_Price','BUY_REASON', 'Entry_Date', 'Entry_Price', 
                                                          'Trade_PnL_%', 'Entry_Volume', 'Status','Exit_Support','Exit_Resistance',
                                                          'Entry_Crosses_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
@@ -198,7 +198,7 @@ with tab1:
     #col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker','Current_Price', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
                                                      'Days_Held', 'Status','Entry_Crosses_Resistance',
                                                      'Current_Crosses_Resistance','Exit_Support','Exit_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
@@ -223,7 +223,7 @@ with tab2:
         
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
-            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','BUY_REASON', 'Entry_Price', 'Trade_PnL_%', 
+            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','Current_Price','BUY_REASON', 'Entry_Price', 'Trade_PnL_%', 
                                                          'Days_Held', 'Exit_Support','Exit_Resistance']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
