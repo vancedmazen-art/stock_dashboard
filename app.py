@@ -483,7 +483,7 @@ with st.sidebar:
     st.caption(f"📅 Updated: {refresh_date_str}")
     
     # 🔥 EGX30 Status in sidebar - Variables now defined
-    st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
+    st.markdown(f"### {sentiment_emoji} Market: **{sentiment_text}**")
     st.markdown("---")
     st.markdown("### 💡 Trading Insights & Fun Facts")
     st.markdown(f"- {selected_facts}")
