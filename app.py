@@ -486,8 +486,9 @@ with st.sidebar:
     st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
     st.markdown("---")
     st.markdown("### 💡 Trading Insights & Fun Facts")
-    for fact in selected_facts:
-        st.markdown(f"- {fact}")
+    st.markdown(f"- {selected_facts}")
+    #for fact in selected_facts:
+        #st.markdown(f"- {fact}")
 # Add at VERY END of file (after sidebar)
 st.markdown("---")
 st.markdown(
