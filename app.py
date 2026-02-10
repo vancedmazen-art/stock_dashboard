@@ -173,7 +173,7 @@ with tab1:
                                                          'Trade_PnL_%', 'Entry_Volume', 'Status','Exit_Support','Exit_Resistance',
                                                          'Entry_Crosses_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
-                                                        'Exit_Resistance': 'Current Resistance'
+                                                        'Exit_Resistance': 'Current_Resistance'
         })), 
                  use_container_width=True, height=200)
     
@@ -224,7 +224,7 @@ with tab2:
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
             st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','BUY_REASON', 'Entry_Price', 'Trade_PnL_%', 
-                                                         'Days_Held', 'Exit_Resistance', 'Best_Strategy']].rename(columns={
+                                                         'Days_Held', 'Exit_Resistance','Exit_Resistance', 'Best_Strategy', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current Resistance'
         })), use_container_width=True, height=200)
