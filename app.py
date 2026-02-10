@@ -167,8 +167,8 @@ with tab1:
     st.markdown("#### 🆕 **Fresh BUYS**")
     col1, col2, col3 = st.columns(3)
     #col1.metric("🆕 New Buys", len(new_buys))
-    col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
-    col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
+    #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
+    #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
     st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','Current_Price','BUY_REASON', 'Entry_Date', 'Entry_Price', 
                                                          'Trade_PnL_%', 'Entry_Volume', 'Status','Exit_Support','Exit_Resistance',
                                                          'Entry_Crosses_Resistance', 'Best_Strategy']].rename(columns={
