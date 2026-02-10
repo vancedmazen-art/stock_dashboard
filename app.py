@@ -19,8 +19,9 @@ trading_facts = [
 ]
 
 # Pick 1-3 random facts each time
-num_to_show = random.randint(1, 3)
-selected_facts = random.sample(trading_facts, num_to_show)
+#num_to_show = random.randint(1, 3)
+#selected_facts = random.sample(trading_facts, num_to_show)
+selected_facts = random.choice(trading_facts)
 # ---------------------------
 # LOAD ALL 3 SHEETS + Strategy Metrics
 # ---------------------------
