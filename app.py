@@ -288,7 +288,7 @@ with tab3:
         st.markdown("### 🏆 **ALL STRATEGIES**")
         top_strategies = fix_pyarrow_df(
             df_strategy[df_strategy['Ticker'] != 'EGX30']  # Filter first
-            [['Ticker', 'Best_Strategy', 'score', 'win_rate', 'median_pnl']]  # Select columns
+            [['Ticker', 'Best_Strategy', 'composite_score', 'win_rate', 'median_pnl']]  # Select columns
             .sort_values('win_rate', ascending=False)  # Sort by win_rate DESC
         )
         st.dataframe(top_strategies, use_container_width=True)
@@ -409,7 +409,7 @@ with tab5:
         if len(df_strategy_egx30) > 0:
             strat = df_strategy_egx30.iloc[0]
             st.metric("🏆 Best", strat['Best_Strategy'])
-            st.metric("📊 Score", safe_display(strat['score']))
+            st.metric("📊 Score", safe_display(strat['composite_score']))
             st.metric("✅ Win", f"{safe_display(strat['win_rate'])}%")
             st.metric("🎯 Median", f"{safe_display(strat['median_pnl'])}%")
             st.metric("📈 Trades", safe_display(strat['total_trades']))
