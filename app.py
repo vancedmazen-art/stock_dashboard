@@ -5,7 +5,22 @@ from datetime import datetime
 import pytz
 import os
 import numpy as np
+import random
 
+# List of trading insights / fun facts
+trading_facts = [
+    "🧠 Discipline Wins: Following your rules beats predicting the market.",
+    "⏳ Patience Pays: Sometimes the best trade is no trade at all.",
+    "📊 Plan Before You Trade: Know your entry and exit before starting.",
+    "🎢 Emotions Are the Enemy: Fear and greed cost more than market moves.",
+    "💡 Risk Management: Never risk more than you can afford to lose.",
+    "🔥 Trend Follower: The trend is your friend until it ends.",
+    "⚡ Quick Decisions: Opportunities are fleeting, but rushing is dangerous."
+]
+
+# Pick 1-3 random facts each time
+num_to_show = random.randint(1, 3)
+selected_facts = random.sample(trading_facts, num_to_show)
 # ---------------------------
 # LOAD ALL 3 SHEETS + Strategy Metrics
 # ---------------------------
@@ -469,24 +484,9 @@ with st.sidebar:
     # 🔥 EGX30 Status in sidebar - Variables now defined
     st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
     st.markdown("---")
-    st.markdown(
-        """
-        ### 💡 Trading Insights & Fun Facts
-
-        🧠 **Discipline Wins**  
-        Successful trading is more about following your rules than predicting the market.  
-
-        ⏳ **Patience Pays**  
-        Sometimes the best trade is **no trade at all**. Waiting is a strategy!  
-
-        📊 **Plan Before You Trade**  
-        Enter with a clear strategy and know your exit before you start.  
-
-        🎢 **Emotions Are the Enemy**  
-        Fear and greed often cost more than market moves. Stay calm!  
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("### 💡 Trading Insights & Fun Facts")
+    for fact in selected_facts:
+        st.markdown(f"- {fact}")
 # Add at VERY END of file (after sidebar)
 st.markdown("---")
 st.markdown(
