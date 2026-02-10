@@ -244,7 +244,7 @@ with tab2:
         if len(strategy_for_stock) > 0:
             strat = strategy_for_stock.iloc[0]
             st.metric("🏆 Best Strategy", strat['Best_Strategy'])
-            st.metric("📊 Score", f"{safe_display(strat['score'])}")
+            st.metric("📊 Score", f"{safe_display(strat['composite_score'])}")
             st.metric("✅ Win Rate", f"{safe_display(strat['win_rate'])}%")
             st.metric("🎯 Median PnL", f"{safe_display(strat['median_pnl'])}%")
             st.metric("📈 Total Trades", safe_display(strat['total_trades']))
