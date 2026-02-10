@@ -48,18 +48,6 @@ def load_data():
         return {}, [], pd.DataFrame(), None, None
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
-st.markdown(
-    """
-    <div style='text-align: center; color: #555; font-size: 16px; 
-                padding: 20px; margin-top: 40px; line-height:1.5;'>
-    ⚠️ <strong>Disclaimer:</strong><br>
-    This dashboard refreshes <strong>once daily</strong> after the trading session.  
-    It does <strong>not calculate T0</strong> and is intended for <strong>swing trading</strong> purposes only.  
-    📊 Use it as a guide, not as a real-time trading signal.
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
 
 # 🔥 REFRESH BUTTON
 col1, col2 = st.columns([3,1])
@@ -480,6 +468,25 @@ with st.sidebar:
     
     # 🔥 EGX30 Status in sidebar - Variables now defined
     st.markdown(f"### {sentiment_emoji} Market Sentiment: **{sentiment_text}**")
+    st.markdown("---")
+    st.markdown(
+        """
+        ### 💡 Trading Insights & Fun Facts
+
+        🧠 **Discipline Wins**  
+        Successful trading is more about following your rules than predicting the market.  
+
+        ⏳ **Patience Pays**  
+        Sometimes the best trade is **no trade at all**. Waiting is a strategy!  
+
+        📊 **Plan Before You Trade**  
+        Enter with a clear strategy and know your exit before you start.  
+
+        🎢 **Emotions Are the Enemy**  
+        Fear and greed often cost more than market moves. Stay calm!  
+        """,
+        unsafe_allow_html=True
+    )
 # Add at VERY END of file (after sidebar)
 st.markdown("---")
 st.markdown(
