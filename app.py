@@ -200,7 +200,7 @@ with tab1:
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
     st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
                                                      'Days_Held', 'Status','Entry_Crosses_Resistance',
-                                                     'Current_Crosses_Resistance',,'Exit_Support','Exit_Resistance', 'Best_Strategy']].rename(columns={
+                                                     'Current_Crosses_Resistance','Exit_Support','Exit_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current Resistance'
         })), 
