@@ -48,6 +48,18 @@ def load_data():
         return {}, [], pd.DataFrame(), None, None
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
+st.markdown(
+    """
+    <div style='text-align: center; color: #555; font-size: 16px; 
+                padding: 20px; margin-top: 40px; line-height:1.5;'>
+    ⚠️ <strong>Disclaimer:</strong><br>
+    This dashboard refreshes <strong>once daily</strong> after the trading session.  
+    It does <strong>not calculate T0</strong> and is intended for <strong>swing trading</strong> purposes only.  
+    📊 Use it as a guide, not as a real-time trading signal.
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 
 # 🔥 REFRESH BUTTON
 col1, col2 = st.columns([3,1])
