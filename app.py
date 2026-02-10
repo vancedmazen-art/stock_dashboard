@@ -174,7 +174,7 @@ with tab1:
                                                          'Entry_Crosses_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current Resistance'
-        })]), 
+        })), 
                  use_container_width=True, height=200)
     
     # 🔥 CLOSE NOW - Fixed filter
@@ -203,7 +203,7 @@ with tab1:
                                                      'Current_Crosses_Resistance',,'Exit_Support','Exit_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current Resistance'
-        })]), 
+        })), 
                  use_container_width=True, height=300)
 
 # 🔥 TAB 2: STOCK DETAIL (EGX30 excluded)
@@ -227,7 +227,7 @@ with tab2:
                                                          'Days_Held', 'Exit_Resistance', 'Best_Strategy']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current Resistance'
-        })]), use_container_width=True, height=200)
+        })), use_container_width=True, height=200)
         else:
             st.info("⚠️ No current open trades")
         
