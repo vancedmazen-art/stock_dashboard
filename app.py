@@ -64,7 +64,6 @@ def load_data():
         return {}, [], pd.DataFrame(), None, None
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
-st.dataframe.get_index_column()  # This disables index display globally (newer Streamlit versions)
 
 # 🔥 REFRESH BUTTON
 col1, col2 = st.columns([3,1])
@@ -97,7 +96,11 @@ def fix_pyarrow_df(df):
             df_display[col] = pd.to_datetime(df_display[col], errors='coerce').dt.strftime('%Y-%m-%d')
     for col in df_display.select_dtypes(include=['object']).columns:
         df_display[col] = df_display[col].astype(str)
+    
+    # 🔥 THIS LINE FIXES THE # COLUMN
+    df_display.reset_index(drop=True, inplace=True)
     return df_display
+
 
 def safe_display(value):
     if pd.isna(value) or value is None or value == "":
