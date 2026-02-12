@@ -476,10 +476,13 @@ with tab5:
 new_buys_other = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj]
 close_now_other = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj]
 holds_other = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj]
-
+# 🔥 Calculate DISTINCT ticker counts (defined BEFORE sidebar)
+new_buys_tickers = set(new_buys_other['Ticker'].dropna().str.strip())
+close_now_tickers = set(close_now['Ticker'].dropna().str.strip())  # Use the filtered close_now
+holds_tickers = set(holds_other['Ticker'].dropna().str.strip())
 with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
-    st.info(f"🆕 New: {len(new_buys_other)} | ❌ Closed: {len(close_now_other)} | ✅ Holds: {len(holds_other)}")
+    st.info(f"🆕 New: {len(new_buys_tickers)} | ❌ Closed: {len(close_now_tickers)} | ✅ Holds: {len(holds_tickers)}")
     st.caption(f"📅 Updated: {refresh_date_str}")
     
     # 🔥 EGX30 Status in sidebar - Variables now defined
