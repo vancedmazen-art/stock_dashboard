@@ -64,6 +64,7 @@ def load_data():
         return {}, [], pd.DataFrame(), None, None
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
+st.dataframe.get_index_column()  # This disables index display globally (newer Streamlit versions)
 
 # 🔥 REFRESH BUTTON
 col1, col2 = st.columns([3,1])
