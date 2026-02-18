@@ -191,7 +191,7 @@ with tab1:
     #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
     st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker','Current_Price','BUY_REASON', 'Entry_Date', 'Entry_Price', 
                                                          'Trade_PnL_%', 'Entry_Volume', 'Status','Exit_Support','Exit_Resistance',
-                                                         'Entry_Crosses_Resistance', 'Best_Strategy']].rename(columns={
+                                                         'Entry_Crosses_Resistance', 'Max_Gain_%']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
         })), 
@@ -206,7 +206,7 @@ with tab1:
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
     st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%', 
-                                           'Days_Held','Entry_Crosses_Resistance', 'BUY_REASON']]), 
+                                           'Days_Held','Max_Gain_%']]), 
                  use_container_width=True, height=200)
     
     # 🔥 HOLDS - Fixed filter
@@ -219,8 +219,8 @@ with tab1:
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
     st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker','Current_Price', 'BUY_REASON', 'Entry_Date', 'Trade_PnL_%', 
-                                                     'Days_Held', 'Status','Entry_Crosses_Resistance',
-                                                     'Current_Crosses_Resistance','Exit_Support','Exit_Resistance', 'Best_Strategy']].rename(columns={
+                                                     'Days_Held','Entry_Crosses_Resistance',
+                                                     'Current_Crosses_Resistance','Exit_Support','Exit_Resistance', 'Max_Gain_%']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
         })), 
@@ -243,8 +243,8 @@ with tab2:
         
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
-            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','Current_Price','BUY_REASON', 'Entry_Price', 'Trade_PnL_%', 
-                                                         'Days_Held', 'Exit_Support','Exit_Resistance']].rename(columns={
+            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','Current_Price', 'Entry_Price', 'Trade_PnL_%', 
+                                                         'Days_Held', 'Exit_Support','Exit_Resistance', 'Max_Gain_%']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
         })), use_container_width=True, height=200)
@@ -364,11 +364,6 @@ with tab4:
     if ticker_filter != 'ALL':
         filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
     
-    if buy_reason_filter != 'ALL':
-        filtered_history = filtered_history[filtered_history['BUY_REASON'] == buy_reason_filter]
-    
-    if resistance_filter != 'ALL':
-        filtered_history = filtered_history[filtered_history['Entry_Crosses_Resistance'] == resistance_filter]
     
     # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
     if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
