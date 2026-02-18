@@ -242,7 +242,7 @@ with tab2:
         
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
-            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date','Current_Price', 'Entry_Price', 'Trade_PnL_%', 
+            st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date', 'Entry_Price','Current_Price', 'Trade_PnL_%', 
                                                          'Days_Held', 'Exit_Support','Exit_Resistance', 'Max_Gain_%']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
@@ -341,21 +341,6 @@ with tab4:
             key="ticker_filter"
         )
     
-    with col2:
-        buy_reason_filter = st.selectbox(
-            "📝 Buy Reason", 
-            options=['ALL'] + sorted(full_history_raw['BUY_REASON'].dropna().unique().tolist()),
-            index=0,
-            key="buy_reason_filter"
-        )
-    
-    with col3:
-        resistance_filter = st.selectbox(
-            "📊 Entry Crosses Resistance", 
-            options=['ALL'] + sorted(full_history_raw['Entry_Crosses_Resistance'].dropna().unique().tolist()),
-            index=0,
-            key="resistance_filter"
-        )
     
     # 🔥 APPLY FILTERS AUTOMATICALLY
     filtered_history = full_history_raw.copy()
