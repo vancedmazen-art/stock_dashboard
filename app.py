@@ -205,7 +205,7 @@ with tab1:
     #col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%','Entry_Price', 'Exit_Support','Exit_Resistance'
+    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%','Entry_Price', 'Exit_Support','Exit_Resistance',
                                            'Days_Held','Max_Gain_%']]), 
                  use_container_width=True, height=200)
     
