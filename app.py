@@ -401,7 +401,7 @@ with tab5:
 
         st.markdown("### 🟢 **Open Positions**")
         if len(df_current_egx30) > 0:
-            st.dataframe(fix_pyarrow_df(df_current_egx30[['Entry_Date','Entry_Price','Trade_PnL_%','Days_Held','Status','BUY_REASON']]), use_container_width=True, height=220)
+            st.dataframe(fix_pyarrow_df(df_current_egx30[['Entry_Date','Entry_Price','Trade_PnL_%','Days_Held','Status']]), use_container_width=True, height=220)
         else:
             st.info("No open EGX30 trades")
         st.divider()
