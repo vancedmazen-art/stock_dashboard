@@ -190,7 +190,7 @@ with tab1:
     #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
     st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 
-                                                         'Trade_PnL_%', 'Entry_Volume','Exit_Support','Exit_Resistance']].rename(columns={
+                                                          'Entry_Volume','Exit_Support','Exit_Resistance']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
                         
