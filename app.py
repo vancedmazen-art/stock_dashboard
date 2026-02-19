@@ -340,6 +340,13 @@ with tab4:
             index=0,
             key="ticker_filter"
         )
+    with col2:
+        ticker_filter = st.selectbox(
+            "🔍 Sector", 
+            options=['ALL'] + sorted(full_history_raw['Sector'].dropna().unique().tolist()),
+            index=0,
+            key="ticker_filter"
+        )
     
     
     # 🔥 APPLY FILTERS AUTOMATICALLY
