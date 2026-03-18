@@ -1,183 +1,167 @@
 Symbol,Company Name,Sector,Industry/Subsector
 EGX:EGX30,EGX30 Index,Other,Index
-EGX:AALR,Arab Aluminum Co.,Basic Materials,Aluminum
-EGX:ABUK,Abu Qir Fertilizers,Basic Materials,Fertilizers
-EGX:ACAMD,Arab Co. for Asset Management,Financials,Asset Management
-EGX:ACAP,Cairo for Investment & Real Estate,Real Estate,Real Estate Development
-EGX:ACGC,Arab Cotton Ginning,Industrials,Textiles
-EGX:ACTF,Arab Co. for Trade & Finance,Financials,Financial Services
-EGX:ADCI,Arab Developers Holding,Real Estate,Real Estate Development
-EGX:ADPC,Arab Dairy Products,Consumer Non-Cyclicals,Food Products
-EGX:AFDI,Arab Finance & Investment,Financials,Financial Services
-EGX:AIDC,Arab International Co.,Industrials,Industrial Services
-EGX:AIFI,Arab Investment Fund,Financials,Investment
-EGX:AIHC,Arab International Hotels,Consumer Services,Hotels
-EGX:AJWA,Ajwa for Food Industries,Consumer Non-Cyclicals,Food Products
-EGX:ALCN,Alexandria Containers,Industrials,Transportation & Logistics
-EGX:ALUM,Egypt Aluminum,Basic Materials,Aluminum
+EGX:AALR,General Company for Land Reclamation & Reconstruction,Finance,Real Estate Development
+EGX:ABUK,Abu Qir Fertilizers and Chemical Industries,Basic Resources,Chemicals / Fertilizers
+EGX:ACAMD,Arab Co. for Asset Management And Development,Real Estate,Asset Management
+EGX:ACAP,A Capital Holding,Real Estate,Real Estate Development
+EGX:ACGC,Arab Cotton Ginning,Textile & Durables,Textiles
+EGX:ACTF,Act Financial,Non-bank Financial,Financial Services
+EGX:ADCI,Arab Dairy (Panda),Food & Beverages,Dairy Products
+EGX:ADPC,Arab Deserts Development & Investment,Real Estate,Land Development
+EGX:AFDI,Arabia for Investment and Development,Non-bank Financial,Investments
+EGX:AIDC,Arab Investment & Development,Non-bank Financial,Financial Services
+EGX:AIFI,Arab Investment & Food Industries,Food & Beverages,Diversified Food
+EGX:AIHC,Arabia Investments Holding,Non-bank Financial,Diversified Financials
+EGX:AJWA,AJWA for Food Industries,Food & Beverages,Food Processing
+EGX:ALCN,Alexandria Container & Cargo Handling,Shipping & Transport,Logistics/Port Services
+EGX:ALUM,Arab Aluminum,Basic Resources,Aluminum Products
 EGX:AMER,Amer Group Holding,Real Estate,Real Estate Development
-EGX:AMES,Arab Medical Equipment,Healthcare,Medical Equipment
-EGX:AMIA,Arab Moltaqa Investments,Financials,Investment
-EGX:AMOC,Alexandria Mineral Oils,Energy,Oil & Gas Refining
-EGX:ANFI,Al Ahli Investment,Financials,Investment
-EGX:ARAB,Arab Polvara Spinning,Industrials,Textiles
-EGX:ARCC,Arabian Cement,Basic Materials,Cement
-EGX:AREH,Arab Real Estate Investment,Real Estate,Real Estate Development
-EGX:ARVA,Arab Valves Co.,Industrials,Industrial Equipment
-EGX:ASCM,Ascom Mining,Basic Materials,Mining
-EGX:ASPI,Arab Steel Pipes,Basic Materials,Steel
-EGX:ATLC,Al Tawfeek Leasing,Financials,Leasing
-EGX:ATQA,Arabian Food Industries,Consumer Non-Cyclicals,Food Products
-EGX:AXPH,Alex Pharma,Healthcare,Pharmaceuticals
-EGX:BINV,B Investments Holding,Financials,Investment
-EGX:BIOC,Bio Pharmaceutical Industries,Healthcare,Pharmaceuticals
-EGX:BONY,Borg El Arab Co.,Industrials,Industrial Services
-EGX:BTFH,Beltone Holding,Financials,Investment Banking
-EGX:CAED,Cairo Educational Services,Consumer Services,Education
-EGX:CCAP,Citadel Capital,Financials,Investment
-EGX:CCRS,Construction & Reconstruction,Industrials,Construction
-EGX:CEFM,Commercial Engineering,Industrials,Engineering
-EGX:CERA,Ceramica Remas,Industrials,Building Materials
-EGX:CICH,CI Capital Holding,Financials,Financial Services
-EGX:CIRA,Cairo for Investment (Education),Consumer Services,Education
-EGX:CLHO,Cleopatra Hospital,Healthcare,Healthcare Services
-EGX:CNFN,Contact Financial Holding,Financials,Consumer Finance
-EGX:COPR,Copper for Commercial Investment,Industrials,Metals
-EGX:COSG,Costain Egypt,Industrials,Construction
-EGX:CPCI,Cairo Pharmaceuticals,Healthcare,Pharmaceuticals
-EGX:CRST,Crest Investments,Financials,Investment
-EGX:CSAG,Canal Shipping Agencies,Industrials,Logistics
-EGX:DAPH,Delta Pharma,Healthcare,Pharmaceuticals
-EGX:DEIN,Delta Insurance,Financials,Insurance
-EGX:DOMT,Domty,Consumer Non-Cyclicals,Food Products
-EGX:DSCW,Delta Sugar,Consumer Non-Cyclicals,Sugar
-EGX:DTPP,Delta Printing & Packaging,Industrials,Packaging
-EGX:EALR,El Arabia Leasing,Financials,Leasing
-EGX:EASB,Egyptian Arabian Bank,Financials,Banking
-EGX:EAST,Eastern Company,Consumer Non-Cyclicals,Tobacco
-EGX:EBSC,Egyptian Building Materials,Industrials,Building Materials
-EGX:ECAP,Egyptian Co. for Construction,Industrials,Construction
-EGX:EDFM,Edita Food Industries,Consumer Non-Cyclicals,Food Products
-EGX:EEII,Egyptian Export Investment,Financials,Investment
-EGX:EFIC,Engineering for Industries,Industrials,Engineering
-EGX:EFID,EFID Industrial Development,Industrials,Industrial Services
-EGX:EFIH,E-Finance Investment Group,Financials,Fintech
-EGX:EGAL,Egypt Aluminum,Basic Materials,Aluminum
-EGX:EGAS,Egypt Gas,Utilities,Gas Distribution
-EGX:EGCH,Egypt Chemical Industries,Basic Materials,Chemicals
-EGX:EGREF,Egyptian Refining Co.,Energy,Oil & Gas Refining
-EGX:EGTS,Egyptian Tourism Resorts,Real Estate,Real Estate Development
-EGX:EHDR,Egyptian Housing Development,Real Estate,Real Estate Development
-EGX:ELEC,Electro Cable Egypt,Industrials,Electrical Equipment
+EGX:AMES,Arab Medical Equipment (AMES),Health Care,Medical Equipment
+EGX:AMIA,Arab Misr Investment,Non-bank Financial,Real Estate Investment
+EGX:AMOC,Alexandria Mineral Oils Company,Energy & Support,Oil & Gas
+EGX:ANFI,Alexandria National Co. for Financial Investment,Non-bank Financial,Asset Management
+EGX:ARAB,Arab Developers Holding,Real Estate,Real Estate Development
+EGX:ARCC,Arabian Cement Company,Building Materials,Cement Production
+EGX:AREH,Arab Real Estate Investment (ALICO),Real Estate,Real Estate Investment
+EGX:ARVA,Arab Valves Company,Building Materials,Valve Manufacturing
+EGX:ASCM,ASEC Company for Mining,Basic Resources,Mining & Quarries
+EGX:ASPI,Aspire Capital Holding,Non-bank Financial,Financial Services
+EGX:ATLC,Al Tawfeek Leasing (A.T.LEASE),Non-bank Financial,Leasing
+EGX:ATQA,Misr National Steel (Ataqa),Basic Resources,Steel Products
+EGX:AXPH,Alexandria Pharmaceuticals,Health Care,Pharmaceuticals
+EGX:BINV,B Investments Holding,Non-bank Financial,Private Equity
+EGX:BIOC,Biopharm for Pharmaceutical & Chemicals,Health Care,Pharmaceuticals
+EGX:BONY,National Bank of Kuwait - Egypt,Banks,Commercial Banking
+EGX:BTFH,Beltone Holding,Non-bank Financial,Financial Services
+EGX:CAED,Cairo Educational Services,Education Services,Education
+EGX:CCAP,Qalaa Holdings,Non-bank Financial,Diversified Industrials
+EGX:CCRS,Cairo Cotton Center,Textile & Durables,Apparel/Textiles
+EGX:CEFM,Cairo Flour Mills,Food & Beverages,Milling
+EGX:CERA,Ceramica Remas,Building Materials,Ceramics
+EGX:CICH,CI Capital Holding,Non-bank Financial,Investment Banking
+EGX:CIRA,CIRA Education,Education Services,Education
+EGX:CLHO,Cleopatra Hospital,Health Care,Specialized Hospitals
+EGX:CNFN,Contact Financial Holding,Non-bank Financial,Consumer Finance
+EGX:COPR,Copper & Spelter for Egypt,Basic Resources,Non-ferrous Metals
+EGX:COSG,Cairo Oils & Soap,Food & Beverages,Edible Oils
+EGX:CPCI,Cairo Pharmaceuticals,Health Care,Pharmaceuticals
+EGX:CRST,Crystal Asfour,Textile & Durables,Glass & Crystal
+EGX:CSAG,Canal Shipping Agencies,Shipping & Transport,Shipping Agencies
+EGX:DAPH,Development & Engineering Consultants,Real Estate,Real Estate Services
+EGX:DEIN,Delta Insurance,Non-bank Financial,Insurance
+EGX:DOMT,Arabian Food Industries (Domty),Food & Beverages,Dairy/Food
+EGX:DSCW,Dice Sport & Casual Wear,Textile & Durables,Apparel
+EGX:DTPP,Delta Construction & Rebuilding,Real Estate,Construction
+EGX:EALR,Egyptian Company for Land Reclamation,Finance,Land Development
+EGX:EBSC,Egyptian Business Center,Non-bank Financial,Business Services
+EGX:ECAP,Al Ezz Ceramics & Porcelain (Gemma),Building Materials,Ceramics
+EGX:EDFM,East Delta Flour Mills,Food & Beverages,Milling
+EGX:EEII,Egyptian Emirates Investment,Non-bank Financial,Real Estate Development
+EGX:EFIC,Egyptian Financial & Industrial,Basic Resources,Fertilizers
+EGX:EFID,Edita Food Industries,Food & Beverages,Packaged Foods
+EGX:EFIH,e-finance for Digital & Financial Investments,IT & Communication,FinTech
+EGX:EGAL,Egypt Aluminum,Basic Resources,Aluminum
+EGX:EGAS,Egypt Gas,Energy & Support,Natural Gas Distribution
+EGX:EGCH,Egyptian Chemical Industries (Kima),Basic Resources,Chemicals
+EGX:EGTS,Egyptian Resorts Company,Travel & Leisure,Tourism Development
+EGX:EHDR,Egyptians Housing & Development,Real Estate,Real Estate Development
+EGX:ELEC,Electro Cable Egypt,Industrial Goods,Electrical Equipment
 EGX:ELKA,El Kahera Housing,Real Estate,Real Estate Development
-EGX:ELSH,El Shams Housing,Real Estate,Real Estate Development
-EGX:EMFD,Emaar Misr,Real Estate,Real Estate Development
-EGX:ENGC,Engineering Industries,Industrials,Engineering
-EGX:EPCO,Egyptian Petrochemicals,Energy,Petrochemicals
-EGX:ETEL,Telecom Egypt,Communication Services,Telecom Services
-EGX:ETRS,Egyptian Transport,Industrials,Transportation
-EGX:FERC,Ferchem Egypt,Basic Materials,Chemicals
-EGX:GBCO,GB Corp,Consumer Cyclicals,Auto Manufacturers
-EGX:GDWA,Gadwa for Industrial Development,Financials,Investment
-EGX:GGCC,Golden Coast Co.,Real Estate,Real Estate Development
-EGX:GIHD,Global Investment Holding,Financials,Investment
-EGX:GPIM,Giza Power Industries,Industrials,Electrical Equipment
-EGX:GRCA,Grand Investment Capital,Financials,Investment
-EGX:GSSC,General Silos & Storage,Consumer Non-Cyclicals,Agricultural Storage
-EGX:GTWL,Golden Textiles,Industrials,Textiles
-EGX:HBCO,Heliopolis Co. for Housing,Real Estate,Real Estate Development
+EGX:ELSH,El Shams Housing & Development,Real Estate,Real Estate Development
+EGX:EMFD,Emaar Misr for Development,Real Estate,Real Estate Development
+EGX:ENGC,Engineering Industries (ICON),Building Materials,Steel Structures
+EGX:EPCO,Egypt Poultry,Food & Beverages,Poultry
+EGX:ETEL,Telecom Egypt,IT & Communication,Telecommunications
+EGX:ETRS,Egyptian Transport (EGYTRANS),Shipping & Transport,Logistics
+EGX:GBCO,GB Corp (formerly GB Auto),Industrial Goods,Automotive
+EGX:GDWA,Gadwa For Industrial Development,Non-bank Financial,Industrial Investment
+EGX:GGCC,Giza General Contracting,Real Estate,Construction
+EGX:GIHD,Grand Investment Holding,Non-bank Financial,Financial Services
+EGX:GPIM,Golden Pyramids Plaza,Travel & Leisure,Real Estate/Hotels
+EGX:GRCA,Golden Coast Company,Travel & Leisure,Tourism
+EGX:GTWL,Giza Spinning & Weaving,Textile & Durables,Textiles
+EGX:HBCO,Hoty Ber For Investments,Non-bank Financial,Financial Services
 EGX:HELI,Heliopolis Housing,Real Estate,Real Estate Development
-EGX:IBCT,International Business Corp.,Industrials,Industrial Services
-EGX:ICFC,International Co. for Fertilizers,Basic Materials,Fertilizers
-EGX:ICID,Industrial & Commercial Investment,Financials,Investment
-EGX:ICLE,International Co. for Leasing,Financials,Leasing
-EGX:IDRE,Industrial Development & Real Estate,Real Estate,Real Estate Development
-EGX:IEEC,Industrial Engineering Egypt,Industrials,Engineering
-EGX:IFAP,International Food & Agricultural Products,Consumer Non-Cyclicals,Food Products
-EGX:INEG,Integrated Engineering Group,Industrials,Engineering
-EGX:INFI,International Financial Investments,Financials,Investment
-EGX:ISMA,Ismailia Development & Real Estate,Real Estate,Real Estate Development
-EGX:ISMQ,Ismailia Misr Poultry,Consumer Non-Cyclicals,Poultry
-EGX:ISPH,Ibnsina Pharma,Healthcare,Pharmaceutical Distribution
-EGX:JUFO,Juhayna Food Industries,Consumer Non-Cyclicals,Dairy Products
-EGX:KABO,El Nasr Clothes & Textiles (Kabo),Industrials,Textiles
-EGX:KRDI,Kafr El Zayat Pesticides,Basic Materials,Agrochemicals
-EGX:KZPC,Kafr El Zayat Pesticides,Basic Materials,Agrochemicals
-EGX:LCSW,Lesico Egypt,Industrials,Building Materials
-EGX:LUTS,Lotus for Tourism,Consumer Services,Tourism
-EGX:MAAL,Marseilia Egyptian Gulf,Real Estate,Real Estate Development
-EGX:MASR,Madinet Masr Housing,Real Estate,Real Estate Development
-EGX:MBSC,Misr Beni Suef Cement,Basic Materials,Cement
-EGX:MCQE,Misr Chemical Industries,Basic Materials,Chemicals
-EGX:MCRO,Macro Group Pharma,Healthcare,Pharmaceuticals
-EGX:MEGM,Middle East Glass,Industrials,Glass Manufacturing
-EGX:MENA,MENA Touristic & Real Estate,Real Estate,Real Estate Development
-EGX:MEPA,Medical Packaging Co.,Healthcare,Medical Supplies
-EGX:MFPC,Misr Fertilizers Production,Basic Materials,Fertilizers
-EGX:MFSC,Misr Financial Services,Financials,Financial Services
-EGX:MHOT,Misr Hotels,Consumer Services,Hotels
-EGX:MICH,Misr Chemical Industries,Basic Materials,Chemicals
-EGX:MILS,Mills Co.,Consumer Non-Cyclicals,Milling
-EGX:MIPH,Minapharm Pharmaceuticals,Healthcare,Biotechnology
-EGX:MOED,Modern Education Schools,Consumer Services,Education
-EGX:MOIN,Modern Industrial Investment,Industrials,Industrial Services
-EGX:MOSC,Misr Oils & Soap,Consumer Non-Cyclicals,Edible Oils
-EGX:MPCI,Memphis Pharmaceuticals,Healthcare,Pharmaceuticals
-EGX:MPCO,Misr Poultry,Consumer Non-Cyclicals,Poultry
-EGX:MTIE,MM Group for Industry & Trade,Consumer Cyclicals,Retail Distribution
-EGX:NARE,National Real Estate Investment,Real Estate,Real Estate Development
-EGX:NCCW,National Cement Co.,Basic Materials,Cement
-EGX:NHPS,National Housing for Professions,Real Estate,Real Estate Development
-EGX:NIPH,Nile Pharmaceuticals,Healthcare,Pharmaceuticals
-EGX:OBRO,Obour Land,Consumer Non-Cyclicals,Dairy Products
-EGX:OCDI,Orascom Development Egypt,Real Estate,Real Estate Development
-EGX:OCPH,October Pharma,Healthcare,Pharmaceuticals
-EGX:ODIN,ODIN Investments,Financials,Investment
-EGX:OFH,Oriental Weavers Holding,Consumer Cyclicals,Home Furnishings
-EGX:OIH,Orascom Investment Holding,Financials,Investment
-EGX:OLFI,Olam Egypt Food Industries,Consumer Non-Cyclicals,Food Products
-EGX:ORAS,Orascom Construction,Industrials,Engineering & Construction
-EGX:ORHD,Orascom Development Holding,Real Estate,Real Estate Development
-EGX:ORWE,Oriental Weavers,Consumer Cyclicals,Home Furnishings
-EGX:PHAR,EIPICO Pharmaceuticals,Healthcare,Pharmaceuticals
-EGX:PHDC,Palm Hills Development,Real Estate,Real Estate Development
-EGX:PHTV,Pyramisa Hotels,Consumer Services,Hotels
-EGX:POUL,Cairo Poultry,Consumer Non-Cyclicals,Poultry
-EGX:PRCL,Pioneers Properties,Real Estate,Real Estate Development
-EGX:PRDC,Palm Hills Development (duplicate class),Real Estate,Real Estate Development
-EGX:PRMH,Prime Holding,Financials,Investment
-EGX:RACC,Raya Contact Center,Communication Services,BPO Services
-EGX:RAYA,Raya Holding,Industrials,Diversified Industrials
-EGX:RMDA,Rameda Pharmaceuticals,Healthcare,Pharmaceuticals
-EGX:ROTO,Rotographica,Industrials,Printing & Packaging
-EGX:RREI,Rowad Real Estate,Real Estate,Real Estate Development
-EGX:RUBX,Rubex International,Industrials,Rubber & Plastics
-EGX:SCEM,Sinai Cement,Basic Materials,Cement
-EGX:SCFM,South Cairo Flour Mills,Consumer Non-Cyclicals,Milling
-EGX:SCTS,Suez Canal Company for Tech,Industrials,Engineering
-EGX:SDTI,Sharm Dreams Investment,Tourism,Hotels & Resorts
-EGX:SEIG,Saudi Egyptian Investment Group,Financials,Investment
-EGX:SIPC,Sidi Kerir Petrochemicals,Energy,Petrochemicals
-EGX:SKPC,Sidi Kerir Petrochemicals,Energy,Petrochemicals
-EGX:SMFR,Samad MASR,Energy,Petrochemicals
-EGX:SNFC,Shebin El Kom Flour Mills,Consumer Non-Cyclicals,Milling
-EGX:SPHT,El Shams Pyramids Hotels,Consumer Services,Hotels
-EGX:SPIN,Alexandria Spinning & Weaving,Industrials,Textiles
-EGX:SPMD,Speed Medical,Healthcare,Healthcare Services
-EGX:SUGR,Delta Sugar,Consumer Non-Cyclicals,Sugar
-EGX:SVCE,South Valley Cement,Basic Materials,Cement
-EGX:SWDY,Elsewedy Electric,Industrials,Electrical Equipment
-EGX:TALM,Taalem Management Services,Consumer Services,Education
-EGX:TANM,Tanmiya for Microfinance,Financials,Microfinance
-EGX:TAQA,TAQA Arabia,Utilities,Energy Distribution
-EGX:TMGH,Talaat Moustafa Group,Real Estate,Real Estate Development
-EGX:TRTO,Trans Oceans Tours,Consumer Services,Tourism
-EGX:UEFM,Upper Egypt Flour Mills,Consumer Non-Cyclicals,Milling
-EGX:UEGC,Upper Egypt General Contracting,Industrials,Construction
-EGX:UNIP,Unipack,Industrials,Packaging
+EGX:ICFC,International Co. for Fertilizer & Chemicals,Basic Resources,Fertilizers
+EGX:ICID,International Company for Investment,Non-bank Financial,Real Estate Development
+EGX:IDRE,Ismailia Development and Real Estate,Real Estate,Real Estate Development
+EGX:IEEC,International Export Center,Trade & Distributors,Trading
+EGX:IFAP,International Food & Agricultural,Food & Beverages,Agriculture
+EGX:INEG,Industrial Engineering Projects,Industrial Goods,Engineering
+EGX:INFI,Ismailia National Food Industries,Food & Beverages,Food Processing
+EGX:ISMA,Ismailia Misr Poultry,Food & Beverages,Poultry
+EGX:ISMQ,Iron and Steel for Mines and Quarries,Basic Resources,Iron & Steel
+EGX:ISPH,Ibnsina Pharma,Health Care,Pharmaceutical Distribution
+EGX:JUFO,Juhayna Food Industries,Food & Beverages,Dairy & Juice
+EGX:KABO,El Nasr Clothes & Textiles (Kabo),Textile & Durables,Textiles
+EGX:KRDI,Al Khair River for Development,Food & Beverages,Agriculture
+EGX:KZPC,Kafr El Zayat Pesticides,Basic Resources,Chemicals/Pesticides
+EGX:LCSW,Lecico Egypt,Building Materials,Sanitaryware
+EGX:LUTS,Lotus for Agricultural Investment,Food & Beverages,Agriculture
+EGX:MAAL,Maadi Co. for Development & Construction,Real Estate,Real Estate Development
+EGX:MASR,Madinet Masr (formerly MNHD),Real Estate,Real Estate Development
+EGX:MBSC,Modern Company for Waterproofing,Building Materials,Construction Materials
+EGX:MCQE,Misr Cement (Qena),Building Materials,Cement
+EGX:MCRO,Macro Group Pharmaceuticals,Health Care,Cosmetics/Pharma
+EGX:MENA,MENA For Real Estate Investment,Real Estate,Real Estate Development
+EGX:MEPA,Medical Packaging,Paper & Packaging,Medical Packaging
+EGX:MFPC,Misr Fertilizers (MOPCO),Basic Resources,Fertilizers
+EGX:MICH,Misr Chemical Industries,Basic Resources,Chemicals
+EGX:MILS,Middle Egypt Flour Mills,Food & Beverages,Milling
+EGX:MIPH,Misr Pharmaceuticals,Health Care,Pharmaceuticals
+EGX:MOED,Modern Education Services,Education Services,Education
+EGX:MOSC,Misr Oils & Soap,Food & Beverages,Edible Oils
+EGX:MPCI,Memphis Pharmaceutical,Health Care,Pharmaceuticals
+EGX:MPCO,Mansourah Poultry,Food & Beverages,Poultry
+EGX:MTIE,MM Group for Industry & International Trade,Trade & Distributors,Consumer Electronics
+EGX:NARE,National Real Estate Bank,Banks,Specialized Banking
+EGX:NCCW,Nasr Company for Civil Works,Real Estate,Civil Engineering
+EGX:NHPS,Nile Housing & Development,Real Estate,Real Estate Development
+EGX:NIPH,Nile Pharmaceuticals,Health Care,Pharmaceuticals
+EGX:OBRO,Obour Land for Food Industries,Food & Beverages,Dairy
+EGX:OCDI,Six of October Development (SODIC),Real Estate,Real Estate Development
+EGX:OCPH,October Pharma,Health Care,Pharmaceuticals
+EGX:ODIN,ODIN Investments,Non-bank Financial,Asset Management
+EGX:OFH,Orascom Financial Holding,Non-bank Financial,Financial Services
+EGX:OIH,Orascom Investment Holding,Non-bank Financial,Diversified Investment
+EGX:OLFI,Oil & Soap for Food Industries,Food & Beverages,Edible Oils
+EGX:ORAS,Orascom Construction,Industrial Goods,Engineering & Construction
+EGX:ORHD,Orascom Development Egypt,Travel & Leisure,Tourism Development
+EGX:ORWE,Oriental Weavers,Textile & Durables,Carpets
+EGX:PHAR,Pharco Pharmaceuticals,Health Care,Pharmaceuticals
+EGX:PHDC,Palm Hills Developments,Real Estate,Real Estate Development
+EGX:POUL,Cairo Poultry,Food & Beverages,Poultry
+EGX:PRCL,Prime For Securities,Non-bank Financial,Brokerage
+EGX:PRDC,Prime Development & Construction,Real Estate,Construction
+EGX:PRMH,Prime Holding,Non-bank Financial,Financial Services
+EGX:RACC,Raya Contact Center,IT & Communication,Outsourcing
+EGX:RAYA,Raya Holding for Financial Investments,Non-bank Financial,Diversified Investment
+EGX:RMDA,Tenth of Ramadan Pharma (Rameda),Health Care,Pharmaceuticals
+EGX:RREI,Rekaz Real Estate,Real Estate,Real Estate Development
+EGX:RUBX,Rubex International,Industrial Goods,Plastics & Chemicals
+EGX:SCEM,Sinai Cement,Building Materials,Cement
+EGX:SCFM,South Cairo & Giza Flour Mills,Food & Beverages,Milling
+EGX:SCTS,Suez Canal Company for Technology,IT & Communication,Technology
+EGX:SDTI,Speed Medical,Health Care,Medical Labs
+EGX:SEIG,Saudi Egyptian Investment,Non-bank Financial,Investments
+EGX:SIPC,Sphinx Pharmaceutical,Health Care,Pharmaceuticals
+EGX:SKPC,Sidi Kerir Petrochemicals,Basic Resources,Petrochemicals
+EGX:SMFR,Samad Misr,Basic Resources,Fertilizers
+EGX:SNFC,Siniora Food Industries,Food & Beverages,Food Processing
+EGX:SPIN,Alexandria Spinning (Spinalex),Textile & Durables,Textiles
+EGX:SPMD,Speed Medical,Health Care,Medical Services
+EGX:SUGR,Delta Sugar,Food & Beverages,Sugar Production
+EGX:SVCE,South Valley Cement,Building Materials,Cement
+EGX:SWDY,Elsewedy Electric,Industrial Goods,Electrical Equipment
+EGX:TALM,Taaleem Management Services,Education Services,Higher Education
+EGX:TANM,Tanmiya for Real Estate Investment,Real Estate,Real Estate Development
+EGX:TAQA,Taqa Arabia,Energy & Support,Energy Distribution
+EGX:TMGH,TMG Holding,Real Estate,Real Estate Development
+EGX:UEFM,Upper Egypt Flour Mills,Food & Beverages,Milling
+EGX:UEGC,Upper Egypt General Contracting,Real Estate,Construction
+EGX:UNIP,Universal for Paper & Packaging,Paper & Packaging,Paper Products
 EGX:UNIT,United Housing & Development,Real Estate,Real Estate Development
-EGX:UTOP,UTOPIA Real Estate,Real Estate,Real Estate Development
-EGX:WCDF,West Delta Flour Mills,Consumer Non-Cyclicals,Milling
-EGX:WKOL,Wadi Kom Ombo Land Reclamation,Consumer Non-Cyclicals,Agriculture
-EGX:ZEOT,Extracted Oils & Derivatives,Consumer Non-Cyclicals,Edible Oils
-EGX:ZMID,Zahraa Maadi Investment,Real Estate,Real Estate Development
+EGX:WCDF,West & Central Delta Flour Mills,Food & Beverages,Milling
+EGX:WKOL,Wadi Kom Ombo Land Reclamation,Finance,Land Development
+EGX:ZEOT,Extracted Oils,Food & Beverages,Edible Oils
+EGX:ZMID,Zahraa Maadi Investment & Development,Real Estate,Real Estate Development
