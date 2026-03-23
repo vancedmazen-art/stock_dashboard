@@ -221,7 +221,7 @@ with tab1:
     st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'Entry_Price', 'Current_Price', 'Entry_Date', 'Trade_PnL_%', 
                                                      'Days_Held', 'Exit_Support','Exit_Resistance', 'Max_Gain_%']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
-                                                        'Exit_Resistance': 'Current_Resistance'
+                                                        'Exit_Resistance': 'Current_Resistance','T0'
         })), 
                  use_container_width=True, height=300)
 
