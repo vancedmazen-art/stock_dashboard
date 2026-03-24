@@ -27,24 +27,18 @@ selected_facts = random.choice(trading_facts)
 # ---------------------------
 def load_data():
     try:
-        # 🔥 GOOGLE DRIVE - Replace with your file ID
-        GOOGLE_DRIVE_FILE_ID = "15g-qDvHiZ3iZmcsa6HO43qQHTLdGkoGr"  # From URL: https://drive.google.com/file/d/YOUR_FILE_ID_HERE/view
+        if not os.path.exists("Complete_Trades_Metrics.xlsx"):
+            st.error("❌ Complete_Trades_Metrics.xlsx missing!")
+            st.stop()
+            return {}, [], pd.DataFrame(), None, None
         
-        # Method 1: Public file (Easiest - just make file publicly viewable)
-        url = f"https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}"
-        file_bytes = requests.get(url, timeout=30).content
-        
-        # Create in-memory Excel
-        import io
-        excel_file = io.BytesIO(file_bytes)
-        
-        # 🔥 Read all your sheets (exactly like before)
-        closed_trades = pd.read_excel(excel_file, sheet_name=0)
-        current_trades = pd.read_excel(excel_file, sheet_name=1)
-        strategy_metrics = pd.read_excel(excel_file, sheet_name=3)
-        refresh_df = pd.read_excel(excel_file, sheet_name=4)
-        
-        # 🔥 Rest of your code EXACTLY THE SAME
+        # Sheet 0: Closed trades
+        closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
+        # Sheet 1: Current trades  
+        current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
+        # 🔥 SHEET 3: STRATEGY METRICS (NEW!)
+        strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=3)
+        refresh_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=4)
         refresh_date_scalar = refresh_df['refresh_date'].iloc[0]
         refresh_date_obj = pd.to_datetime(refresh_date_scalar).date()
         refresh_date_str = refresh_date_scalar.strftime('%Y-%m-%d')
@@ -61,14 +55,13 @@ def load_data():
             current_trades['Ticker'].dropna()
         ]).drop_duplicates().sort_values().str.strip().tolist()
         
-        st.success(f"✅ Loaded from Google Drive!")
+        st.success(f"✅ Load Completed..")
         return {"closed": closed_trades, "current": current_trades}, all_tickers, strategy_metrics, refresh_date_obj, refresh_date_str
         
     except Exception as e:
-        st.error(f"❌ Drive load failed: {e}")
+        st.error(f"❌ Load failed: {e}")
         st.stop()
         return {}, [], pd.DataFrame(), None, None
-
 
 st.set_page_config(page_title="🚀 EGX Trading Dashboard", layout="wide")
 
