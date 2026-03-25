@@ -218,7 +218,7 @@ with tab1:
     #col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'Entry_Price', 'Current_Price', 'Entry_Date','SR_Resistance','Trade_PnL_%', 
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker', 'Entry_Price', 'Current_Price','SR_Resistance', 'Entry_Date','Trade_PnL_%', 
                                                      'Days_Held', 'Exit_Support','Exit_Resistance', 'Max_Gain_%','T0']].rename(columns={
                                                         'Exit_Support': 'Current_Support',
                                                         'Exit_Resistance': 'Current_Resistance'
