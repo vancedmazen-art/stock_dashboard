@@ -189,12 +189,7 @@ with tab1:
     #col1.metric("🆕 New Buys", len(new_buys))
     #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price',
-                                                          'Entry_Volume','Breaks_Trendline']].rename(columns={
-
-                        
-        })), 
-                 use_container_width=True, height=200)
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline']]), use_container_width=True, height=200)
     
     # 🔥 CLOSE NOW - Fixed filter
     close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
