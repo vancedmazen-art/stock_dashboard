@@ -33,12 +33,10 @@ def load_data():
             return {}, [], pd.DataFrame(), None, None
         
         # Sheet 0: Closed trades
-        closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=0)
-        # Sheet 1: Current trades  
-        current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=1)
-        # 🔥 SHEET 3: STRATEGY METRICS (NEW!)
-        strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=3)
-        refresh_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name=4)
+        closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Closed_Trades")
+        current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Open_Trades")
+        strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Best_Strategy_Summary")
+        refresh_df = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="refresh_date")
         refresh_date_scalar = refresh_df['refresh_date'].iloc[0]
         refresh_date_obj = pd.to_datetime(refresh_date_scalar).date()
         refresh_date_str = refresh_date_scalar.strftime('%Y-%m-%d')
