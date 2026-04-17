@@ -208,7 +208,7 @@ with tab1:
     #col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker',  'Current_Price','Entry_Price', 'Entry_Date','Trade_PnL_%', 'Days_Held']]), use_container_width=True, height=300)
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker',  'Current_Price','Entry_Price', 'Entry_Date','Trade_PnL_%', 'Days_Held','Breaks_Trendline', 'Anchor_High', 'Buffer_Gain']].rename(columns={'Anchor_High': 'Target_Price','Buffer_Gain': 'Target_Gain_%'})), use_container_width=True, height=200)
 
 # 🔥 TAB 2: STOCK DETAIL (EGX30 excluded)
 with tab2:
