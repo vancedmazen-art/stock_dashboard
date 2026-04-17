@@ -189,10 +189,9 @@ with tab1:
     #col1.metric("🆕 New Buys", len(new_buys))
     #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'SR_Resistance',
-                                                          'Entry_Volume','Exit_Support','Exit_Resistance','Breaks_Trendline']].rename(columns={
-                                                        'Exit_Support': 'Current_Support',
-                                                        'Exit_Resistance': 'Current_Resistance'
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price'
+                                                          'Entry_Volume','Breaks_Trendline']].rename(columns={
+
                         
         })), 
                  use_container_width=True, height=200)
@@ -205,8 +204,8 @@ with tab1:
     #col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
-    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'SR_Support', 'Trade_PnL_%','Entry_Price', 'Exit_Support','Exit_Resistance',
-                                           'Days_Held','Max_Gain_%']]), 
+    st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%','Entry_Price',
+                                           'Days_Held']]), 
                  use_container_width=True, height=200)
     
     # 🔥 HOLDS - Fixed filter
@@ -218,10 +217,8 @@ with tab1:
     #col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
-    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker',  'Current_Price','Entry_Price','SR_Resistance', 'Entry_Date','Trade_PnL_%', 
-                                                     'Days_Held', 'Exit_Support','Exit_Resistance', 'Max_Gain_%','T0']].rename(columns={
-                                                        'Exit_Support': 'Current_Support',
-                                                        'Exit_Resistance': 'Current_Resistance'
+    st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker',  'Current_Price','Entry_Price', 'Entry_Date','Trade_PnL_%', 
+                                                     'Days_Held']].rename(columns={
         })), 
                  use_container_width=True, height=300)
 
@@ -243,9 +240,8 @@ with tab2:
         if len(current_stock_df) > 0:
             st.markdown("#### 🟢 **CURRENT TRADES**")
             st.dataframe(fix_pyarrow_df(current_stock_df[['Entry_Date', 'Entry_Price','Current_Price', 'Trade_PnL_%', 
-                                                         'Days_Held', 'Exit_Support','Exit_Resistance', 'Max_Gain_%']].rename(columns={
-                                                        'Exit_Support': 'Current_Support',
-                                                        'Exit_Resistance': 'Current_Resistance'
+                                                         'Days_Held']].rename(columns={
+
         })), use_container_width=True, height=200)
         else:
             st.info("⚠️ No current open trades")
