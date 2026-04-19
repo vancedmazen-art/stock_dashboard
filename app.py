@@ -198,7 +198,7 @@ with tab1:
     #col1.metric("🎯 Take Profit", len(take_profit))
     #col2.metric("💰 Best PnL", f"{take_profit['Trade_PnL_%'].max():.1f}%" if len(take_profit)>0 else "-")
     #col3.metric("📊 Avg PnL", f"{take_profit['Trade_PnL_%'].mean():.1f}%" if len(take_profit)>0 else "-")
-    st.dataframe(fix_pyarrow_df(take_profit_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline','Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio','Bars_To_Target','Trade_PnL_%']]), use_container_width=True, height=300)
+    st.dataframe(fix_pyarrow_df(take_profit_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price','Current_Price', 'Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio','Bars_To_Target','Trade_PnL_%']]), use_container_width=True, height=300)
     
     # 🔥 CLOSE NOW - Fixed filter
     close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
