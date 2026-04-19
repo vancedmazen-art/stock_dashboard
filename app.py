@@ -181,13 +181,21 @@ with tab1:
     # 🔥 NEW BUYS - Fixed filter using correct df
     new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj].copy()
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
+    take_profit = df_current_other[df_current_internal['Target_Hit_Date'] == refresh_date_obj].copy()
+    take_profit_with_strategy = take_profit.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
     st.markdown("#### 🆕 **Fresh BUYS**")
     col1, col2, col3 = st.columns(3)
     #col1.metric("🆕 New Buys", len(new_buys))
     #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
     #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline','Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio']]), use_container_width=True, height=400)
+    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline','Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio']]), use_container_width=True, height=300)
+    st.markdown("#### 🎯 **Take Profit**")
+    col1, col2, col3 = st.columns(3)
+    #col1.metric("🎯 Take Profit", len(take_profit))
+    #col2.metric("💰 Best PnL", f"{take_profit['Trade_PnL_%'].max():.1f}%" if len(take_profit)>0 else "-")
+    #col3.metric("📊 Avg PnL", f"{take_profit['Trade_PnL_%'].mean():.1f}%" if len(take_profit)>0 else "-")
+    st.dataframe(fix_pyarrow_df(take_profit_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline','Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio']]), use_container_width=True, height=300)
     
     # 🔥 CLOSE NOW - Fixed filter
     close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
