@@ -216,7 +216,7 @@ with tab1:
             st.components.v1.iframe(
                 f"https://s.tradingview.com/widgetembed/?symbol=EGX:{chart_ticker}&interval=D&theme=Light&style=9&hide_side_toolbar=1",
                 height=500,
-            width=800
+                width=800
             )
         else:
             st.info("👆 Click a row to view its chart")
