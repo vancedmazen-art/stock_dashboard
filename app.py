@@ -19,10 +19,8 @@ trading_facts = [
     "⚡ Quick Decisions: Opportunities are fleeting, but rushing is dangerous."
 ]
 
-# Pick 1-3 random facts each time
-#num_to_show = random.randint(1, 3)
-#selected_facts = random.sample(trading_facts, num_to_show)
 selected_facts = random.choice(trading_facts)
+
 # ---------------------------
 # LOAD ALL 3 SHEETS + Strategy Metrics
 # ---------------------------
@@ -33,7 +31,6 @@ def load_data():
             st.stop()
             return {}, [], pd.DataFrame(), None, None
         
-        # Sheet 0: Closed trades
         closed_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Closed_Trades")
         current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Open_Trades")
         strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Best_Strategy_Summary")
@@ -95,8 +92,6 @@ def fix_pyarrow_df(df):
             df_display[col] = pd.to_datetime(df_display[col], errors='coerce').dt.strftime('%Y-%m-%d')
     for col in df_display.select_dtypes(include=['object']).columns:
         df_display[col] = df_display[col].astype(str)
-    
-    # 🔥 THIS LINE FIXES THE # COLUMN
     df_display.reset_index(drop=True, inplace=True)
     return df_display
 
@@ -156,7 +151,7 @@ def fetch_latest_news(symbol: str, max_items=3):
     
     return result[:max_items]
 
-# 🔥 DATE PROCESSING - Fixed variable usage
+# 🔥 DATE PROCESSING
 df_current_internal = df_current_other.copy()
 df_closed_internal = df_closed_other.copy()
 df_current_internal['Entry_Date'] = pd.to_datetime(df_current_internal['Entry_Date'], errors='coerce').dt.date
@@ -175,61 +170,95 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 **Overall Market Sentiment**"
 ])
 
-# 🔥 TAB 1: TODAY'S ACTIONS (EGX30 excluded)
+# 🔥 TAB 1: TODAY'S ACTIONS
 with tab1:
     st.markdown("### 🚨 **TODAY'S TRADING DECISIONS**")
     st.caption(f"📅 Refresh Date: {refresh_date_str}")
     
-    # 🔥 NEW BUYS - Fixed filter using correct df
+    # Build fresh buys dataframe
     new_buys = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj].copy()
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
-    
-    st.markdown("#### 🆕 **Fresh BUYS**")
-    col1, col2, col3 = st.columns(3)
-    #col1.metric("🆕 New Buys", len(new_buys))
-    #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
-    #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline','Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio']]), use_container_width=True, height=300)
 
+    st.markdown("#### 🆕 **Fresh BUYS**")
+
+    # Initialize session state for selected ticker
+    if "fresh_buy_ticker" not in st.session_state:
+        st.session_state.fresh_buy_ticker = None
+
+    buy_left, buy_right = st.columns([3, 2])
+
+    with buy_left:
+        fresh_buys_display = fix_pyarrow_df(
+            new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume',
+                                    'Breaks_Trendline', 'Stop_Loss', 'Target_Price',
+                                    'Risk_%', 'Reward_%', 'RR_Ratio']]
+        )
+        selection = st.dataframe(
+            fresh_buys_display,
+            use_container_width=True,
+            height=300,
+            on_select="rerun",
+            selection_mode="single-row",
+            key="fresh_buys_table"
+        )
+
+        # Update selected ticker from row click
+        selected_rows = selection.selection.rows if hasattr(selection, "selection") else []
+        if selected_rows:
+            idx = selected_rows[0]
+            st.session_state.fresh_buy_ticker = fresh_buys_display.iloc[idx]["Ticker"]
+        elif st.session_state.fresh_buy_ticker is None and len(fresh_buys_display) > 0:
+            st.session_state.fresh_buy_ticker = fresh_buys_display.iloc[0]["Ticker"]
+
+    with buy_right:
+        chart_ticker = st.session_state.fresh_buy_ticker
+        if chart_ticker:
+            st.markdown(f"##### 📈 **{chart_ticker}** – Daily Chart")
+            st.components.v1.iframe(
+                f"https://s.tradingview.com/widgetembed/?symbol=EGX:{chart_ticker}&interval=D&theme=Light&style=9&hide_side_toolbar=1",
+                height=300
+            )
+        elif len(fresh_buys_display) == 0:
+            st.info("No fresh buys today")
+        else:
+            st.info("👆 Click a row to view its chart")
+
+    # Take Profit
     take_profit = df_current_other[(df_current_internal['Target_Hit_Date'] == refresh_date_obj)&(df_current_internal['Bars_To_Target'] != 0)].copy()
     take_profit_with_strategy = take_profit.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
     st.markdown("#### 🎯 **Take Profit**")
     col1, col2, col3 = st.columns(3)
-    #col1.metric("🎯 Take Profit", len(take_profit))
     col2.metric("💰 Best PnL", f"{take_profit['Trade_PnL_%'].max():.1f}%" if len(take_profit)>0 else "-")
     col3.metric("📊 Avg PnL", f"{take_profit['Trade_PnL_%'].mean():.1f}%" if len(take_profit)>0 else "-")
     st.dataframe(fix_pyarrow_df(take_profit_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price','Current_Price', 'Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio','Bars_To_Target','Trade_PnL_%']]), use_container_width=True, height=300)
     
-    # 🔥 CLOSE NOW - Fixed filter
+    # Close Now
     close_now = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj].copy()
     
     st.markdown("#### ❌ **CLOSE NOW**")
     col1, col2, col3 = st.columns(3)
-    #col1.metric("❌ Closed Today", len(close_now))
     col2.metric("💰 Best PnL", f"{close_now['Trade_PnL_%'].max():.1f}%" if len(close_now)>0 else "-")
     col3.metric("📊 Avg PnL", f"{close_now['Trade_PnL_%'].mean():.1f}%" if len(close_now)>0 else "-")
     st.dataframe(fix_pyarrow_df(close_now[['Ticker', 'Entry_Date', 'Exit_Price', 'Trade_PnL_%','Entry_Price','Days_Held']]), use_container_width=True, height=200)
     
-    # 🔥 HOLDS - Fixed filter
+    # Holds
     holds = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj].copy()
     holds_with_strategy = holds.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
     st.markdown("#### ✅ **HOLDS**")
     col1, col2, col3 = st.columns(3)
-    #col1.metric("✅ Holds", len(holds))
     col2.metric("🚀 Best PnL", f"{holds['Trade_PnL_%'].max():.1f}%" if len(holds)>0 else "-")
     col3.metric("📊 Avg PnL", f"{holds['Trade_PnL_%'].mean():.1f}%" if len(holds)>0 else "-")
     st.dataframe(fix_pyarrow_df(holds_with_strategy[['Ticker',  'Current_Price','Entry_Price', 'Entry_Date','Trade_PnL_%', 'Days_Held','Breaks_Trendline', 'Anchor_High', 'Buffer_Gain']].rename(columns={'Anchor_High': 'Target_Price','Buffer_Gain': 'Target_Gain_%'})), use_container_width=True, height=200)
 
-# 🔥 TAB 2: STOCK DETAIL (EGX30 excluded)
+# 🔥 TAB 2: STOCK DETAIL
 with tab2:
     selected_symbol = st.selectbox("🔍 Choose Stock:", all_symbols_other)
     
     current_stock_df = df_current_other[df_current_other["Ticker"] == selected_symbol]
     stock_history = df_closed_other[df_closed_other["Ticker"] == selected_symbol].sort_values("Entry_Date", ascending=False)
     
-    # 🔥 SHEET 3 STRATEGY METRICS for this stock
     strategy_for_stock = df_strategy[df_strategy["Ticker"] == selected_symbol]
     
     left_col, right_col = st.columns([3, 1])
@@ -279,7 +308,7 @@ with tab2:
             st.metric("💰 PnL", f"{safe_display(latest['Trade_PnL_%'])}%")
             st.metric("⏳ Days", safe_display(latest['Days_Held']))
 
-# 🔥 TAB 3: PORTFOLIO (EGX30 excluded)
+# 🔥 TAB 3: PORTFOLIO
 with tab3:
     st.markdown("### 📈 **PORTFOLIO OVERVIEW**")
     col1, col2, col3, col4 = st.columns(4)
@@ -289,41 +318,23 @@ with tab3:
     col4.metric("💰 Avg PnL", f"{df_closed_other['Trade_PnL_%'].mean():.1f}%")
     
     col1, col2 = st.columns(2)
-    # with col1:  # ✅ Fixed indentation
-        # st.markdown("### 🟢 **TOP GAINERS**")
-        # 
-        # 🔥 GROUP BY TICKER and get MAX PnL per stock
-        # max_per_stock = df_closed_other.groupby('Ticker')['Trade_PnL_%'].max().reset_index()
-        # max_per_stock['Days_Held'] = df_closed_other.loc[
-            # df_closed_other.groupby('Ticker')['Trade_PnL_%'].idxmax()
-        # ]['Days_Held'].values
-        # 
-        # Format FIRST, then apply fix_pyarrow_df
-        # display_df = max_per_stock.nlargest(10, "Trade_PnL_%")[["Ticker", "Trade_PnL_%", "Days_Held"]].copy()
-        # display_df['Trade_PnL_%'] = display_df['Trade_PnL_%'].apply(lambda x: f"{float(x):.1f}%")
-        # top_gainers = fix_pyarrow_df(display_df)  # ✅ Apply LAST
-        # 
-        # st.dataframe(top_gainers, use_container_width=True)
     
     with col1:
         st.markdown("### 🏆 **ALL STRATEGIES**")
         top_strategies = fix_pyarrow_df(
-            df_strategy[df_strategy['Ticker'] != 'EGX30']  # Filter first
-            [['Ticker', 'Best_Strategy', 'composite_score', 'win_rate', 'median_pnl']]  # Select columns
-            .sort_values('win_rate', ascending=False)  # Sort by win_rate DESC
+            df_strategy[df_strategy['Ticker'] != 'EGX30']
+            [['Ticker', 'Best_Strategy', 'composite_score', 'win_rate', 'median_pnl']]
+            .sort_values('win_rate', ascending=False)
         )
         st.dataframe(top_strategies, use_container_width=True)
 
 
-# 🔥 TAB 4: FULL HISTORY (EGX30 excluded)
 # 🔥 TAB 4: FULL HISTORY WITH FILTERS & AGGREGATES
 with tab4:
     st.markdown("### 📋 **COMPLETE HISTORY** - Filtered View")
     
-    # 🔥 FULL HISTORY DATA
     full_history_raw = df_closed_other.copy()
     
-    # 🔥 3 DROPDOWN FILTERS (side by side)
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -337,20 +348,17 @@ with tab4:
         sector_filter = st.multiselect(
             "🏢 Sector", 
             options=sorted(full_history_raw['Sector'].dropna().unique().tolist()),
-            default=[],  # No default selection
+            default=[],
             key="sector_filter"
         )
     
-    
-    # 🔥 APPLY FILTERS AUTOMATICALLY
     filtered_history = full_history_raw.copy()
     
     if ticker_filter != 'ALL':
         filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
-    if sector_filter:  # Only if selections made
+    if sector_filter:
         filtered_history = filtered_history[filtered_history['Sector'].isin(sector_filter)]
     
-    # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
     if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
         filtered_pnl = pd.to_numeric(filtered_history['Trade_PnL_%'], errors='coerce').dropna()
         
@@ -370,7 +378,6 @@ with tab4:
     
     st.divider()
     
-    # 🔥 FILTERED DATAFRAME DISPLAY
     if len(filtered_history) > 0:
         filtered_display = fix_pyarrow_df(filtered_history.sort_values("Entry_Date", ascending=False))
         st.dataframe(filtered_display, use_container_width=True, height=500)
@@ -456,27 +463,23 @@ with tab5:
         else:
             st.info("No recent EGX30 news")
 
-# 🔥 FIXED SIDEBAR - Variables defined before use
+# 🔥 SIDEBAR
 new_buys_other = df_current_other[df_current_internal['Entry_Date'] == refresh_date_obj]
 close_now_other = df_closed_other[df_closed_internal['Exit_Date'] == refresh_date_obj]
 holds_other = df_current_other[df_current_internal['Entry_Date'] != refresh_date_obj]
-# 🔥 Calculate DISTINCT ticker counts (defined BEFORE sidebar)
 new_buys_tickers = set(new_buys_other['Ticker'].dropna().str.strip())
-close_now_tickers = set(close_now['Ticker'].dropna().str.strip())  # Use the filtered close_now
+close_now_tickers = set(close_now['Ticker'].dropna().str.strip())
 holds_tickers = set(holds_other['Ticker'].dropna().str.strip())
+
 with st.sidebar:
     st.markdown("### 🎛️ **TRADING STATUS**")
     st.info(f"🆕 New: {len(new_buys_tickers)} | ❌ Closed: {len(close_now_tickers)} | ✅ Holds: {len(holds_tickers)}")
     st.caption(f"📅 Updated: {refresh_date_str}")
-    
-    # 🔥 EGX30 Status in sidebar - Variables now defined
     st.markdown(f"### {sentiment_emoji} Market: **{sentiment_text}**")
     st.markdown("---")
     st.markdown("### 💡 Trading Insights & Fun Facts")
     st.markdown(f"- {selected_facts}")
-    #for fact in selected_facts:
-        #st.markdown(f"- {fact}")
-# Add at VERY END of file (after sidebar)
+
 st.markdown("---")
 st.markdown(
     """
