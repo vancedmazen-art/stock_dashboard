@@ -194,32 +194,30 @@ with tab1:
                                     'Risk_%', 'Reward_%', 'RR_Ratio']]
         )
         selection = st.dataframe(
-            fresh_buys_display,
-            use_container_width=True,
-            height=500,
-            on_select="rerun",
-            selection_mode="single-row",
-            key="fresh_buys_table"
+        fresh_buys_display,
+        use_container_width=True,
+        height=500,
+        on_select="rerun",
+        selection_mode="single-row-required",
+        key="fresh_buys_table"
         )
 
-        # Update selected ticker from row click
-        selected_rows = selection.selection.rows if hasattr(selection, "selection") else []
-        if selected_rows:
-            idx = selected_rows[0]
-            st.session_state.fresh_buy_ticker = fresh_buys_display.iloc[idx]["Ticker"]
-        elif st.session_state.fresh_buy_ticker is None and len(fresh_buys_display) > 0:
-            st.session_state.fresh_buy_ticker = fresh_buys_display.iloc[0]["Ticker"]
+    selected_rows = selection.selection.rows if hasattr(selection, "selection") else []
+    if selected_rows:
+        st.session_state.fresh_buy_ticker = fresh_buys_display.iloc[selected_rows[0]]["Ticker"]
+    elif "fresh_buy_ticker" not in st.session_state and len(fresh_buys_display) > 0:
+        st.session_state.fresh_buy_ticker = fresh_buys_display.iloc[0]["Ticker"]
 
     with buy_right:
-        chart_ticker = st.session_state.fresh_buy_ticker
+        chart_ticker = st.session_state.get("fresh_buy_ticker")
+
         if chart_ticker:
             st.markdown(f"##### 📈 **{chart_ticker}** – Daily Chart")
             st.components.v1.iframe(
                 f"https://s.tradingview.com/widgetembed/?symbol=EGX:{chart_ticker}&interval=D&theme=Light&style=9&hide_side_toolbar=1",
-                height=500
+                height=500,
+            width=800
             )
-        elif len(fresh_buys_display) == 0:
-            st.info("No fresh buys today")
         else:
             st.info("👆 Click a row to view its chart")
 
