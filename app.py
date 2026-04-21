@@ -196,7 +196,7 @@ with tab1:
         selection = st.dataframe(
             fresh_buys_display,
             use_container_width=True,
-            height=200,
+            height=500,
             on_select="rerun",
             selection_mode="single-row",
             key="fresh_buys_table"
