@@ -196,7 +196,7 @@ with tab1:
         selection = st.dataframe(
             fresh_buys_display,
             use_container_width=True,
-            height=300,
+            height=200,
             on_select="rerun",
             selection_mode="single-row",
             key="fresh_buys_table"
@@ -216,7 +216,7 @@ with tab1:
             st.markdown(f"##### 📈 **{chart_ticker}** – Daily Chart")
             st.components.v1.iframe(
                 f"https://s.tradingview.com/widgetembed/?symbol=EGX:{chart_ticker}&interval=D&theme=Light&style=9&hide_side_toolbar=1",
-                height=300
+                height=500
             )
         elif len(fresh_buys_display) == 0:
             st.info("No fresh buys today")
