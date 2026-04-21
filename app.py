@@ -197,7 +197,6 @@ with tab1:
             fresh_buys_display,
             use_container_width=True,
             height=500,
-            width=50,
             on_select="rerun",
             selection_mode="single-row",
             key="fresh_buys_table"
