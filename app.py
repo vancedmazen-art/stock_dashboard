@@ -6,6 +6,7 @@ import pytz
 import os
 import numpy as np
 import random
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 # List of trading insights / fun facts
 trading_facts = [
@@ -184,12 +185,58 @@ with tab1:
     new_buys_with_strategy = new_buys.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
     st.markdown("#### 🆕 **Fresh BUYS**")
-    col1, col2, col3 = st.columns(3)
-    #col1.metric("🆕 New Buys", len(new_buys))
-    #col2.metric("💰 Best PnL", f"{new_buys['Trade_PnL_%'].max():.1f}%" if len(new_buys)>0 else "-")
-    #col3.metric("📊 Avg PnL", f"{new_buys['Trade_PnL_%'].mean():.1f}%" if len(new_buys)>0 else "-")
-    st.dataframe(fix_pyarrow_df(new_buys_with_strategy[['Ticker', 'Entry_Date', 'Entry_Price', 'Entry_Volume','Breaks_Trendline','Stop_Loss','Target_Price','Risk_%','Reward_%', 'RR_Ratio']]), use_container_width=True, height=300)
 
+left_col, right_col = st.columns([2, 1])
+
+with left_col:
+
+    if len(new_buys_with_strategy) > 0:
+
+        display_df = fix_pyarrow_df(
+            new_buys_with_strategy[
+                ['Ticker','Entry_Date','Entry_Price','Entry_Volume',
+                 'Breaks_Trendline','Stop_Loss','Target_Price',
+                 'Risk_%','Reward_%','RR_Ratio']
+            ]
+        )
+
+        gb = GridOptionsBuilder.from_dataframe(display_df)
+
+        gb.configure_selection(
+            selection_mode="single",
+            use_checkbox=False
+        )
+
+        grid_response = AgGrid(
+            display_df,
+            gridOptions=gb.build(),
+            height=300,
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
+            allow_unsafe_jscode=True
+        )
+
+        selected_rows = grid_response["selected_rows"]
+
+    else:
+
+        selected_rows = None
+        st.info("No fresh buys today")
+
+
+with right_col:
+
+    if selected_rows is not None and len(selected_rows) > 0:
+
+        selected_symbol = selected_rows[0]["Ticker"]
+
+        st.components.v1.iframe(
+            f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9",
+            height=320
+        )
+
+    else:
+
+        st.info("Click a ticker to view chart")
     take_profit = df_current_other[(df_current_internal['Target_Hit_Date'] == refresh_date_obj)&(df_current_internal['Bars_To_Target'] != 0)].copy()
     take_profit_with_strategy = take_profit.merge(df_strategy[['Ticker', 'Best_Strategy']], on='Ticker', how='left')
     
