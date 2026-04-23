@@ -335,7 +335,7 @@ with tab4:
         )
     with col2:
         breaks_trendline = st.multiselect(
-            "🏢 Sector", 
+            "🏢 Breaks_Trendline", 
             options=sorted(full_history_raw['Breaks_Trendline'].dropna().unique().tolist()),
             default=[],  # No default selection
             key="breaks_trendline"
