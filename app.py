@@ -335,8 +335,8 @@ with tab4:
         )
     with col2:
         Testing_Anchor = st.checkbox(
-            "🏢 Show Only Testing Anchor",
-            value=True,
+            "🏢 Show Only not Testing Anchor",
+            value=False,
             key="Testing_Anchor"
         )
     
@@ -347,7 +347,7 @@ with tab4:
     if ticker_filter != 'ALL':
         filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
     if Testing_Anchor:  # Only if selections made
-        filtered_history = filtered_history[filtered_history['Testing_Anchor'] == True]
+        filtered_history = filtered_history[filtered_history['Testing_Anchor'] == False]
     
     # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
     if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
