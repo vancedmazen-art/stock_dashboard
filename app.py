@@ -334,10 +334,10 @@ with tab4:
             key="ticker_filter"
         )
     with col2:
-        breaks_trendline = st.checkbox(
-            "🏢 Show Only Breaks Trendline",
+        Testing_Anchor = st.checkbox(
+            "🏢 Show Only Testing Anchor",
             value=False,
-            key="breaks_trendline"
+            key="Testing_Anchor"
         )
     
     
@@ -346,8 +346,8 @@ with tab4:
     
     if ticker_filter != 'ALL':
         filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
-    if breaks_trendline:  # Only if selections made
-        filtered_history = filtered_history[filtered_history['Breaks_Trendline'] == True]
+    if Testing_Anchor:  # Only if selections made
+        filtered_history = filtered_history[filtered_history['Testing_Anchor'] == True]
     
     # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
     if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
