@@ -334,11 +334,11 @@ with tab4:
             key="ticker_filter"
         )
     with col2:
-        sector_filter = st.multiselect(
+        breaks_trendline = st.multiselect(
             "🏢 Sector", 
-            options=sorted(full_history_raw['Sector'].dropna().unique().tolist()),
+            options=sorted(full_history_raw['Breaks_Trendline'].dropna().unique().tolist()),
             default=[],  # No default selection
-            key="sector_filter"
+            key="breaks_trendline"
         )
     
     
@@ -347,8 +347,8 @@ with tab4:
     
     if ticker_filter != 'ALL':
         filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
-    if sector_filter:  # Only if selections made
-        filtered_history = filtered_history[filtered_history['Sector'].isin(sector_filter)]
+    if breaks_trendline:  # Only if selections made
+        filtered_history = filtered_history[filtered_history['Sector'].isin(breaks_trendline)]
     
     # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
     if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
