@@ -348,7 +348,7 @@ with tab4:
     if ticker_filter != 'ALL':
         filtered_history = filtered_history[filtered_history['Ticker'] == ticker_filter]
     if breaks_trendline:  # Only if selections made
-        filtered_history = filtered_history[filtered_history['Sector'].isin(breaks_trendline)]
+        filtered_history = filtered_history[filtered_history['Breaks_Trendline'].isin(breaks_trendline)]
     
     # 🔥 AGGREGATE METRICS (only if Trade_PnL_% exists and has data)
     if 'Trade_PnL_%' in filtered_history.columns and len(filtered_history) > 0:
