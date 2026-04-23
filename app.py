@@ -333,7 +333,7 @@ with tab4:
             index=0,
             key="ticker_filter"
         )
-     with col2:
+    with col2:
         breaks_trendline = st.checkbox(
             "🏢 Show Only Breaks Trendline",
             value=False,
