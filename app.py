@@ -23,36 +23,67 @@ def draw_candle_chart(ticker, height=600):
         st.warning(f"No chart data for {ticker}")
         return
 
+    # Date only, no time
+    df['date_str'] = df['datetime'].dt.strftime('%Y-%m-%d')
+
     fig = go.Figure(data=[go.Candlestick(
-        x=df['datetime'],
+        x=df['date_str'],
         open=df['open'],
         high=df['high'],
         low=df['low'],
         close=df['close'],
         increasing_line_color='#10b981',
+        increasing_fillcolor='#10b981',
         decreasing_line_color='#f87171',
+        decreasing_fillcolor='#f87171',
         name=ticker
     )])
 
     fig.update_layout(
-        title=dict(text=f"EGX: {ticker}", font=dict(size=16, color='#d1fae5')),
+        title=dict(text=f"EGX: {ticker}", font=dict(size=16, color='#d1fae5'), x=0.01),
         paper_bgcolor='#0f172a',
         plot_bgcolor='#0a1a12',
         font=dict(color='#9ca3af', family='DM Mono'),
+        height=550,
+        margin=dict(l=10, r=80, t=50, b=60),  # right padding for price axis
+
         xaxis=dict(
             gridcolor='#1e3a2a',
             showgrid=True,
             rangeslider=dict(visible=False),
-            type='category',        # skips weekends/gaps
+            type='category',
             tickangle=-45,
-            nticks=10,
+            nticks=12,
+            range=[0, len(df) + 5],   # padding on the right
         ),
-        yaxis=dict(gridcolor='#1e3a2a', showgrid=True),
-        margin=dict(l=10, r=10, t=40, b=10),
-        height=height,
+        yaxis=dict(
+            gridcolor='#1e3a2a',
+            showgrid=True,
+            side='right',             # price on right axis
+            showline=True,
+            linecolor='#1e3a2a',
+        ),
+
+        dragmode='zoom',              # zoom by default
+        selectdirection='h',
+
+        modebar=dict(
+            bgcolor='#0f172a',
+            color='#4b6a57',
+            activecolor='#10b981',
+        ),
     )
 
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={
+            'displayModeBar': True,
+            'scrollZoom': True,        # mouse wheel zoom
+            'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
+            'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
+        }
+    )
 # List of trading insights / fun facts
 trading_facts = [
     "🧠 Discipline Wins: Following your rules beats predicting the market.",
