@@ -107,9 +107,9 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None, entry=Non
                     font=dict(color='#9ca3af', size=11), x=0.01, y=0.99),
         modebar=dict(bgcolor='#0f172a', color='#4b6a57', activecolor='#10b981'),
     )
-    axis_style = dict(gridcolor='#1e3a2a', showgrid=True,
+    axis_style = dict(gridcolor='#1e3a2a', showgrid=False,
                       showline=True, linecolor='#1e3a2a', side='right')
-    fig.update_xaxes(gridcolor='#1e3a2a', showgrid=True, type='category',
+    fig.update_xaxes(gridcolor='#1e3a2a', showgrid=False, type='category',
                      tickangle=-45, nticks=12, range=[0, x_range_end], row=2, col=1)
     fig.update_xaxes(showgrid=False, type='category',
                      range=[0, x_range_end], showticklabels=False, row=1, col=1)
