@@ -56,7 +56,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None, entry=Non
         entry_date_str = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
         entry_row = df[df['date_str'] == entry_date_str]
         if not entry_row.empty:
-            arrow_y = entry_row['low'].values[0] * 0.80
+            arrow_y = entry_row['low'].values[0] * 0.95
             fig.add_trace(go.Scatter(
                 x=[entry_date_str],
                 y=[arrow_y],
