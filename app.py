@@ -15,7 +15,7 @@ def load_chart_data():
     df.columns = df.columns.str.strip().str.lower()
     return df
 
-def draw_candle_chart(ticker, height=600):
+def draw_candle_chart(ticker, height=700):
     df_all = load_chart_data()
     df = df_all[df_all['symbol'] == ticker].copy().sort_values('datetime')
     
@@ -23,10 +23,27 @@ def draw_candle_chart(ticker, height=600):
         st.warning(f"No chart data for {ticker}")
         return
 
-    # Date only, no time
+    # Date only + EMA 20
     df['date_str'] = df['datetime'].dt.strftime('%Y-%m-%d')
+    df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
 
-    fig = go.Figure(data=[go.Candlestick(
+    # Volume colors
+    vol_colors = ['#10b981' if c >= o else '#f87171' 
+                  for c, o in zip(df['close'], df['open'])]
+
+    fig = go.Figure()
+
+    # ── Subplots: 75% price / 25% volume ─────────────────────────────────────
+    from plotly.subplots import make_subplots
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.03,
+        row_heights=[0.75, 0.25]
+    )
+
+    # ── Candlesticks ──────────────────────────────────────────────────────────
+    fig.add_trace(go.Candlestick(
         x=df['date_str'],
         open=df['open'],
         high=df['high'],
@@ -36,37 +53,46 @@ def draw_candle_chart(ticker, height=600):
         increasing_fillcolor='#10b981',
         decreasing_line_color='#f87171',
         decreasing_fillcolor='#f87171',
-        name=ticker
-    )])
+        name=ticker,
+        showlegend=False,
+    ), row=1, col=1)
+
+    # ── EMA 20 ────────────────────────────────────────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=df['date_str'],
+        y=df['ema20'],
+        mode='lines',
+        line=dict(color='#facc15', width=1.5),
+        name='EMA 20',
+    ), row=1, col=1)
+
+    # ── Volume bars ───────────────────────────────────────────────────────────
+    fig.add_trace(go.Bar(
+        x=df['date_str'],
+        y=df['volume'],
+        marker_color=vol_colors,
+        marker_opacity=0.7,
+        name='Volume',
+        showlegend=False,
+    ), row=2, col=1)
+
+    # ── Layout ────────────────────────────────────────────────────────────────
+    x_range_end = len(df) + 15       # more right padding
 
     fig.update_layout(
         title=dict(text=f"EGX: {ticker}", font=dict(size=16, color='#d1fae5'), x=0.01),
         paper_bgcolor='#0f172a',
         plot_bgcolor='#0a1a12',
         font=dict(color='#9ca3af', family='DM Mono'),
-        height=550,
-        margin=dict(l=10, r=80, t=50, b=60),  # right padding for price axis
-
-        xaxis=dict(
-            gridcolor='#1e3a2a',
-            showgrid=True,
-            rangeslider=dict(visible=False),
-            type='category',
-            tickangle=-45,
-            nticks=12,
-            range=[0, len(df) + 5],   # padding on the right
+        height=height,
+        margin=dict(l=10, r=100, t=50, b=60),
+        dragmode='zoom',
+        legend=dict(
+            bgcolor='#0f172a',
+            bordercolor='#1e3a2a',
+            font=dict(color='#9ca3af', size=11),
+            x=0.01, y=0.99,
         ),
-        yaxis=dict(
-            gridcolor='#1e3a2a',
-            showgrid=True,
-            side='right',             # price on right axis
-            showline=True,
-            linecolor='#1e3a2a',
-        ),
-
-        dragmode='zoom',              # zoom by default
-        selectdirection='h',
-
         modebar=dict(
             bgcolor='#0f172a',
             color='#4b6a57',
@@ -74,13 +100,46 @@ def draw_candle_chart(ticker, height=600):
         ),
     )
 
+    # ── Axes ─────────────────────────────────────────────────────────────────
+    axis_style = dict(
+        gridcolor='#1e3a2a',
+        showgrid=True,
+        showline=True,
+        linecolor='#1e3a2a',
+        side='right',
+    )
+
+    fig.update_xaxes(
+        gridcolor='#1e3a2a',
+        showgrid=True,
+        rangeslider=dict(visible=False),
+        type='category',
+        tickangle=-45,
+        nticks=12,
+        range=[0, x_range_end],
+        row=2, col=1,
+    )
+    fig.update_xaxes(
+        gridcolor='#1e3a2a',
+        showgrid=False,
+        type='category',
+        range=[0, x_range_end],
+        row=1, col=1,
+    )
+    fig.update_yaxes(**axis_style, row=1, col=1)
+    fig.update_yaxes(
+        **axis_style,
+        tickformat='.2s',            # e.g. 1.2M instead of 1200000
+        title=dict(text='Vol', font=dict(size=10, color='#4b6a57')),
+        row=2, col=1,
+    )
+
     st.plotly_chart(
         fig,
         use_container_width=True,
         config={
             'displayModeBar': True,
-            'scrollZoom': True,        # mouse wheel zoom
-            'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
+            'scrollZoom': True,
             'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
         }
     )
