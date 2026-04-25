@@ -289,7 +289,7 @@ with tab2:
             st.info("⚠️ No current open trades")
         
         st.markdown("#### 📊 **CHART**")
-        draw_candle_chart(chart_ticker, height=component_height)
+        draw_candle_chart(selected_symbol, height=400)
         
         st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
         news_items = fetch_latest_news(selected_symbol, max_items=3)
