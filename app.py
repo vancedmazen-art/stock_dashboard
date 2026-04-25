@@ -7,7 +7,52 @@ import os
 import numpy as np
 import random
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+import plotly.graph_objects as go
+@st.cache_data(ttl=3600)
+def load_chart_data():
+    url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
+    df = pd.read_csv(url, parse_dates=['datetime'])
+    df.columns = df.columns.str.strip().str.lower()
+    return df
 
+def draw_candle_chart(ticker, height=600):
+    df_all = load_chart_data()
+    df = df_all[df_all['symbol'] == ticker].copy().sort_values('datetime')
+    
+    if df.empty:
+        st.warning(f"No chart data for {ticker}")
+        return
+
+    fig = go.Figure(data=[go.Candlestick(
+        x=df['datetime'],
+        open=df['open'],
+        high=df['high'],
+        low=df['low'],
+        close=df['close'],
+        increasing_line_color='#10b981',
+        decreasing_line_color='#f87171',
+        name=ticker
+    )])
+
+    fig.update_layout(
+        title=dict(text=f"EGX: {ticker}", font=dict(size=16, color='#d1fae5')),
+        paper_bgcolor='#0f172a',
+        plot_bgcolor='#0a1a12',
+        font=dict(color='#9ca3af', family='DM Mono'),
+        xaxis=dict(
+            gridcolor='#1e3a2a',
+            showgrid=True,
+            rangeslider=dict(visible=False),
+            type='category',        # skips weekends/gaps
+            tickangle=-45,
+            nticks=10,
+        ),
+        yaxis=dict(gridcolor='#1e3a2a', showgrid=True),
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=height,
+    )
+
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 # List of trading insights / fun facts
 trading_facts = [
     "🧠 Discipline Wins: Following your rules beats predicting the market.",
@@ -244,7 +289,7 @@ with tab2:
             st.info("⚠️ No current open trades")
         
         st.markdown("#### 📊 **CHART**")
-        st.components.v1.iframe(f"https://s.tradingview.com/widgetembed/?symbol=EGX:{selected_symbol}&interval=D&theme=Light&style=9", height=400)
+        draw_candle_chart(chart_ticker, height=component_height)
         
         st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
         news_items = fetch_latest_news(selected_symbol, max_items=3)
