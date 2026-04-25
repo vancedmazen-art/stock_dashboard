@@ -15,7 +15,7 @@ def load_chart_data():
     df.columns = df.columns.str.strip().str.lower()
     return df
 
-def draw_candle_chart(ticker, height=700):
+def draw_candle_chart(ticker, height=700, stop_loss=None, target=None, entry=None):
     from plotly.subplots import make_subplots
 
     df_all = load_chart_data()
@@ -37,20 +37,26 @@ def draw_candle_chart(ticker, height=700):
         row_heights=[0.75, 0.25]
     )
 
+    # ── Hollow candles ────────────────────────────────────────────────────────
     fig.add_trace(go.Candlestick(
         x=df['date_str'],
         open=df['open'],
         high=df['high'],
         low=df['low'],
         close=df['close'],
-        increasing_line_color='#10b981',
-        increasing_fillcolor='#10b981',
-        decreasing_line_color='#f87171',
-        decreasing_fillcolor='#f87171',
+        increasing=dict(
+            line=dict(color='#10b981', width=1),
+            fillcolor='rgba(0,0,0,0)',      # hollow
+        ),
+        decreasing=dict(
+            line=dict(color='#f87171', width=1),
+            fillcolor='rgba(0,0,0,0)',      # hollow
+        ),
         name=ticker,
         showlegend=False,
     ), row=1, col=1)
 
+    # ── EMA 20 ────────────────────────────────────────────────────────────────
     fig.add_trace(go.Scatter(
         x=df['date_str'],
         y=df['ema20'],
@@ -59,6 +65,37 @@ def draw_candle_chart(ticker, height=700):
         name='EMA 20',
     ), row=1, col=1)
 
+    # ── Stop Loss line ────────────────────────────────────────────────────────
+    if stop_loss:
+        fig.add_hline(
+            y=stop_loss, row=1, col=1,
+            line=dict(color='#f87171', width=1.5, dash='dash'),
+            annotation_text=f"Stop  {stop_loss:.2f}",
+            annotation_position="right",
+            annotation_font=dict(color='#f87171', size=11),
+        )
+
+    # ── Entry line ────────────────────────────────────────────────────────────
+    if entry:
+        fig.add_hline(
+            y=entry, row=1, col=1,
+            line=dict(color='#94a3b8', width=1.5, dash='dot'),
+            annotation_text=f"Entry  {entry:.2f}",
+            annotation_position="right",
+            annotation_font=dict(color='#94a3b8', size=11),
+        )
+
+    # ── Target line ───────────────────────────────────────────────────────────
+    if target:
+        fig.add_hline(
+            y=target, row=1, col=1,
+            line=dict(color='#10b981', width=1.5, dash='dash'),
+            annotation_text=f"Target  {target:.2f}",
+            annotation_position="right",
+            annotation_font=dict(color='#10b981', size=11),
+        )
+
+    # ── Volume bars ───────────────────────────────────────────────────────────
     fig.add_trace(go.Bar(
         x=df['date_str'],
         y=df['volume'],
@@ -78,7 +115,6 @@ def draw_candle_chart(ticker, height=700):
         height=height,
         margin=dict(l=10, r=100, t=50, b=60),
         dragmode='zoom',
-        # ✅ KEY FIX: disable rangeslider on both xaxes
         xaxis=dict(rangeslider=dict(visible=False), showticklabels=False),
         xaxis2=dict(rangeslider=dict(visible=False)),
         legend=dict(
@@ -103,32 +139,23 @@ def draw_candle_chart(ticker, height=700):
     )
 
     fig.update_xaxes(
-        gridcolor='#1e3a2a',
-        showgrid=True,
-        type='category',
-        tickangle=-45,
-        nticks=12,
-        range=[0, x_range_end],
-        row=2, col=1,
+        gridcolor='#1e3a2a', showgrid=True,
+        type='category', tickangle=-45, nticks=12,
+        range=[0, x_range_end], row=2, col=1,
     )
     fig.update_xaxes(
-        showgrid=False,
-        type='category',
-        range=[0, x_range_end],
-        showticklabels=False,        # ✅ hide dates on top panel, only show on volume
-        row=1, col=1,
+        showgrid=False, type='category',
+        range=[0, x_range_end], showticklabels=False, row=1, col=1,
     )
     fig.update_yaxes(**axis_style, row=1, col=1)
     fig.update_yaxes(
-        **axis_style,
-        tickformat='.2s',
+        **axis_style, tickformat='.2s',
         title=dict(text='Vol', font=dict(size=10, color='#4b6a57')),
         row=2, col=1,
     )
 
     st.plotly_chart(
-        fig,
-        use_container_width=True,
+        fig, use_container_width=True,
         config={
             'displayModeBar': True,
             'scrollZoom': True,
@@ -371,7 +398,14 @@ with tab2:
             st.info("⚠️ No current open trades")
         
         st.markdown("#### 📊 **CHART**")
-        draw_candle_chart(selected_symbol, height=400)
+        stop_loss = entry = target = None
+        if len(current_stock_df) > 0:
+            row = current_stock_df.iloc[0]
+            stop_loss = float(row['Stop_Loss'])   if pd.notna(row.get('Stop_Loss'))   else None
+            entry     = float(row['Entry_Price']) if pd.notna(row.get('Entry_Price')) else None
+            target    = float(row['Target_Price'])if pd.notna(row.get('Target_Price'))else None
+
+        draw_candle_chart(selected_symbol, height=600, stop_loss=stop_loss, target=target, entry=entry)
         
         st.markdown("#### 📰 **LATEST NEWS** (Top 3)")
         news_items = fetch_latest_news(selected_symbol, max_items=3)
