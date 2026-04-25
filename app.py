@@ -20,7 +20,7 @@ def load_chart_data():
     return df
 
 
-def draw_candle_chart(ticker, height=580, stop_loss=None, target=None, entry=None):
+def draw_candle_chart(ticker, height=650, stop_loss=None, target=None, entry=None, entry_date=None):
     df_all = load_chart_data()
     df = df_all[df_all['symbol'] == ticker].copy().sort_values('datetime')
 
@@ -36,6 +36,7 @@ def draw_candle_chart(ticker, height=580, stop_loss=None, target=None, entry=Non
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         vertical_spacing=0.03, row_heights=[0.75, 0.25])
 
+    # Candlesticks (hollow)
     fig.add_trace(go.Candlestick(
         x=df['date_str'], open=df['open'], high=df['high'],
         low=df['low'], close=df['close'],
@@ -44,11 +45,29 @@ def draw_candle_chart(ticker, height=580, stop_loss=None, target=None, entry=Non
         name=ticker, showlegend=False,
     ), row=1, col=1)
 
+    # EMA 20
     fig.add_trace(go.Scatter(
         x=df['date_str'], y=df['ema20'], mode='lines',
         line=dict(color='#facc15', width=1.5), name='EMA 20',
     ), row=1, col=1)
 
+    # Entry date green arrow below candle
+    if entry_date:
+        entry_date_str = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
+        entry_row = df[df['date_str'] == entry_date_str]
+        if not entry_row.empty:
+            arrow_y = entry_row['low'].values[0] * 0.995
+            fig.add_trace(go.Scatter(
+                x=[entry_date_str],
+                y=[arrow_y],
+                mode='markers',
+                marker=dict(symbol='triangle-up', size=14,
+                            color='#10b981', line=dict(color='#d1fae5', width=1)),
+                name='Entry Date',
+                hovertemplate=f"Entry: {entry_date_str}<extra></extra>",
+            ), row=1, col=1)
+
+    # Horizontal level lines
     if stop_loss:
         fig.add_hline(y=stop_loss, row=1, col=1,
                       line=dict(color='#f87171', width=1.5, dash='dash'),
@@ -68,6 +87,7 @@ def draw_candle_chart(ticker, height=580, stop_loss=None, target=None, entry=Non
                       annotation_position="right",
                       annotation_font=dict(color='#10b981', size=11))
 
+    # Volume bars
     fig.add_trace(go.Bar(
         x=df['date_str'], y=df['volume'],
         marker_color=vol_colors, marker_opacity=0.7,
@@ -210,7 +230,52 @@ def get_levels(row):
     sl = float(row['Stop_Loss'])    if pd.notna(row.get('Stop_Loss'))    else None
     en = float(row['Entry_Price'])  if pd.notna(row.get('Entry_Price'))  else None
     tg = float(row['Target_Price']) if pd.notna(row.get('Target_Price')) else None
-    return sl, en, tg
+    ed = row.get('Entry_Date', None)
+    return sl, en, tg, ed
+
+
+def render_metrics_list(row, metric_cols):
+    """Render metrics as a vertical list — label on top, value below, styled."""
+    st.markdown("""
+    <style>
+    .metric-list-item {
+        background: #0f172a;
+        border: 1px solid #1e3a2a;
+        border-radius: 9px;
+        padding: 9px 13px;
+        margin-bottom: 7px;
+    }
+    .metric-list-label {
+        font-size: 10px;
+        color: #4b6a57;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-family: 'DM Mono', monospace;
+        margin-bottom: 3px;
+    }
+    .metric-list-value {
+        font-size: 15px;
+        font-weight: 600;
+        color: #d1fae5;
+        font-family: 'DM Mono', monospace;
+    }
+    .metric-list-value.loss { color: #f87171; }
+    .metric-list-value.gain { color: #34d399; }
+    .metric-list-value.warn { color: #facc15; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    for lbl, col, hint in metric_cols:
+        if col not in row.index:
+            continue
+        val = row.get(col)
+        display = safe(val) if isinstance(val, (int, float)) or (isinstance(val, str) and val.replace('.','',1).lstrip('-').isdigit()) else (str(val) if pd.notna(val) else "—")
+        color_class = {"loss": "loss", "gain": "gain", "warn": "warn"}.get(hint, "")
+        st.markdown(f"""
+        <div class="metric-list-item">
+            <div class="metric-list-label">{lbl}</div>
+            <div class="metric-list-value {color_class}">{display}</div>
+        </div>""", unsafe_allow_html=True)
 
 
 # ---------------------------
@@ -218,7 +283,6 @@ def get_levels(row):
 # ---------------------------
 st.set_page_config(page_title="🚀 EGX Dashboard", layout="wide")
 
-# Inject minimal CSS — only typography & radio styling, no HTML components
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
@@ -226,12 +290,6 @@ div[data-testid="stRadio"] label {
     font-family: 'DM Mono', monospace !important;
     font-size: 13px !important;
     padding: 4px 0 !important;
-}
-div[data-testid="metric-container"] {
-    background: #0f172a;
-    border: 1px solid #1e3a2a;
-    border-radius: 10px;
-    padding: 10px 14px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -292,13 +350,16 @@ with st.sidebar:
 
 
 # ---------------------------
-# REUSABLE PANEL: radio list + chart
+# REUSABLE PANEL
+# Layout: [ticker list | metrics list | chart + news]
 # ---------------------------
 def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news=True):
     """
-    Left: radio button list of tickers.
-    Right: metrics strip + candlestick chart + optional news.
-    metric_cols: list of (label, col_name)
+    3-column layout:
+      col_tickers  (narrow)  — radio list
+      col_metrics  (narrow)  — vertical metric cards
+      col_chart    (wide)    — candlestick chart + news
+    metric_cols: list of (label, col_name, color_hint)  hint: gain|loss|warn|neutral
     """
     if source_df.empty:
         st.info("Nothing here today.")
@@ -306,35 +367,34 @@ def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news
 
     tickers = source_df['Ticker'].tolist()
 
-    # Radio — native Streamlit, no HTML
-    selected = st.radio(
-        "Select stock",
-        options=tickers,
-        key=session_key,
-        label_visibility="collapsed",
-        horizontal=False,
-    )
+    col_tickers, col_metrics, col_chart = st.columns([1, 1, 5])
 
-    st.divider()
+    with col_tickers:
+        st.markdown("**Stocks**")
+        selected = st.radio(
+            "Select stock",
+            options=tickers,
+            key=session_key,
+            label_visibility="collapsed",
+        )
 
-    if selected:
-        row = source_df[source_df['Ticker'] == selected].iloc[0]
+    if not selected:
+        return
 
-        # Metrics strip
-        valid_cols = [(lbl, col) for lbl, col in metric_cols if col in source_df.columns]
-        if valid_cols:
-            cols = st.columns(len(valid_cols))
-            for i, (lbl, col) in enumerate(valid_cols):
-                cols[i].metric(lbl, safe(row.get(col)))
+    row = source_df[source_df['Ticker'] == selected].iloc[0]
 
-        # Levels
-        sl = en = tg = None
+    with col_metrics:
+        st.markdown(f"**{selected}**")
+        render_metrics_list(row, metric_cols)
+
+    with col_chart:
+        sl = en = tg = ed = None
         if show_levels:
-            sl, en, tg = get_levels(row)
+            sl, en, tg, ed = get_levels(row)
 
-        draw_candle_chart(selected, height=560, stop_loss=sl, target=tg, entry=en)
+        draw_candle_chart(selected, height=650,
+                          stop_loss=sl, target=tg, entry=en, entry_date=ed)
 
-        # News
         if show_news:
             st.markdown("#### 📰 Latest News")
             items = fetch_latest_news(selected, max_items=3)
@@ -361,62 +421,53 @@ tab_buys, tab_tp, tab_close, tab_holds, tab_egx30 = st.tabs([
 
 # ── TAB 1: FRESH BUYS ────────────────────────────────────────────────────────
 with tab_buys:
-    if fresh_buys_df.empty:
-        st.info("No fresh buys today.")
-    else:
-        left, right = st.columns([1, 3])
-        with left:
-            stock_panel(
-                fresh_buys_df, "buy_ticker",
-                metric_cols=[
-                    ("Entry",   "Entry_Price"),
-                    ("Stop",    "Stop_Loss"),
-                    ("Target",  "Target_Price"),
-                    ("Risk %",  "Risk_%"),
-                    ("Reward%", "Reward_%"),
-                    ("R:R",     "RR_Ratio"),
-                ],
-                show_levels=True, show_news=True,
-            )
-        with right:
-            pass  # chart is drawn inside stock_panel via st.columns context
+    stock_panel(
+        fresh_buys_df, "buy_ticker",
+        metric_cols=[
+            ("Entry Date",  "Entry_Date",   "neutral"),
+            ("Entry Price", "Entry_Price",  "neutral"),
+            ("Stop Loss",   "Stop_Loss",    "loss"),
+            ("Target",      "Target_Price", "gain"),
+            ("Risk %",      "Risk_%",       "loss"),
+            ("Reward %",    "Reward_%",     "gain"),
+            ("R:R",         "RR_Ratio",     "warn"),
+            ("TL Break",    "Breaks_Trendline", "neutral"),
+        ],
+        show_levels=True, show_news=True,
+    )
 
 
 # ── TAB 2: TAKE PROFIT ───────────────────────────────────────────────────────
 with tab_tp:
-    if take_profit_df.empty:
-        st.info("No take profit signals today.")
-    else:
-        stock_panel(
-            take_profit_df, "tp_ticker",
-            metric_cols=[
-                ("Entry",   "Entry_Price"),
-                ("Current", "Current_Price"),
-                ("PnL %",   "Trade_PnL_%"),
-                ("Target",  "Target_Price"),
-                ("Days",    "Days_Held"),
-                ("R:R",     "RR_Ratio"),
-            ],
-            show_levels=True, show_news=True,
-        )
+    stock_panel(
+        take_profit_df, "tp_ticker",
+        metric_cols=[
+            ("Entry Date",  "Entry_Date",    "neutral"),
+            ("Entry Price", "Entry_Price",   "neutral"),
+            ("Current",     "Current_Price", "neutral"),
+            ("PnL %",       "Trade_PnL_%",   "gain"),
+            ("Target",      "Target_Price",  "gain"),
+            ("Days Held",   "Days_Held",     "neutral"),
+            ("R:R",         "RR_Ratio",      "warn"),
+        ],
+        show_levels=True, show_news=True,
+    )
 
 
 # ── TAB 3: CLOSE NOW ─────────────────────────────────────────────────────────
 with tab_close:
-    if close_now_df.empty:
-        st.info("Nothing to close today.")
-    else:
-        stock_panel(
-            close_now_df, "close_ticker",
-            metric_cols=[
-                ("Entry",  "Entry_Price"),
-                ("Exit",   "Exit_Price"),
-                ("PnL %",  "Trade_PnL_%"),
-                ("Days",   "Days_Held"),
-            ],
-            show_levels=False,  # already closed
-            show_news=True,
-        )
+    stock_panel(
+        close_now_df, "close_ticker",
+        metric_cols=[
+            ("Entry Date",  "Entry_Date",  "neutral"),
+            ("Entry Price", "Entry_Price", "neutral"),
+            ("Exit Price",  "Exit_Price",  "neutral"),
+            ("PnL %",       "Trade_PnL_%", "gain"),
+            ("Days Held",   "Days_Held",   "neutral"),
+        ],
+        show_levels=False,
+        show_news=True,
+    )
 
 
 # ── TAB 4: HOLDS ─────────────────────────────────────────────────────────────
