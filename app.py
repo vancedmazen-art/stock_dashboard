@@ -42,7 +42,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         return
 
     # Date only (no time)
-    df['date_str'] = df['datetime'].dt.strftime('%Y-%m-%d')
+    df['date'] = pd.to_datetime(df['datetime'])
     df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
 
     # Candle % change for hover
@@ -63,7 +63,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
 
     # ── Hollow candlesticks with custom hover ─────────────────────────────────
     fig.add_trace(go.Candlestick(
-        x=df['date_str'],
+        x=df['date'],
         open=df['open'], high=df['high'],
         low=df['low'],   close=df['close'],
         increasing=dict(line=dict(color='#10b981', width=1), fillcolor='rgba(0,0,0,0)'),
@@ -197,19 +197,21 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
                     tickformat='.2s', fixedrange=True,
                     title=dict(text='Vol', font=dict(size=10, color='#4b6a57')))
 
-    fig.update_xaxes(type='category', tickangle=-45, nticks=20,
-                     showgrid=False, showline=False, zeroline=False,
-                     autorange=True, row=2, col=1)
-    fig.update_xaxes(type='category', showticklabels=False,
-                     showgrid=False, showline=False, zeroline=False,
-                     autorange=True, row=1, col=1)
+    fig.update_xaxes(type='date')
     fig.update_yaxes(**price_ax, row=1, col=1)
     fig.update_yaxes(**vol_ax,   row=2, col=1)
+    # Default view: last 90 days
+    if len(df) > 0:
+        end_date = df['date'].max()
+        start_date = end_date - pd.Timedelta(days=90)
 
+    fig.update_xaxes(range=[start_date, end_date], row=1, col=1)
+    fig.update_xaxes(range=[start_date, end_date], row=2, col=1)
     st.plotly_chart(fig, use_container_width=True,
                     config={
                         'displayModeBar': True,
-                        'scrollZoom': True,       # mouse-wheel zoom
+                        'scrollZoom': True,
+                        'doubleClick': 'reset',
                         'modeBarButtonsToRemove': [
                             'toImage', 'sendDataToCloud',
                             'zoom2d', 'zoomIn2d', 'zoomOut2d',  # remove box-zoom buttons
