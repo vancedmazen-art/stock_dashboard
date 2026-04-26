@@ -2,7 +2,7 @@ name: EGX Daily Pipeline
 
 on:
   schedule:
-    - cron: "0 13 * * 0-4"   # 3 PM Cairo (Sun–Thu)
+    - cron: '0 13 * * 0-4'  # Sun–Thu 3 PM Cairo
   workflow_dispatch:
 
 jobs:
@@ -22,12 +22,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run pipeline
-        run: python update_ohlcv.py
+        run: python scripts/update_ohlcv.py
 
       - name: Commit results
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/ohlcv.csv
-          git commit -m "Daily OHLCV update" || echo "No changes"
+          git add .
+          git diff --cached --quiet || git commit -m "Daily OHLCV update"
           git push
