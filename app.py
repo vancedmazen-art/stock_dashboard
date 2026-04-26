@@ -421,36 +421,17 @@ _all_facts = [
     "🔄 Cut Losses Fast: A small loss today beats a big one tomorrow.",
 ]
 _tape_text = "  ·  ".join(_all_facts) + "  ·  " + "  ·  ".join(_all_facts)
-st.markdown(
-    f"""<style>
-    @keyframes tape {{
-        0%   {{ transform: translateX(0); }}
-        100% {{ transform: translateX(-50%); }}
-    }}
-    .ticker-outer {{
-        width: 100%;
-        overflow: hidden;
-        background: #0a1f12;
-        border: 1px solid #1e3a2a;
-        border-radius: 6px;
-        padding: 7px 0;
-        margin-bottom: 14px;
-    }}
-    .ticker-inner {{
-        display: inline-block;
-        white-space: nowrap;
-        animation: tape 60s linear infinite;
-        font-family: 'DM Mono', monospace;
-        font-size: 12px;
-        color: #10b981;
-        letter-spacing: 0.03em;
-    }}
-    </style>
-    <div class="ticker-outer">
-        <div class="ticker-inner">{_tape_text}</div>
-    </div>""",
-    unsafe_allow_html=True
+_tape_style = (
+    "<style>"
+    "@keyframes tape { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }"
+    ".ticker-outer { width:100%; overflow:hidden; background:#0a1f12; border:1px solid #1e3a2a;"
+    "border-radius:6px; padding:7px 0; margin-bottom:14px; }"
+    ".ticker-inner { display:inline-block; white-space:nowrap; animation:tape 60s linear infinite;"
+    "font-family:'DM Mono',monospace; font-size:12px; color:#10b981; letter-spacing:0.03em; }"
+    "</style>"
 )
+_tape_div = '<div class="ticker-outer"><div class="ticker-inner">' + _tape_text + '</div></div>'
+st.markdown(_tape_style + _tape_div, unsafe_allow_html=True)
 
 # Split EGX30
 df_current_egx30 = df_current[df_current['Ticker'] == 'EGX30'].copy()
