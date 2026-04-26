@@ -8,32 +8,28 @@ import numpy as np
 import random
 import textwrap
 import json
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from streamlit_echarts import st_echarts, JsCode
 import streamlit.components.v1 as components
 
 # ---------------------------
-# CHART DATA
+# DATA LOADING & PROCESSING
 # ---------------------------
 @st.cache_data(ttl=3600)
 def load_chart_data():
     url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
-    df = pd.read_csv(url, parse_dates=['datetime'])
-    df.columns = df.columns.str.strip().str.lower()
-    return df
-
+    try:
+        df = pd.read_csv(url, parse_dates=['datetime'])
+        df.columns = df.columns.str.strip().str.lower()
+        return df
+    except Exception as e:
+        st.error(f"Failed to load CSV from GitHub: {e}")
+        return pd.DataFrame()
 
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
- 
- 
+
 def _vol_color(close, open_):
     return "#10b981" if close >= open_ else "#f87171"
- 
- 
-# ── get_levels (restored) ─────────────────────────────────────────────────────
- 
+
 def get_levels(row):
     sl = float(row["Stop_Loss"])    if pd.notna(row.get("Stop_Loss"))    else None
     en = float(row["Entry_Price"])  if pd.notna(row.get("Entry_Price"))  else None
@@ -41,10 +37,10 @@ def get_levels(row):
     ed_raw = row.get("Entry_Date", None)
     ed = pd.to_datetime(ed_raw).strftime("%Y-%m-%d") if pd.notna(ed_raw) else None
     return sl, en, tg, ed
- 
- 
-# ── main chart function ───────────────────────────────────────────────────────
- 
+
+# ---------------------------
+# MAIN CHART FUNCTION
+# ---------------------------
 def draw_candle_chart(
     ticker: str,
     height: int = 650,
@@ -54,534 +50,246 @@ def draw_candle_chart(
     entry_date=None,
     closed_trades_df=None,
 ):
-    """
-    Renders an ECharts candlestick chart inside a self-contained HTML iframe.
-    Features:
-      • Hollow candles — green border/wick bullish, red border/wick bearish
-      • EMA 20 overlay
-      • OHLCV + % tooltip on hover (trigger=item)
-      • Entry/Exit triangle annotations
-      • Stop / Entry / Target horizontal level lines with labels
-      • Drawing toolbar: horizontal line, vertical line, extended trendline,
-        delete last drawn line, clear all drawn lines
-      • Volume panel with K/M/B formatter
-      • Initial 3-month view, scroll/pinch zoom via dataZoom
-      • Candle padding from right axis via boundaryGap
-    """
- 
-    # ── load & filter ─────────────────────────────────────────────────────────
     df_all = load_chart_data()
+    if df_all.empty: return
+    
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
- 
+
     if df.empty:
         st.warning(f"No chart data for {ticker}")
         return
- 
+
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     df["ema20"]    = _ema(df["close"], 20).round(4)
- 
+
     dates = df["date_str"].tolist()
-    n     = len(dates)
- 
-    # ── initial 3-month window (as % for dataZoom) ────────────────────────────
-    max_date     = df["datetime"].max()
+    n = len(dates)
+
+    # Calculate 3-month zoom window
+    max_date = df["datetime"].max()
     start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
-    start_idx    = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
-    start_pct    = round(start_idx / n * 100)
- 
-    # ── serialise data to JS-safe Python lists ────────────────────────────────
+    start_idx = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
+    start_pct = round(start_idx / n * 100)
+
+    # ECharts expects OHLC order for candlesticks
     candle_data = df[['open', 'close', 'low', 'high']].values.tolist()
+    
     vol_data = [
         {"value": float(r["volume"]),
          "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}}
         for _, r in df.iterrows()
     ]
-    ema_data = [round(v, 4) for v in df["ema20"].tolist()]
- 
-    # ── mark points ───────────────────────────────────────────────────────────
+    ema_data = df["ema20"].fillna("-").tolist()
+
+    # Mark Points (Buy/Sell Triangles)
     mark_points = []
- 
     def _add_buy(date_str, price_low):
-        if date_str not in dates:
-            return
-        idx = dates.index(date_str)
-        mark_points.append({
-            "name": "BUY", "coord": [idx, price_low * 0.975],
-            "value": "BUY", "symbol": "triangle",
-            "symbolSize": 20, "symbolRotate": 0,
-            "itemStyle": {"color": "#10b981"},
-            "label": {"show": True, "formatter": "BUY", "position": "bottom",
-                      "color": "#10b981", "fontSize": 9, "fontFamily": "DM Mono"},
-        })
- 
+        if date_str in dates:
+            idx = dates.index(date_str)
+            mark_points.append({
+                "name": "BUY", "coord": [idx, price_low * 0.975],
+                "value": "BUY", "symbol": "triangle", "symbolSize": 20,
+                "itemStyle": {"color": "#10b981"},
+                "label": {"show": True, "position": "bottom", "color": "#10b981", "fontSize": 9}
+            })
+
     def _add_sell(date_str, price_high, pnl_val):
-        if date_str not in dates:
-            return
-        idx  = dates.index(date_str)
-        lbl  = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
-        clr  = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
-        mark_points.append({
-            "name": "SELL", "coord": [idx, price_high * 1.025],
-            "value": lbl, "symbol": "triangle",
-            "symbolSize": 20, "symbolRotate": 180,
-            "itemStyle": {"color": "#f87171"},
-            "label": {"show": True, "formatter": lbl, "position": "top",
-                      "color": clr, "fontSize": 10, "fontFamily": "DM Mono"},
-        })
- 
+        if date_str in dates:
+            idx = dates.index(date_str)
+            lbl = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
+            clr = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
+            mark_points.append({
+                "name": "SELL", "coord": [idx, price_high * 1.025],
+                "value": lbl, "symbol": "triangle", "symbolSize": 20, "symbolRotate": 180,
+                "itemStyle": {"color": "#f87171"},
+                "label": {"show": True, "position": "top", "color": clr, "fontSize": 10}
+            })
+
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime("%Y-%m-%d")
         ed_row = df[df["date_str"] == ed_str]
-        if not ed_row.empty:
-            _add_buy(ed_str, float(ed_row["low"].values[0]))
- 
-    if closed_trades_df is not None and len(closed_trades_df) > 0:
-        ctdf = closed_trades_df.copy()
-        ctdf["Entry_Date"] = pd.to_datetime(ctdf["Entry_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-        ctdf["Exit_Date"]  = pd.to_datetime(ctdf["Exit_Date"],  errors="coerce").dt.strftime("%Y-%m-%d")
-        for _, tr in ctdf.iterrows():
-            tr_ed = tr.get("Entry_Date", "")
-            ed_r  = df[df["date_str"] == tr_ed]
-            if not ed_r.empty and pd.notna(tr.get("Entry_Price")):
-                _add_buy(tr_ed, float(ed_r["low"].values[0]))
-            tr_xd = tr.get("Exit_Date", "")
-            xd_r  = df[df["date_str"] == tr_xd]
-            if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
-                _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
- 
-    # ── level lines ───────────────────────────────────────────────────────────
+        if not ed_row.empty: _add_buy(ed_str, float(ed_row["low"].values[0]))
+
+    if closed_trades_df is not None and not closed_trades_df.empty:
+        for _, tr in closed_trades_df.iterrows():
+            tr_ed = pd.to_datetime(tr.get("Entry_Date")).strftime("%Y-%m-%d")
+            ed_r = df[df["date_str"] == tr_ed]
+            if not ed_r.empty: _add_buy(tr_ed, float(ed_r["low"].values[0]))
+            
+            tr_xd = pd.to_datetime(tr.get("Exit_Date")).strftime("%Y-%m-%d")
+            xd_r = df[df["date_str"] == tr_xd]
+            if not xd_r.empty: _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
+
+    # Horizontal Level Lines
     mark_lines = []
-    level_cfg  = []
-    if stop_loss:
-        level_cfg.append((stop_loss, "#f87171", f"Stop  {stop_loss:.2f}",   "dashed"))
-    if entry:
-        level_cfg.append((entry,     "#94a3b8", f"Entry  {entry:.2f}",      "dotted"))
-    if target:
-        level_cfg.append((target,    "#10b981", f"Target  {target:.2f}",    "dashed"))
- 
+    level_cfg = []
+    if stop_loss: level_cfg.append((stop_loss, "#f87171", f"Stop {stop_loss:.2f}", "dashed"))
+    if entry:     level_cfg.append((entry, "#94a3b8", f"Entry {entry:.2f}", "dotted"))
+    if target:    level_cfg.append((target, "#10b981", f"Target {target:.2f}", "dashed"))
+
     for price, color, label, dash in level_cfg:
         mark_lines.append([
-            {
-                "yAxis": price,
-                "lineStyle": {"color": color, "width": 1.5, "type": dash},
-                "label": {
-                    "show": True, "formatter": label,
-                    "position": "insideEndTop",
-                    "color": color, "fontSize": 11,
-                    "fontFamily": "DM Mono", "fontWeight": "600",
-                },
-            },
-            {"yAxis": price},
+            {"yAxis": price, "lineStyle": {"color": color, "width": 1.5, "type": dash},
+             "label": {"show": True, "formatter": label, "position": "insideEndTop", "color": color}},
+            {"yAxis": price}
         ])
- 
-    # ── build HTML ────────────────────────────────────────────────────────────
-    # We embed ECharts from CDN and wire up a custom drawing toolbar in plain JS.
-    # Drawing modes: horizontal line, vertical line, extended trendline (ray).
-    # Click once to start a trendline, click again to finish it.
-    # Drawn lines are stored in a JS array and rendered as ECharts graphic elements.
- 
-    import json
-    dates_json       = json.dumps(dates)
-    candle_json      = json.dumps(candle_data)
-    vol_json         = json.dumps(vol_data)
-    ema_json         = json.dumps(ema_data)
+
+    # JSON Serialization
+    dates_json = json.dumps(dates)
+    candle_json = json.dumps(candle_data)
+    vol_json = json.dumps(vol_data)
+    ema_json = json.dumps(ema_data)
     mark_points_json = json.dumps(mark_points)
-    mark_lines_json  = json.dumps(mark_lines)
- 
+    mark_lines_json = json.dumps(mark_lines)
+
     html = textwrap.dedent(f"""
     <!DOCTYPE html>
     <html>
     <head>
-    <meta charset="utf-8"/>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <style>
-      * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-      body {{ background: #0f172a; font-family: 'DM Mono', monospace; }}
- 
-      /* ── toolbar ── */
-      #toolbar {{
-        display: flex; align-items: center; gap: 6px;
-        padding: 6px 10px; background: #0a1f12;
-        border: 1px solid #1e3a2a; border-radius: 6px;
-        margin-bottom: 6px; flex-wrap: wrap;
-      }}
-      #toolbar span {{
-        font-size: 10px; color: #4b6a57; text-transform: uppercase;
-        letter-spacing: .08em; margin-right: 4px;
-      }}
-      .tb-btn {{
-        background: #0f172a; border: 1px solid #1e3a2a; border-radius: 5px;
-        color: #9ca3af; font-size: 11px; font-family: 'DM Mono', monospace;
-        padding: 4px 10px; cursor: pointer; transition: all .15s;
-        white-space: nowrap;
-      }}
-      .tb-btn:hover  {{ background: #1e3a2a; color: #d1fae5; }}
-      .tb-btn.active {{ background: #10b981; color: #0f172a; border-color: #10b981; font-weight: 700; }}
-      .tb-sep {{ width: 1px; height: 20px; background: #1e3a2a; margin: 0 4px; }}
-      .tb-btn.danger {{ border-color: #f87171; color: #f87171; }}
-      .tb-btn.danger:hover {{ background: #f87171; color: #0f172a; }}
- 
-      #chart {{ width: 100%; height: {height}px; }}
-    </style>
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+        <style>
+            body {{ background: #0f172a; margin: 0; font-family: monospace; }}
+            #toolbar {{ display: flex; gap: 6px; padding: 10px; background: #0a1f12; border-bottom: 1px solid #1e3a2a; }}
+            .tb-btn {{ background: #1e3a2a; border: 1px solid #1e3a2a; color: #9ca3af; padding: 4px 8px; cursor: pointer; border-radius: 4px; font-size: 11px; }}
+            .tb-btn.active {{ background: #10b981; color: #000; font-weight: bold; }}
+            #chart {{ width: 100%; height: {height}px; }}
+        </style>
     </head>
     <body>
- 
-    <div id="toolbar">
-      <span>Draw</span>
-      <button class="tb-btn" id="btn-hline"  onclick="setMode('hline')" title="Horizontal Line">── H-Line</button>
-      <button class="tb-btn" id="btn-vline"  onclick="setMode('vline')" title="Vertical Line">│ V-Line</button>
-      <button class="tb-btn" id="btn-trend"  onclick="setMode('trend')" title="Extended Trendline (click 2 pts)">↗ Trendline</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn danger" id="btn-del"   onclick="deleteLast()"  title="Delete last line">✕ Last</button>
-      <button class="tb-btn danger" id="btn-clear" onclick="clearAll()"    title="Clear all lines">✕ All</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" id="btn-none"  onclick="setMode(null)"   title="Pointer mode">✋ Pointer</button>
-    </div>
- 
-    <div id="chart"></div>
- 
-    <script>
-    // ── data ─────────────────────────────────────────────────────────────────
-    const DATES       = {dates_json};
-    const CANDLES     = {candle_json};
-    const VOL         = {vol_json};
-    const EMA         = {ema_json};
-    const MARK_PTS    = {mark_points_json};
-    const MARK_LINES  = {mark_lines_json};
-    const START_PCT   = {start_pct};
-    const TICKER      = "{ticker}";
- 
-    // ── volume formatter: 1.2K / 3.5M / 1.1B ────────────────────────────────
-    function fmtVol(v) {{
-      if (v >= 1e9) return (v/1e9).toFixed(1).replace(/\\.0$/,'') + 'B';
-      if (v >= 1e6) return (v/1e6).toFixed(1).replace(/\\.0$/,'') + 'M';
-      if (v >= 1e3) return (v/1e3).toFixed(1).replace(/\\.0$/,'') + 'K';
-      return v;
-    }}
- 
-    // ── init chart ────────────────────────────────────────────────────────────
-    const chart = echarts.init(document.getElementById('chart'), null, {{renderer:'canvas'}});
- 
-    const option = {{
-      backgroundColor: '#0f172a',
-      animation: false,
-      title: {{
-        text: 'EGX: ' + TICKER,
-        textStyle: {{ color:'#d1fae5', fontSize:15, fontFamily:'DM Mono', fontWeight:'700' }},
-        left: '1%', top: 6,
-      }},
-      tooltip: {{
-        trigger: 'item',
-        axisPointer: {{
-          type: 'cross',
-          crossStyle: {{ color:'#4b6a57', width:1 }},
-          lineStyle: {{ color:'#4b6a57', width:1, type:'dashed' }},
-        }},
-        backgroundColor: '#0f172a',
-        borderColor: '#1e3a2a',
-        borderWidth: 1,
-        padding: [8, 12],
-        formatter: function(p) {{
-          // p.value for candlestick = [open, close, low, high]
-          var v = p.value;
-          if (!Array.isArray(v) || v.length < 5) {{
-            // EMA or volume tooltip
-            if (p.seriesName === 'EMA 20') {{
-              return '<div style="font-family:DM Mono,monospace;font-size:12px">'
-                   + '<span style="color:#facc15">■ EMA20</span> <b style="color:#e2e8f0">'
-                   + parseFloat(v).toFixed(2) + '</b></div>';
+        <div id="toolbar">
+            <button class="tb-btn" id="btn-hline" onclick="setMode('hline')">H-Line</button>
+            <button class="tb-btn" id="btn-vline" onclick="setMode('vline')">V-Line</button>
+            <button class="tb-btn" id="btn-trend" onclick="setMode('trend')">Trendline</button>
+            <button class="tb-btn" id="btn-none" onclick="setMode(null)">Pointer</button>
+            <button class="tb-btn" style="color:#f87171" onclick="clearAll()">Clear</button>
+        </div>
+        <div id="chart"></div>
+        <script>
+            const DATES = {dates_json};
+            const CANDLES = {candle_json};
+            const VOL = {vol_json};
+            const EMA = {ema_json};
+            const MARK_PTS = {mark_points_json};
+            const MARK_LINES = {mark_lines_json};
+            const chart = echarts.init(document.getElementById('chart'));
+
+            function fmtVol(v) {{
+                if (v >= 1e9) return (v/1e9).toFixed(1) + 'B';
+                if (v >= 1e6) return (v/1e6).toFixed(1) + 'M';
+                if (v >= 1e3) return (v/1e3).toFixed(1) + 'K';
+                return v;
             }}
-            if (p.seriesName === 'Volume') {{
-              return '<div style="font-family:DM Mono,monospace;font-size:12px">'
-                   + '<span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">'
-                   + fmtVol(p.value) + '</b></div>';
+
+            const option = {{
+                backgroundColor: '#0f172a',
+                animation: false,
+                tooltip: {{
+                    trigger: 'item',
+                    backgroundColor: '#0f172a',
+                    borderColor: '#1e3a2a',
+                    textStyle: {{ color: '#fff' }},
+                    formatter: function(p) {{
+                        var v = p.value;
+                        // 1. Handle Non-Array (EMA Line)
+                        if (!Array.isArray(v)) {{
+                             return p.seriesName + ': ' + parseFloat(v).toFixed(2);
+                        }}
+                        // 2. Handle Volume or other small arrays
+                        if (v.length < 5) {{
+                             return p.seriesName + ': ' + fmtVol(v.length === 2 ? v[1] : v[0]);
+                        }}
+                        // 3. Handle Candlestick (Shifted index: v[0]=index, v[1]=O, v[2]=C, v[3]=L, v[4]=H)
+                        var o = parseFloat(v[1]), c = parseFloat(v[2]), l = parseFloat(v[3]), h = parseFloat(v[4]);
+                        var pct = ((c-o)/o*100).toFixed(2);
+                        return '<b>' + p.name + '</b><br/>' +
+                               'O: ' + o.toFixed(2) + ' H: ' + h.toFixed(2) + '<br/>' +
+                               'L: ' + l.toFixed(2) + ' C: ' + c.toFixed(2) + '<br/>' +
+                               'Chg: ' + pct + '%';
+                    }}
+                }},
+                grid: [
+                    {{ left: '3%', right: '10%', top: 40, height: '65%' }},
+                    {{ left: '3%', right: '10%', top: '75%', height: '15%' }}
+                ],
+                xAxis: [
+                    {{ type: 'category', data: DATES, gridIndex: 0, axisLine: {{lineStyle:{{color:'#1e3a2a'}}}} }},
+                    {{ type: 'category', data: DATES, gridIndex: 1, axisLine: {{lineStyle:{{color:'#1e3a2a'}}}}, axisLabel: {{show:false}} }}
+                ],
+                yAxis: [
+                    {{ scale: true, gridIndex: 0, position: 'right', axisLabel:{{color:'#9ca3af'}}, splitLine:{{show:false}} }},
+                    {{ scale: true, gridIndex: 1, position: 'right', axisLabel:{{formatter: v => fmtVol(v)}}, splitLine:{{show:false}} }}
+                ],
+                dataZoom: [{{ type: 'inside', xAxisIndex: [0, 1], start: {start_pct}, end: 100 }}],
+                series: [
+                    {{
+                        name: '{ticker}', type: 'candlestick', data: CANDLES,
+                        itemStyle: {{ color: 'transparent', color0: 'transparent', borderColor: '#10b981', borderColor0: '#f87171' }},
+                        markPoint: {{ data: MARK_PTS }},
+                        markLine: {{ symbol: ['none', 'none'], data: MARK_LINES, silent: true }}
+                    }},
+                    {{ name: 'EMA 20', type: 'line', data: EMA, symbol: 'none', lineStyle: {{color: '#facc15', width: 1}} }},
+                    {{ name: 'Volume', type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: VOL }}
+                ]
+            }};
+
+            chart.setOption(option);
+            
+            // --- Drawing Logic ---
+            let drawMode = null;
+            let drawnLines = [];
+            let trendFirst = null;
+
+            function setMode(mode) {{
+                drawMode = mode;
+                document.querySelectorAll('.tb-btn').forEach(b => b.classList.remove('active'));
+                if(mode) document.getElementById('btn-' + mode).classList.add('active');
             }}
-            return '';
-          }}
-          var o   = parseFloat(v[1]);
-          var c   = parseFloat(v[2]);
-          var lo  = parseFloat(v[3]);
-          var h   = parseFloat(v[4]);
-          var pct = ((c - o) / o * 100);
-          var arrow = pct >= 0 ? '▲' : '▼';
-          var col   = pct >= 0 ? '#10b981' : '#f87171';
-          var sign  = pct >= 0 ? '+' : '';
-          return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
-            + '<b style="color:#d1fae5;font-size:13px">' + p.name + '</b><br>'
-            + '<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">' + o.toFixed(2) + '</b>'
-            + '&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">' + h.toFixed(2) + '</b><br>'
-            + '<span style="color:#6b7280">L</span> <b style="color:#e2e8f0">' + lo.toFixed(2) + '</b>'
-            + '&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">' + c.toFixed(2) + '</b><br>'
-            + '<span style="color:' + col + ';font-size:13px"><b>' + arrow + ' ' + sign + pct.toFixed(2) + '%</b></span>'
-            + '</div>';
-        }},
-      }},
-      legend: {{
-        data: ['EMA 20'],
-        top: 6, right: '2%',
-        textStyle: {{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono' }},
-      }},
-      axisPointer: {{ link: [{{ xAxisIndex:'all' }}] }},
-      grid: [
-        // right:'16%' keeps candles away from the right y-axis
-        // and leaves room for level-line labels
-        {{ left:'1%', right:'16%', top:50, height:'60%' }},
-        {{ left:'1%', right:'16%', top:'76%', height:'14%' }},
-      ],
-      xAxis: [
-        {{
-          type: 'category', data: DATES, gridIndex: 0,
-          scale: true,
-          // boundaryGap as array adds padding on both sides inside the plot area
-          boundaryGap: ['2%', '5%'],
-          axisLine:  {{ lineStyle: {{ color:'#1e3a2a' }} }},
-          axisTick:  {{ show:false }},
-          axisLabel: {{ show:false }},
-          splitLine: {{ show:false }},
-        }},
-        {{
-          type: 'category', data: DATES, gridIndex: 1,
-          scale: true,
-          boundaryGap: ['2%', '5%'],
-          axisLine:  {{ lineStyle: {{ color:'#1e3a2a' }} }},
-          axisTick:  {{ show:false }},
-          // ── FIX 1: no dates on lower axis ──
-          axisLabel: {{ show:false }},
-          splitLine: {{ show:false }},
-        }},
-      ],
-      yAxis: [
-        {{
-          scale: true, gridIndex: 0, position: 'right',
-          splitLine: {{ show:false }},
-          axisLine:  {{ show:false }},
-          axisTick:  {{ show:false }},
-          axisLabel: {{ color:'#9ca3af', fontSize:13, fontFamily:'DM Mono', margin:8 }},
-        }},
-        {{
-          scale: true, gridIndex: 1, position: 'right',
-          splitLine: {{ show:false }},
-          axisLine:  {{ show:false }},
-          axisTick:  {{ show:false }},
-          // ── FIX 5: K/M/B volume labels ──
-          axisLabel: {{
-            color:'#4b6a57', fontSize:11, fontFamily:'DM Mono',
-            formatter: function(v) {{ return fmtVol(v); }},
-          }},
-          name: 'Vol',
-          nameTextStyle: {{ color:'#4b6a57', fontSize:10 }},
-        }},
-      ],
-      dataZoom: [
-        {{
-          type: 'inside', xAxisIndex:[0,1],
-          start: START_PCT, end: 100,
-          zoomOnMouseWheel: true, moveOnMouseMove: true,
-        }},
-        {{
-          type: 'slider', xAxisIndex:[0,1],
-          start: START_PCT, end: 100,
-          bottom: 4, height: 18,
-          borderColor:'#1e3a2a', backgroundColor:'#0a1a12',
-          dataBackground: {{ lineStyle:{{color:'#1e3a2a'}}, areaStyle:{{color:'#0a1f12'}} }},
-          selectedDataBackground: {{ lineStyle:{{color:'#10b981'}}, areaStyle:{{color:'#0a2a18'}} }},
-          fillerColor:'rgba(16,185,129,0.08)',
-          handleStyle:{{color:'#10b981'}},
-          textStyle:{{color:'#4b6a57', fontSize:9}},
-        }},
-      ],
-      series: [
-        {{
-          name: TICKER, type: 'candlestick',
-          xAxisIndex:0, yAxisIndex:0,
-          data: CANDLES,
-          // Series-level itemStyle — do NOT use per-item overrides
-          // color/borderColor = bullish; color0/borderColor0 = bearish
-          itemStyle: {{
-            color:        'transparent',
-            color0:       'transparent',
-            borderColor:  '#10b981',
-            borderColor0: '#f87171',
-            borderWidth:  1,
-          }},
-          markPoint: {{ data: MARK_PTS, animation:false }},
-          markLine:  {{ symbol:['none','none'], data: MARK_LINES, animation:false, silent:true }},
-        }},
-        {{
-          name:'EMA 20', type:'line',
-          xAxisIndex:0, yAxisIndex:0,
-          data: EMA, smooth:false,
-          lineStyle:{{color:'#facc15', width:1.5}},
-          symbol:'none', z:3,
-        }},
-        {{
-          name:'Volume', type:'bar',
-          xAxisIndex:1, yAxisIndex:1,
-          data: VOL, barMaxWidth:8,
-        }},
-      ],
-    }};
- 
-    chart.setOption(option);
-    window.addEventListener('resize', () => chart.resize());
- 
-    // ══════════════════════════════════════════════════════════════════════════
-    // DRAWING TOOLS
-    // ══════════════════════════════════════════════════════════════════════════
-    // Drawn lines are kept in `drawnLines` and re-rendered as ECharts graphic
-    // elements on every update.
-    //
-    // Modes:
-    //   'hline'  — click anywhere → horizontal line at that price (spans full x)
-    //   'vline'  — click anywhere → vertical line at that date index (spans full y)
-    //   'trend'  — click twice → extended trendline (ray beyond both points)
-    //   null     — pointer mode, no drawing
- 
-    let drawMode    = null;
-    let drawnLines  = [];         // [{{type, color, ...lineParams}}]
-    let trendFirst  = null;       // first click for trendline
- 
-    const DRAW_COLOR = '#facc15'; // yellow for user-drawn lines
- 
-    function setMode(mode) {{
-      drawMode   = mode;
-      trendFirst = null;
-      // update button active states
-      ['hline','vline','trend','none'].forEach(id => {{
-        const btn = document.getElementById('btn-' + id);
-        if (btn) btn.classList.toggle('active', id === mode || (mode === null && id === 'none'));
-      }});
-      chart.getZr().setCursorStyle(mode ? 'crosshair' : 'default');
-    }}
- 
-    // Convert pixel coords → data coords (price + category index)
-    function pixelToData(pixelX, pixelY) {{
-      // convertFromPixel returns [xIndex, yValue] for grid 0
-      const dp = chart.convertFromPixel({{ gridIndex:0 }}, [pixelX, pixelY]);
-      if (!dp) return null;
-      const idx = Math.round(dp[0]);
-      if (idx < 0 || idx >= DATES.length) return null;
-      return {{ idx: idx, date: DATES[idx], price: dp[1] }};
-    }}
- 
-    chart.getZr().on('click', function(e) {{
-      if (!drawMode) return;
-      const d = pixelToData(e.offsetX, e.offsetY);
-      if (!d) return;
- 
-      if (drawMode === 'hline') {{
-        drawnLines.push({{ type:'hline', price: d.price, color: DRAW_COLOR }});
-        renderDrawn();
-      }} else if (drawMode === 'vline') {{
-        drawnLines.push({{ type:'vline', idx: d.idx, date: d.date, color: DRAW_COLOR }});
-        renderDrawn();
-      }} else if (drawMode === 'trend') {{
-        if (!trendFirst) {{
-          trendFirst = d;
-        }} else {{
-          drawnLines.push({{
-            type:'trend',
-            x1: trendFirst.idx, y1: trendFirst.price,
-            x2: d.idx,          y2: d.price,
-            color: DRAW_COLOR,
-          }});
-          trendFirst = null;
-          renderDrawn();
-        }}
-      }}
-    }});
- 
-    function deleteLast() {{
-      drawnLines.pop();
-      renderDrawn();
-    }}
- 
-    function clearAll() {{
-      drawnLines = [];
-      trendFirst = null;
-      renderDrawn();
-    }}
- 
-    // Re-render all drawn lines as ECharts markLine entries on a hidden series.
-    // We use a dedicated invisible scatter series as the host for markLines so
-    // they stay in data-coordinate space and survive zoom/pan correctly.
-    function renderDrawn() {{
-      const ml = [];
- 
-      drawnLines.forEach(function(ln) {{
-        if (ln.type === 'hline') {{
-          ml.push([
-            {{ yAxis: ln.price, xAxis: DATES[0],
-              lineStyle: {{ color: ln.color, width:1.5, type:'solid' }},
-              label: {{
-                show:true,
-                formatter: ln.price.toFixed(2),
-                position:'insideEndTop',
-                color: ln.color, fontSize:10, fontFamily:'DM Mono',
-              }},
-            }},
-            {{ yAxis: ln.price, xAxis: DATES[DATES.length-1] }},
-          ]);
-        }} else if (ln.type === 'vline') {{
-          ml.push([
-            {{ xAxis: ln.date, yAxis: 'min',
-              lineStyle: {{ color: ln.color, width:1.5, type:'solid' }},
-              label: {{
-                show:true,
-                formatter: ln.date,
-                position:'insideEndTop',
-                color: ln.color, fontSize:10, fontFamily:'DM Mono',
-              }},
-            }},
-            {{ xAxis: ln.date, yAxis: 'max' }},
-          ]);
-        }} else if (ln.type === 'trend') {{
-          // Extended trendline: extend beyond both anchors to chart edges
-          const slope = (ln.y2 - ln.y1) / (ln.x2 - ln.x1 || 1);
-          const x0    = 0;
-          const xEnd  = DATES.length - 1;
-          const y0    = ln.y1 + slope * (x0    - ln.x1);
-          const yEnd  = ln.y1 + slope * (xEnd  - ln.x1);
-          ml.push([
-            {{ xAxis: DATES[x0],   yAxis: y0,
-              lineStyle: {{ color: ln.color, width:1.5, type:'solid' }},
-              label: {{ show:false }},
-            }},
-            {{ xAxis: DATES[xEnd], yAxis: yEnd }},
-          ]);
-        }}
-      }});
- 
-      chart.setOption({{
-        series: [
-          // index 3 = drawing host (invisible scatter)
-          {{
-            id: '__drawn__',
-            type: 'scatter',
-            xAxisIndex: 0, yAxisIndex: 0,
-            data: [],
-            symbol: 'none',
-            markLine: {{
-              symbol: ['none','none'],
-              silent: true,
-              animation: false,
-              data: ml,
-            }},
-          }},
-        ],
-      }}, {{ replaceMerge: [] }});
-    }}
- 
-    // initialise drawing host series
-    renderDrawn();
- 
-    </script>
+
+            chart.getZr().on('click', function(e) {{
+                if (!drawMode) return;
+                const coord = chart.convertFromPixel({{gridIndex:0}}, [e.offsetX, e.offsetY]);
+                if(!coord) return;
+                const idx = Math.round(coord[0]);
+                const price = coord[1];
+
+                if (drawMode === 'hline') drawnLines.push({{type:'hline', price: price}});
+                else if (drawMode === 'vline') drawnLines.push({{type:'vline', idx: idx}});
+                else if (drawMode === 'trend') {{
+                    if (!trendFirst) trendFirst = {{idx, price}};
+                    else {{ drawnLines.push({{type:'trend', p1: trendFirst, p2: {{idx, price}}}}); trendFirst = null; }}
+                }}
+                renderDrawn();
+            }});
+
+            function clearAll() {{ drawnLines = []; renderDrawn(); }}
+
+            function renderDrawn() {{
+                const mlData = [];
+                drawnLines.forEach(ln => {{
+                    if(ln.type==='hline') mlData.push([{{yAxis: ln.price, xAxis: DATES[0]}}, {{yAxis: ln.price, xAxis: DATES[DATES.length-1]}}]);
+                    else if(ln.type==='vline') mlData.push([{{xAxis: DATES[ln.idx], yAxis: 'min'}}, {{xAxis: DATES[ln.idx], yAxis: 'max' }}]);
+                }});
+                chart.setOption({{ series: [{{ markLine: {{ data: [...MARK_LINES, ...mlData] }} }}] }});
+            }}
+        </script>
     </body>
     </html>
     """)
- 
-    # height + 60 for toolbar
-    components.html(html, height=height + 65, scrolling=False)
+    components.html(html, height=height + 70, scrolling=False)
+
+# ---------------------------
+# MAIN APP LOGIC
+# ---------------------------
+def main():
+    st.title("EGX Trading Dashboard")
+    df = load_chart_data()
+    if not df.empty:
+        tickers = sorted(df['symbol'].unique())
+        sel = st.selectbox("Select Ticker", tickers)
+        draw_candle_chart(sel)
+
+if __name__ == "__main__":
+    main()
 
 # ---------------------------
 # HELPERS
