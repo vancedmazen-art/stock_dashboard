@@ -301,10 +301,10 @@ def draw_candle_chart(
             }}
             return '';
           }}
-          var o   = parseFloat(v[0]);
-          var c   = parseFloat(v[1]);
-          var lo  = parseFloat(v[2]);
-          var h   = parseFloat(v[3]);
+          var o   = parseFloat(v[1]);
+          var c   = parseFloat(v[2]);
+          var lo  = parseFloat(v[3]);
+          var h   = parseFloat(v[4]);
           var pct = ((c - o) / o * 100);
           var arrow = pct >= 0 ? '▲' : '▼';
           var col   = pct >= 0 ? '#10b981' : '#f87171';
