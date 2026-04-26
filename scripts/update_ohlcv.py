@@ -8,7 +8,13 @@ from data_provider import get_OHLCV_data
 # =============================
 # CONFIG
 # =============================
-WATCHLIST_FILE = "watchlist.txt"
+import os
+
+WATCHLIST_FILE = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "watchlist.txt"
+)
 DATA_FILE = "data/ohlcv.csv"
 
 MAX_RETRIES = 5
