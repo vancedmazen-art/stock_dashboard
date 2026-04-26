@@ -3,7 +3,7 @@ import time
 import traceback
 import pandas as pd
 from datetime import datetime
-from scripts.data_provider import get_OHLCV_data
+from data_provider import get_OHLCV_data
 
 # =============================
 # CONFIG
