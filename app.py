@@ -439,7 +439,7 @@ def draw_candle_chart(
     //   null     — pointer mode, no drawing
  
     let drawMode    = null;
-    let drawnLines  = [];         // [{type, ...params, color}]
+    let drawnLines  = [];         // [{{type, color, ...lineParams}}]
     let trendFirst  = null;       // first click for trendline
  
     const DRAW_COLOR = '#facc15'; // yellow for user-drawn lines
