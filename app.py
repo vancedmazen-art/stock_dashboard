@@ -48,7 +48,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     # Candle % change for hover
     df['pct_change'] = ((df['close'] - df['open']) / df['open'] * 100).round(2)
     df['hover'] = df.apply(
-        lambda r: (f"<b>{r['date_str']}</b><br>"
+        lambda r: (f"<b>{r['date'].strftime('%Y-%m-%d')}</b><br>"
                    f"O: {r['open']:.2f}  H: {r['high']:.2f}<br>"
                    f"L: {r['low']:.2f}  C: {r['close']:.2f}<br>"
                    f"<b>{'▲' if r['pct_change']>=0 else '▼'} {r['pct_change']:+.2f}%</b>"),
