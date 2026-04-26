@@ -4,7 +4,7 @@ import numpy as np
 def get_OHLCV_data(symbol, exchange="EGX", interval="Daily", n_bars=20000):
 
     # TEMP MOCK DATA (so pipeline works)
-    dates = pd.date_range(end=pd.Timestamp.today(), periods=200)
+    dates = pd.date_range(end=pd.Timestamp.today(), periods=20000)
 
     df = pd.DataFrame({
         "datetime": dates,
