@@ -2,8 +2,11 @@ name: EGX Daily Pipeline
 
 on:
   schedule:
-    - cron: '0 13 * * 0-4'  # Sun–Thu 3 PM Cairo
+    - cron: '0 13 * * 0-4'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -30,4 +33,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git add .
           git diff --cached --quiet || git commit -m "Daily OHLCV update"
-          git push
+          git push origin HEAD
