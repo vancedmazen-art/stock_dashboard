@@ -186,12 +186,14 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
                     tickformat='.2s',
                     title=dict(text='Vol', font=dict(size=10, color='#4b6a57')))
 
-    fig.update_xaxes(type='category', tickangle=-45, nticks=12,
-                     range=[0, x_range_end], showgrid=False,
-                     showline=False, zeroline=False, row=2, col=1)
-    fig.update_xaxes(type='category', range=[0, x_range_end],
-                     showticklabels=False, showgrid=False,
-                     showline=False, zeroline=False, row=1, col=1)
+    # Show ALL candles by default, leave room on the right
+    # Using autorange — do NOT set explicit range with category axis or only a window shows
+    fig.update_xaxes(type='category', tickangle=-45, nticks=20,
+                     showgrid=False, showline=False, zeroline=False,
+                     autorange=True, row=2, col=1)
+    fig.update_xaxes(type='category', showticklabels=False,
+                     showgrid=False, showline=False, zeroline=False,
+                     autorange=True, row=1, col=1)
     fig.update_yaxes(**price_ax, row=1, col=1)
     fig.update_yaxes(**vol_ax,   row=2, col=1)
 
@@ -428,7 +430,69 @@ with st.sidebar:
     st.metric("❌ Close Now",   len(close_now_df))
     st.metric("✅ Holds",       len(holds_df))
     st.caption(f"📅 {refresh_date_str}")
-    st.markdown(f"### {sentiment_emoji} {sentiment_text}")
+
+    # ── Market sentiment ──────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 📊 Market Pulse")
+    st.markdown(f"{sentiment_emoji} **EGX30: {sentiment_text}**")
+
+    # Positive signals from holds
+    if len(holds_df) > 0:
+        pnl_col = 'Trade_PnL_%'
+        positive_holds = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        avg_pnl = holds_df[pnl_col].mean() if pnl_col in holds_df.columns else 0
+        above_market = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
+
+        # Color avg PnL
+        avg_color = "#34d399" if avg_pnl >= 0 else "#f87171"
+        avg_sign  = "▲" if avg_pnl >= 0 else "▼"
+        st.markdown(
+            f"<div style='background:#0f172a;border:1px solid #1e3a2a;border-radius:8px;"
+            f"padding:10px 12px;margin:6px 0'>"
+            f"<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;letter-spacing:.1em'>Portfolio Avg PnL</div>"
+            f"<div style='font-size:18px;font-weight:700;color:{avg_color}'>{avg_sign} {avg_pnl:.1f}%</div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<div style='background:#0f172a;border:1px solid #1e3a2a;border-radius:8px;"
+            f"padding:10px 12px;margin:6px 0'>"
+            f"<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;letter-spacing:.1em'>Outperforming (PnL &gt; 0)</div>"
+            f"<div style='font-size:18px;font-weight:700;color:#34d399'>{len(positive_holds)} / {len(holds_df)}</div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
+        # Top 3 performers
+        if len(positive_holds) > 0:
+            st.markdown("<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;"
+                        "letter-spacing:.1em;margin:10px 0 4px'>🏆 Top Performers</div>",
+                        unsafe_allow_html=True)
+            top3 = positive_holds.nlargest(3, pnl_col)[['Ticker', pnl_col]]
+            for _, r in top3.iterrows():
+                st.markdown(
+                    f"<div style='display:flex;justify-content:space-between;"
+                    f"background:#0a1f12;border:1px solid #1e3a2a;border-radius:6px;"
+                    f"padding:6px 10px;margin-bottom:4px'>"
+                    f"<span style='color:#d1fae5;font-weight:600'>{r['Ticker']}</span>"
+                    f"<span style='color:#34d399;font-weight:700'>▲ {r[pnl_col]:.1f}%</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+        # Clears/Tests Anchor signals
+        if 'Current_Clears_Anchor' in holds_df.columns:
+            clears = holds_df[holds_df['Current_Clears_Anchor'] == True]
+            if len(clears) > 0:
+                st.markdown(
+                    f"<div style='background:#0f172a;border:1px solid #facc1540;border-radius:8px;"
+                    f"padding:10px 12px;margin:6px 0'>"
+                    f"<div style='font-size:10px;color:#facc15;text-transform:uppercase;letter-spacing:.1em'>⚡ Clears Anchor</div>"
+                    f"<div style='font-size:13px;color:#d1fae5'>{', '.join(clears['Ticker'].tolist())}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
     st.markdown("---")
     st.markdown(f"*{selected_facts}*")
 
@@ -571,6 +635,7 @@ with tab_holds:
         'Ticker', 'Entry_Date', 'Entry_Price', 'Current_Price',
         'Trade_PnL_%', 'Days_Held', 'Breaks_Trendline',
         'Target_Price', 'Reward_%', 'Target_Hit',
+        'Clears_Anchor', 'Testing_Anchor',
         'Current_Clears_Anchor', 'Trendline_Hit', 'RR_Ratio'
     ]
     available = [c for c in display_cols if c in holds_df.columns]
@@ -628,45 +693,75 @@ with tab_charts:
 # ── TAB 6: EGX30 ─────────────────────────────────────────────────────────────
 with tab_egx30:
     st.markdown(f"## 📊 EGX30  {sentiment_emoji} {sentiment_text}")
-    st.divider()
 
-    left, right = st.columns([2.2, 1])
-    with left:
-        st.markdown("### 📈 EGX30 Chart")
-        st.components.v1.iframe(
-            "https://s.tradingview.com/widgetembed/?symbol=EGX:EGX30&interval=D&theme=Light&style=9",
-            height=480)
-        st.divider()
-        st.markdown("### 🟢 Open Positions")
+    col_egx_tickers, col_egx_metrics, col_egx_chart = st.columns([1, 1, 5])
+
+    # EGX30 open trade levels
+    egx30_sl = egx30_en = egx30_tg = egx30_ed = None
+    if len(df_current_egx30) > 0:
+        egx_row = df_current_egx30.iloc[0]
+        egx30_sl = float(egx_row['Stop_Loss'])    if pd.notna(egx_row.get('Stop_Loss'))    else None
+        egx30_en = float(egx_row['Entry_Price'])  if pd.notna(egx_row.get('Entry_Price'))  else None
+        egx30_tg = float(egx_row['Target_Price']) if pd.notna(egx_row.get('Target_Price')) else None
+        ed_raw   = egx_row.get('Entry_Date', None)
+        egx30_ed = pd.to_datetime(ed_raw).strftime('%Y-%m-%d') if pd.notna(ed_raw) else None
+
+    egx30_closed_arg = df_closed_egx30 if len(df_closed_egx30) > 0 else None
+
+    with col_egx_tickers:
+        st.markdown("**EGX30**")
+        st.markdown(f"{sentiment_emoji}")
+        st.markdown(f"**{sentiment_text}**")
         if len(df_current_egx30) > 0:
-            st.dataframe(fix_pyarrow_df(df_current_egx30[[
-                'Entry_Date', 'Entry_Price', 'Trade_PnL_%', 'Days_Held', 'Status'
-            ]]), use_container_width=True, height=220)
+            st.success("📈 Active Trade")
         else:
-            st.info("No open EGX30 trades")
-        st.divider()
-        st.markdown("### 📋 Closed History")
-        if len(df_closed_egx30) > 0:
-            st.dataframe(fix_pyarrow_df(df_closed_egx30.sort_values("Exit_Date", ascending=False)[[
-                'Entry_Date', 'Exit_Date', 'Entry_Price', 'Exit_Price',
-                'Trade_PnL_%', 'Days_Held', 'Exit_Reason'
-            ]]), use_container_width=True, height=260)
-        else:
-            st.info("No closed EGX30 trades")
+            st.info("No open trade")
 
-    with right:
+    with col_egx_metrics:
         df_strategy_egx30 = df_strategy[df_strategy['Ticker'] == 'EGX30'].copy()
-        st.markdown("### 🎯 Strategy Health")
+        st.markdown("**Strategy**")
         if len(df_strategy_egx30) > 0:
             strat = df_strategy_egx30.iloc[0]
-            st.metric("🏆 Best",   strat['Best_Strategy'])
-            st.metric("📊 Score",  safe(strat['composite_score']))
-            st.metric("✅ Win",    f"{safe(strat['win_rate'])}%")
-            st.metric("🎯 Median", f"{safe(strat['median_pnl'])}%")
-            st.metric("📈 Trades", safe(strat['total_trades'], 0))
-        else:
-            st.warning("No strategy metrics")
-        st.divider()
+            egx_metric_rows = [
+                ("Best Strategy", strat.get('Best_Strategy', '—')),
+                ("Score",         safe(strat.get('composite_score'))),
+                ("Win Rate",      f"{safe(strat.get('win_rate'))}%"),
+                ("Median PnL",    f"{safe(strat.get('median_pnl'))}%"),
+                ("Total Trades",  safe(strat.get('total_trades'), 0)),
+            ]
+            if len(df_current_egx30) > 0:
+                egx_row = df_current_egx30.iloc[0]
+                egx_metric_rows += [
+                    ("Entry Date",  pd.to_datetime(egx_row.get('Entry_Date')).strftime('%Y-%m-%d') if pd.notna(egx_row.get('Entry_Date')) else '—'),
+                    ("Entry Price", safe(egx_row.get('Entry_Price'))),
+                    ("Stop Loss",   safe(egx_row.get('Stop_Loss'))),
+                    ("Target",      safe(egx_row.get('Target_Price'))),
+                    ("PnL %",       safe(egx_row.get('Trade_PnL_%'))),
+                    ("Days Held",   safe(egx_row.get('Days_Held'), 0)),
+                ]
+            for lbl, val in egx_metric_rows:
+                st.markdown(
+                    f"<div class='mli'><div class='mll'>{lbl}</div>"
+                    f"<div class='mlv'>{val}</div></div>",
+                    unsafe_allow_html=True
+                )
+
+    with col_egx_chart:
+        draw_candle_chart('EGX30', height=650,
+                          stop_loss=egx30_sl, target=egx30_tg,
+                          entry=egx30_en, entry_date=egx30_ed,
+                          closed_trades_df=egx30_closed_arg)
+
+        if len(df_closed_egx30) > 0:
+            with st.expander(f"📋 EGX30 Trade History ({len(df_closed_egx30)} trades)", expanded=False):
+                hist_cols = [c for c in [
+                    'Entry_Date', 'Exit_Date', 'Entry_Price', 'Exit_Price',
+                    'Trade_PnL_%', 'Days_Held', 'Exit_Reason'
+                ] if c in df_closed_egx30.columns]
+                st.dataframe(fix_pyarrow_df(
+                    df_closed_egx30[hist_cols].sort_values('Entry_Date', ascending=False)
+                ), use_container_width=True, height=260)
+
         st.markdown("### 📰 Market News")
         news = fetch_latest_news("EGX30", max_items=5)
         if news:
