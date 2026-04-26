@@ -19,16 +19,17 @@ import streamlit.components.v1 as components
 @st.cache_data(ttl=3600)
 def load_chart_data():
     url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
+    
     df = pd.read_csv(url)
-
     df.columns = df.columns.str.strip().str.lower()
 
     df["datetime"] = pd.to_datetime(
         df["datetime"],
         format="%d-%m-%y %H:%M"
     )
-    return df
 
+    df = df.sort_values("datetime")
+    return df
 
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
