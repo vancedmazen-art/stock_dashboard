@@ -23,7 +23,17 @@ def load_chart_data():
 def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
                       entry=None, entry_date=None,
                       closed_trades_df=None):
-
+    """
+    Full-featured candlestick chart:
+    - Hollow candles with % gain/loss on hover
+    - EMA 20
+    - Green triangle-up on entry date, red triangle-down on exit date
+    - PnL% annotation on exit candle
+    - Horizontal level lines (stop/entry/target)
+    - No grid lines
+    - Drawing tools: horizontal line, trendline, extended line, tilted line, eraser
+    - Volume panel
+    """
     df_all = load_chart_data()
     df = df_all[df_all['symbol'] == ticker].copy().sort_values('datetime')
 
@@ -31,17 +41,14 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         st.warning(f"No chart data for {ticker}")
         return
 
-    # ✅ Normalize datetime (CRITICAL FIX)
-    df['date'] = pd.to_datetime(df['datetime']).dt.normalize()
-
+    # Date only (no time)
+    df['date_str'] = df['datetime'].dt.strftime('%Y-%m-%d')
     df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
 
-    # % change
+    # Candle % change for hover
     df['pct_change'] = ((df['close'] - df['open']) / df['open'] * 100).round(2)
-
-    # Hover (safe)
     df['hover'] = df.apply(
-        lambda r: (f"<b>{r['date'].strftime('%Y-%m-%d')}</b><br>"
+        lambda r: (f"<b>{r['date_str']}</b><br>"
                    f"O: {r['open']:.2f}  H: {r['high']:.2f}<br>"
                    f"L: {r['low']:.2f}  C: {r['close']:.2f}<br>"
                    f"<b>{'▲' if r['pct_change']>=0 else '▼'} {r['pct_change']:+.2f}%</b>"),
@@ -54,137 +61,172 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         vertical_spacing=0.03, row_heights=[0.75, 0.25])
 
-    # ── Candles ─────────────────────────────────────────────
+    # ── Hollow candlesticks with custom hover ─────────────────────────────────
     fig.add_trace(go.Candlestick(
-        x=df['date'],
+        x=df['date_str'],
         open=df['open'], high=df['high'],
         low=df['low'],   close=df['close'],
         increasing=dict(line=dict(color='#10b981', width=1), fillcolor='rgba(0,0,0,0)'),
         decreasing=dict(line=dict(color='#f87171', width=1), fillcolor='rgba(0,0,0,0)'),
         text=df['hover'],
         hoverinfo='text',
-        showlegend=False,
+        name=ticker, showlegend=False,
     ), row=1, col=1)
 
-    # ── EMA ────────────────────────────────────────────────
+    # ── EMA 20 ────────────────────────────────────────────────────────────────
     fig.add_trace(go.Scatter(
-        x=df['date'], y=df['ema20'],
-        mode='lines',
-        line=dict(color='#facc15', width=1.5),
-        name='EMA 20',
+        x=df['date_str'], y=df['ema20'], mode='lines',
+        line=dict(color='#facc15', width=1.5), name='EMA 20',
     ), row=1, col=1)
 
-    # ── ENTRY (FIXED) ──────────────────────────────────────
+    # ── Entry arrow (green triangle-up below candle) ──────────────────────────
     if entry_date:
-        ed_dt = pd.to_datetime(entry_date).normalize()
-        ed_row = df[df['date'] == ed_dt]
-
+        ed_str = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
+        ed_row = df[df['date_str'] == ed_str]
         if not ed_row.empty:
-            y_val = ed_row['low'].values[0] * 0.975
-
+            # offset 2.5% below the low for clear separation
+            arrow_y = ed_row['low'].values[0] * 0.975
             fig.add_trace(go.Scatter(
-                x=[ed_dt], y=[y_val],
+                x=[ed_str], y=[arrow_y],
                 mode='markers+text',
-                marker=dict(symbol='triangle-up', size=20, color='#10b981'),
+                marker=dict(symbol='triangle-up', size=20,
+                            color='#10b981', line=dict(color='#d1fae5', width=1.5)),
                 text=['BUY'],
                 textposition='bottom center',
+                textfont=dict(color='#10b981', size=9),
                 name='Entry',
-                hovertemplate=f"<b>🟢 ENTRY</b><br>{ed_dt.strftime('%Y-%m-%d')}<br>{entry:.2f}<extra></extra>" if entry else "",
+                hovertemplate=f"<b>🟢 ENTRY</b><br>Date: {ed_str}<br>Price: {entry:.2f}<extra></extra>" if entry else f"🟢 Entry: {ed_str}<extra></extra>",
             ), row=1, col=1)
 
-    # ── CLOSED TRADES ──────────────────────────────────────
+    # ── Closed trade arrows from history ─────────────────────────────────────
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
+        ctdf['Entry_Date'] = pd.to_datetime(ctdf['Entry_Date'], errors='coerce').dt.strftime('%Y-%m-%d')
+        ctdf['Exit_Date']  = pd.to_datetime(ctdf['Exit_Date'],  errors='coerce').dt.strftime('%Y-%m-%d')
 
         for _, tr in ctdf.iterrows():
+            # Entry arrow — 2.5% below low for clear separation
+            tr_ed = tr.get('Entry_Date', '')
+            tr_ep = tr.get('Entry_Price', None)
+            ed_row = df[df['date_str'] == tr_ed]
+            if not ed_row.empty and pd.notna(tr_ep):
+                arr_y = ed_row['low'].values[0] * 0.975
+                fig.add_trace(go.Scatter(
+                    x=[tr_ed], y=[arr_y],
+                    mode='markers+text',
+                    marker=dict(symbol='triangle-up', size=18,
+                                color='#10b981', line=dict(color='#d1fae5', width=1.5)),
+                    text=['BUY'],
+                    textposition='bottom center',
+                    textfont=dict(color='#10b981', size=9),
+                    name='Entry', showlegend=False,
+                    hovertemplate=f"<b>🟢 ENTRY</b><br>{tr_ed}<br>{tr_ep:.2f}<extra></extra>",
+                ), row=1, col=1)
 
-            # ENTRY
-            tr_ed = pd.to_datetime(tr.get('Entry_Date'), errors='coerce')
-            tr_ep = tr.get('Entry_Price')
+            # Exit arrow — 2.5% above high with PnL%
+            tr_xd  = tr.get('Exit_Date', '')
+            tr_xp  = tr.get('Exit_Price', None)
+            tr_pnl = tr.get('Trade_PnL_%', None)
+            xd_row = df[df['date_str'] == tr_xd]
+            if not xd_row.empty and pd.notna(tr_xp):
+                arr_y2 = xd_row['high'].values[0] * 1.025
+                pnl_str = f"{tr_pnl:+.1f}%" if pd.notna(tr_pnl) else ""
+                pnl_color = '#34d399' if (pd.notna(tr_pnl) and tr_pnl >= 0) else '#f87171'
+                fig.add_trace(go.Scatter(
+                    x=[tr_xd], y=[arr_y2],
+                    mode='markers+text',
+                    marker=dict(symbol='triangle-down', size=18,
+                                color='#f87171', line=dict(color='#fecaca', width=1.5)),
+                    text=[pnl_str],
+                    textposition='top center',
+                    textfont=dict(color=pnl_color, size=10, family='DM Mono'),
+                    name='Exit', showlegend=False,
+                    hovertemplate=f"<b>🔴 EXIT</b><br>{tr_xd}<br>{tr_xp:.2f}<br><b>{pnl_str}</b><extra></extra>",
+                ), row=1, col=1)
 
-            if pd.notna(tr_ed):
-                tr_ed = tr_ed.normalize()
-                ed_row = df[df['date'] == tr_ed]
-
-                if not ed_row.empty and pd.notna(tr_ep):
-                    y_val = ed_row['low'].values[0] * 0.975
-
-                    fig.add_trace(go.Scatter(
-                        x=[tr_ed], y=[y_val],
-                        mode='markers',
-                        marker=dict(symbol='triangle-up', size=16, color='#10b981'),
-                        showlegend=False
-                    ), row=1, col=1)
-
-            # EXIT
-            tr_xd = pd.to_datetime(tr.get('Exit_Date'), errors='coerce')
-            tr_xp = tr.get('Exit_Price')
-            tr_pnl = tr.get('Trade_PnL_%')
-
-            if pd.notna(tr_xd):
-                tr_xd = tr_xd.normalize()
-                xd_row = df[df['date'] == tr_xd]
-
-                if not xd_row.empty and pd.notna(tr_xp):
-                    y_val = xd_row['high'].values[0] * 1.025
-                    pnl_str = f"{tr_pnl:+.1f}%" if pd.notna(tr_pnl) else ""
-
-                    fig.add_trace(go.Scatter(
-                        x=[tr_xd], y=[y_val],
-                        mode='markers+text',
-                        marker=dict(symbol='triangle-down', size=16, color='#f87171'),
-                        text=[pnl_str],
-                        textposition='top center',
-                        showlegend=False
-                    ), row=1, col=1)
-
-    # ── LEVELS ─────────────────────────────────────────────
+    # ── Level lines ───────────────────────────────────────────────────────────
     if stop_loss:
-        fig.add_hline(y=stop_loss, line=dict(color='#f87171', dash='dash'))
+        fig.add_hline(y=stop_loss, row=1, col=1,
+                      line=dict(color='#f87171', width=1.5, dash='dash'),
+                      annotation_text=f"Stop  {stop_loss:.2f}",
+                      annotation_position="right",
+                      annotation_font=dict(color='#f87171', size=11))
     if entry:
-        fig.add_hline(y=entry, line=dict(color='#94a3b8', dash='dot'))
+        fig.add_hline(y=entry, row=1, col=1,
+                      line=dict(color='#94a3b8', width=1.5, dash='dot'),
+                      annotation_text=f"Entry  {entry:.2f}",
+                      annotation_position="right",
+                      annotation_font=dict(color='#94a3b8', size=11))
     if target:
-        fig.add_hline(y=target, line=dict(color='#10b981', dash='dash'))
+        fig.add_hline(y=target, row=1, col=1,
+                      line=dict(color='#10b981', width=1.5, dash='dash'),
+                      annotation_text=f"Target  {target:.2f}",
+                      annotation_position="right",
+                      annotation_font=dict(color='#10b981', size=11))
 
-    # ── VOLUME ─────────────────────────────────────────────
+    # ── Volume ────────────────────────────────────────────────────────────────
     fig.add_trace(go.Bar(
-        x=df['date'], y=df['volume'],
-        marker_color=vol_colors,
-        showlegend=False,
+        x=df['date_str'], y=df['volume'],
+        marker_color=vol_colors, marker_opacity=0.7,
+        name='Volume', showlegend=False,
     ), row=2, col=1)
 
-    # ── AXES (FIXED SPACING) ───────────────────────────────
-    fig.update_xaxes(
-        type='date',
-        rangebreaks=[dict(bounds=["sat", "mon"])],  # remove weekends
-    )
+    no_grid = dict(showgrid=False, showline=False, zeroline=False)
 
-    fig.update_yaxes(showgrid=False)
-
-    # ── DEFAULT VIEW (3 months) ────────────────────────────
-    end_date = df['date'].max()
-    start_date = end_date - pd.Timedelta(days=90)
-
-    fig.update_xaxes(range=[start_date, end_date], row=1, col=1)
-    fig.update_xaxes(range=[start_date, end_date], row=2, col=1)
-
-    # ── LAYOUT ────────────────────────────────────────────
     fig.update_layout(
+        title=dict(text=f"EGX: {ticker}", font=dict(size=15, color='#d1fae5'), x=0.01),
+        paper_bgcolor='#0f172a', plot_bgcolor='#0a1a12',
+        font=dict(color='#9ca3af', family='DM Mono'),
         height=height,
-        paper_bgcolor='#0f172a',
-        plot_bgcolor='#0a1a12',
-        margin=dict(l=10, r=120, t=40, b=40),
-        dragmode='pan'
+        # generous right padding so annotations and last candle breathe
+        margin=dict(l=10, r=160, t=45, b=50),
+        # pan by default — user scrolls to zoom via mouse wheel (scrollZoom=True)
+        dragmode='pan',
+        xaxis=dict(rangeslider=dict(visible=False), showticklabels=False, **no_grid),
+        xaxis2=dict(rangeslider=dict(visible=False), **no_grid),
+        legend=dict(bgcolor='#0f172a', bordercolor='#1e3a2a',
+                    font=dict(color='#9ca3af', size=11), x=0.01, y=0.99),
+        modebar=dict(bgcolor='#0f172a', color='#4b6a57', activecolor='#10b981'),
+        newshape=dict(line=dict(color='#facc15', width=1.5), fillcolor='rgba(0,0,0,0)'),
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={
-            'scrollZoom': True,
-            'doubleClick': 'reset',
-        }
-    )
+    price_ax = dict(side='right', showgrid=False, showline=False, zeroline=False,
+                    # preserve price scale — don't auto-rescale on x-pan
+                    fixedrange=False)
+    vol_ax   = dict(side='right', showgrid=False, showline=False, zeroline=False,
+                    tickformat='.2s', fixedrange=True,
+                    title=dict(text='Vol', font=dict(size=10, color='#4b6a57')))
+
+    fig.update_xaxes(type='category', tickangle=-45, nticks=20,
+                     showgrid=False, showline=False, zeroline=False,
+                     autorange=True, row=2, col=1)
+    fig.update_xaxes(type='category', showticklabels=False,
+                     showgrid=False, showline=False, zeroline=False,
+                     autorange=True, row=1, col=1)
+    fig.update_yaxes(**price_ax, row=1, col=1)
+    fig.update_yaxes(**vol_ax,   row=2, col=1)
+
+    st.plotly_chart(fig, use_container_width=True,
+                    config={
+                        'displayModeBar': True,
+                        'scrollZoom': True,       # mouse-wheel zoom
+                        'modeBarButtonsToRemove': [
+                            'toImage', 'sendDataToCloud',
+                            'zoom2d', 'zoomIn2d', 'zoomOut2d',  # remove box-zoom buttons
+                            'select2d', 'lasso2d',               # remove box/lasso select
+                            'autoScale2d',
+                        ],
+                        'modeBarButtonsToAdd': [
+                            'drawline',
+                            'drawopenpath',
+                            'drawclosedpath',
+                            'drawcircle',
+                            'drawrect',
+                            'eraseshape',
+                        ],
+                    })
+
+
 # ---------------------------
 # HELPERS
 # ---------------------------
@@ -213,7 +255,7 @@ def load_data():
         refresh_df     = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="refresh_date")
         refresh_date_scalar = refresh_df['refresh_date'].iloc[0]
         refresh_date_obj = pd.to_datetime(refresh_date_scalar).date()
-        refresh_date = refresh_date_scalar.strftime('%Y-%m-%d')
+        refresh_date_str = refresh_date_scalar.strftime('%Y-%m-%d')
 
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
@@ -229,7 +271,7 @@ def load_data():
 
         st.success("✅ Data loaded")
         return ({"closed": closed_trades, "current": current_trades},
-                all_tickers, strategy_metrics, refresh_date_obj, refresh_date)
+                all_tickers, strategy_metrics, refresh_date_obj, refresh_date_str)
     except Exception as e:
         st.error(f"❌ Load failed: {e}")
         st.stop()
@@ -361,10 +403,10 @@ with c2:
         st.rerun()
 
 # Load data
-data, all_symbols, df_strategy, refresh_date_obj, refresh_date = load_data()
+data, all_symbols, df_strategy, refresh_date_obj, refresh_date_str = load_data()
 df_current = data["current"].copy()
 df_closed  = data["closed"].copy()
-st.caption(f"📅 Data as of: **{refresh_date}**")
+st.caption(f"📅 Data as of: **{refresh_date_str}**")
 
 # ── Moving ticker tape ────────────────────────────────────────────────────────
 _all_facts = [
@@ -426,7 +468,7 @@ with st.sidebar:
     st.metric("🎯 Take Profit", len(take_profit_df))
     st.metric("❌ Close Now",   len(close_now_df))
     st.metric("✅ Holds",       len(holds_df))
-    st.caption(f"📅 {refresh_date}")
+    st.caption(f"📅 {refresh_date_str}")
 
     # ── Market sentiment ──────────────────────────────────────────────────────
     st.markdown("---")
