@@ -287,7 +287,7 @@ def draw_candle_chart(
         formatter: function(p) {{
           // p.value for candlestick = [open, close, low, high]
           var v = p.value;
-          if (!Array.isArray(v) || v.length < 4) {{
+          if (!Array.isArray(v) || v.length < 5) {{
             // EMA or volume tooltip
             if (p.seriesName === 'EMA 20') {{
               return '<div style="font-family:DM Mono,monospace;font-size:12px">'
