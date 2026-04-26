@@ -41,7 +41,7 @@ def load_existing_data():
 # =============================
 # FETCH DATA
 # =============================
-def fetch_ohlcv(symbol, n_bars=5000):
+def fetch_ohlcv(symbol, n_bars=720):
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
