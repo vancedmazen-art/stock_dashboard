@@ -2,20 +2,16 @@ import os
 import time
 import traceback
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 from data_provider import get_OHLCV_data
 
 # =============================
 # CONFIG
 # =============================
-import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-WATCHLIST_FILE = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "watchlist.txt"
-)
-DATA_FILE = "data/ohlcv.csv"
+WATCHLIST_FILE = os.path.join(BASE_DIR, "..", "watchlist.txt")
+DATA_FILE = os.path.join(BASE_DIR, "..", "data", "ohlcv.csv")
 
 MAX_RETRIES = 5
 WAIT_SEC = 3
@@ -25,8 +21,16 @@ WAIT_SEC = 3
 # LOAD WATCHLIST
 # =============================
 def load_watchlist():
+    if not os.path.exists(WATCHLIST_FILE):
+        raise FileNotFoundError(f"Watchlist not found: {WATCHLIST_FILE}")
+
     with open(WATCHLIST_FILE, "r") as f:
-        return [line.strip() for line in f if line.strip()]
+        symbols = [line.strip() for line in f if line.strip()]
+
+    if not symbols:
+        raise ValueError("Watchlist is empty")
+
+    return symbols
 
 
 # =============================
@@ -34,7 +38,14 @@ def load_watchlist():
 # =============================
 def load_existing_data():
     if os.path.exists(DATA_FILE):
-        return pd.read_csv(DATA_FILE)
+        df = pd.read_csv(DATA_FILE)
+
+        # ensure schema consistency
+        if "datetime" in df.columns:
+            df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+
+        return df
+
     return pd.DataFrame()
 
 
@@ -53,22 +64,32 @@ def fetch_ohlcv(symbol, n_bars=720):
             )
 
             if df is None or df.empty:
-                continue
+                raise ValueError("Empty dataframe returned")
 
-            df = df.reset_index()
+            # =============================
+            # NORMALIZATION (CRITICAL)
+            # =============================
+            df = df.reset_index(drop=True)
+
+            # enforce datetime column
+            if "datetime" not in df.columns:
+                raise ValueError("Missing 'datetime' column from provider")
+
+            df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
 
             df["Symbol"] = symbol.replace("EGX:", "")
-            df["QuoteTime"] = datetime.now()
+            df["QuoteTime"] = datetime.now(timezone.utc)
 
             return df
 
         except Exception as e:
-            print(f"⚠ {symbol} attempt {attempt} failed: {e}")
+            print(f"⚠ {symbol} attempt {attempt}/{MAX_RETRIES} failed: {e}")
             traceback.print_exc()
 
-        time.sleep(WAIT_SEC)
+            if attempt < MAX_RETRIES:
+                time.sleep(WAIT_SEC)
 
-    print(f"❌ Failed: {symbol}")
+    print(f"❌ Failed completely: {symbol}")
     return None
 
 
@@ -77,12 +98,25 @@ def fetch_ohlcv(symbol, n_bars=720):
 # =============================
 def main():
 
+    print("🚀 EGX Pipeline started")
+
     watchlist = load_watchlist()
     existing_df = load_existing_data()
 
     all_new_data = []
 
-    print(f"🚀 Processing {len(watchlist)} symbols")
+    print(f"📊 Processing {len(watchlist)} symbols")
+
+    # Precompute existing keys ONCE (big performance win)
+    if not existing_df.empty:
+        existing_df["datetime"] = pd.to_datetime(existing_df["datetime"], errors="coerce")
+
+        existing_keys = set(
+            existing_df["Symbol"].astype(str) + "_" +
+            existing_df["datetime"].astype(str)
+        )
+    else:
+        existing_keys = set()
 
     for symbol in watchlist:
 
@@ -92,17 +126,11 @@ def main():
             continue
 
         # =============================
-        # DEDUP LOGIC (CRITICAL FIX)
+        # DEDUP LOGIC
         # =============================
-        if not existing_df.empty:
-            existing_keys = set(
-                existing_df["Symbol"].astype(str) + "_" +
-                existing_df["datetime"].astype(str)
-            )
-
-            df["key"] = df["Symbol"].astype(str) + "_" + df["datetime"].astype(str)
-            df = df[~df["key"].isin(existing_keys)]
-            df.drop(columns=["key"], inplace=True)
+        df["key"] = df["Symbol"].astype(str) + "_" + df["datetime"].astype(str)
+        df = df[~df["key"].isin(existing_keys)]
+        df.drop(columns=["key"], inplace=True)
 
         if not df.empty:
             all_new_data.append(df)
@@ -123,7 +151,9 @@ def main():
             subset=["Symbol", "datetime"]
         )
 
-        os.makedirs("data", exist_ok=True)
+        # ensure directory exists
+        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+
         final_df.to_csv(DATA_FILE, index=False)
 
         print(f"\n💾 Saved total rows: {len(final_df)}")
