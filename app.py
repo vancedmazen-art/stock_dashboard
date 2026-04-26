@@ -84,14 +84,18 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         ed_str = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
         ed_row = df[df['date_str'] == ed_str]
         if not ed_row.empty:
-            arrow_y = ed_row['low'].values[0] * 0.992
+            # offset 2.5% below the low for clear separation
+            arrow_y = ed_row['low'].values[0] * 0.975
             fig.add_trace(go.Scatter(
                 x=[ed_str], y=[arrow_y],
-                mode='markers',
-                marker=dict(symbol='triangle-up', size=16,
-                            color='#10b981', line=dict(color='#d1fae5', width=1)),
+                mode='markers+text',
+                marker=dict(symbol='triangle-up', size=20,
+                            color='#10b981', line=dict(color='#d1fae5', width=1.5)),
+                text=['BUY'],
+                textposition='bottom center',
+                textfont=dict(color='#10b981', size=9),
                 name='Entry',
-                hovertemplate=f"<b>Entry</b><br>Date: {ed_str}<br>Price: {entry:.2f}<extra></extra>" if entry else f"Entry: {ed_str}<extra></extra>",
+                hovertemplate=f"<b>🟢 ENTRY</b><br>Date: {ed_str}<br>Price: {entry:.2f}<extra></extra>" if entry else f"🟢 Entry: {ed_str}<extra></extra>",
             ), row=1, col=1)
 
     # ── Closed trade arrows from history ─────────────────────────────────────
@@ -101,40 +105,43 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         ctdf['Exit_Date']  = pd.to_datetime(ctdf['Exit_Date'],  errors='coerce').dt.strftime('%Y-%m-%d')
 
         for _, tr in ctdf.iterrows():
-            # Entry arrow
+            # Entry arrow — 2.5% below low for clear separation
             tr_ed = tr.get('Entry_Date', '')
             tr_ep = tr.get('Entry_Price', None)
             ed_row = df[df['date_str'] == tr_ed]
             if not ed_row.empty and pd.notna(tr_ep):
-                arr_y = ed_row['low'].values[0] * 0.992
+                arr_y = ed_row['low'].values[0] * 0.975
                 fig.add_trace(go.Scatter(
                     x=[tr_ed], y=[arr_y],
-                    mode='markers',
-                    marker=dict(symbol='triangle-up', size=14,
-                                color='#10b981', line=dict(color='#d1fae5', width=1)),
+                    mode='markers+text',
+                    marker=dict(symbol='triangle-up', size=18,
+                                color='#10b981', line=dict(color='#d1fae5', width=1.5)),
+                    text=['BUY'],
+                    textposition='bottom center',
+                    textfont=dict(color='#10b981', size=9),
                     name='Entry', showlegend=False,
-                    hovertemplate=f"<b>Entry</b><br>{tr_ed}<br>{tr_ep:.2f}<extra></extra>",
+                    hovertemplate=f"<b>🟢 ENTRY</b><br>{tr_ed}<br>{tr_ep:.2f}<extra></extra>",
                 ), row=1, col=1)
 
-            # Exit arrow with PnL%
+            # Exit arrow — 2.5% above high with PnL%
             tr_xd  = tr.get('Exit_Date', '')
             tr_xp  = tr.get('Exit_Price', None)
             tr_pnl = tr.get('Trade_PnL_%', None)
             xd_row = df[df['date_str'] == tr_xd]
             if not xd_row.empty and pd.notna(tr_xp):
-                arr_y2 = xd_row['high'].values[0] * 1.008
+                arr_y2 = xd_row['high'].values[0] * 1.025
                 pnl_str = f"{tr_pnl:+.1f}%" if pd.notna(tr_pnl) else ""
                 pnl_color = '#34d399' if (pd.notna(tr_pnl) and tr_pnl >= 0) else '#f87171'
                 fig.add_trace(go.Scatter(
                     x=[tr_xd], y=[arr_y2],
                     mode='markers+text',
-                    marker=dict(symbol='triangle-down', size=14,
-                                color='#f87171', line=dict(color='#fecaca', width=1)),
+                    marker=dict(symbol='triangle-down', size=18,
+                                color='#f87171', line=dict(color='#fecaca', width=1.5)),
                     text=[pnl_str],
                     textposition='top center',
-                    textfont=dict(color=pnl_color, size=10),
+                    textfont=dict(color=pnl_color, size=10, family='DM Mono'),
                     name='Exit', showlegend=False,
-                    hovertemplate=f"<b>Exit</b><br>{tr_xd}<br>{tr_xp:.2f}<br><b>{pnl_str}</b><extra></extra>",
+                    hovertemplate=f"<b>🔴 EXIT</b><br>{tr_xd}<br>{tr_xp:.2f}<br><b>{pnl_str}</b><extra></extra>",
                 ), row=1, col=1)
 
     # ── Level lines ───────────────────────────────────────────────────────────
@@ -164,15 +171,17 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         name='Volume', showlegend=False,
     ), row=2, col=1)
 
-    x_range_end = len(df) + 15
     no_grid = dict(showgrid=False, showline=False, zeroline=False)
 
     fig.update_layout(
         title=dict(text=f"EGX: {ticker}", font=dict(size=15, color='#d1fae5'), x=0.01),
         paper_bgcolor='#0f172a', plot_bgcolor='#0a1a12',
         font=dict(color='#9ca3af', family='DM Mono'),
-        height=height, margin=dict(l=10, r=110, t=45, b=50),
-        dragmode='zoom',
+        height=height,
+        # generous right padding so annotations and last candle breathe
+        margin=dict(l=10, r=160, t=45, b=50),
+        # pan by default — user scrolls to zoom via mouse wheel (scrollZoom=True)
+        dragmode='pan',
         xaxis=dict(rangeslider=dict(visible=False), showticklabels=False, **no_grid),
         xaxis2=dict(rangeslider=dict(visible=False), **no_grid),
         legend=dict(bgcolor='#0f172a', bordercolor='#1e3a2a',
@@ -181,13 +190,13 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         newshape=dict(line=dict(color='#facc15', width=1.5), fillcolor='rgba(0,0,0,0)'),
     )
 
-    price_ax = dict(side='right', showgrid=False, showline=False, zeroline=False)
+    price_ax = dict(side='right', showgrid=False, showline=False, zeroline=False,
+                    # preserve price scale — don't auto-rescale on x-pan
+                    fixedrange=False)
     vol_ax   = dict(side='right', showgrid=False, showline=False, zeroline=False,
-                    tickformat='.2s',
+                    tickformat='.2s', fixedrange=True,
                     title=dict(text='Vol', font=dict(size=10, color='#4b6a57')))
 
-    # Show ALL candles by default, leave room on the right
-    # Using autorange — do NOT set explicit range with category axis or only a window shows
     fig.update_xaxes(type='category', tickangle=-45, nticks=20,
                      showgrid=False, showline=False, zeroline=False,
                      autorange=True, row=2, col=1)
@@ -200,15 +209,20 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     st.plotly_chart(fig, use_container_width=True,
                     config={
                         'displayModeBar': True,
-                        'scrollZoom': True,
-                        'modeBarButtonsToRemove': ['toImage', 'sendDataToCloud'],
+                        'scrollZoom': True,       # mouse-wheel zoom
+                        'modeBarButtonsToRemove': [
+                            'toImage', 'sendDataToCloud',
+                            'zoom2d', 'zoomIn2d', 'zoomOut2d',  # remove box-zoom buttons
+                            'select2d', 'lasso2d',               # remove box/lasso select
+                            'autoScale2d',
+                        ],
                         'modeBarButtonsToAdd': [
-                            'drawline',       # tilted / trendline
-                            'drawopenpath',   # free draw
-                            'drawclosedpath', # closed shape
-                            'drawcircle',     # circle
-                            'drawrect',       # horizontal band / rectangle
-                            'eraseshape',     # eraser
+                            'drawline',
+                            'drawopenpath',
+                            'drawclosedpath',
+                            'drawcircle',
+                            'drawrect',
+                            'eraseshape',
                         ],
                     })
 
@@ -394,6 +408,50 @@ df_current = data["current"].copy()
 df_closed  = data["closed"].copy()
 st.caption(f"📅 Data as of: **{refresh_date_str}**")
 
+# ── Moving ticker tape ────────────────────────────────────────────────────────
+_all_facts = [
+    "🧠 Discipline Wins: Following your rules beats predicting the market.",
+    "⏳ Patience Pays: Sometimes the best trade is no trade at all.",
+    "📊 Plan Before You Trade: Know your entry and exit before starting.",
+    "🎢 Emotions Are the Enemy: Fear and greed cost more than market moves.",
+    "💡 Risk Management: Never risk more than you can afford to lose.",
+    "🔥 Trend Follower: The trend is your friend until it ends.",
+    "⚡ Quick Decisions: Opportunities are fleeting, but rushing is dangerous.",
+    "📐 Position Size Matters: Risk small, stay in the game.",
+    "🔄 Cut Losses Fast: A small loss today beats a big one tomorrow.",
+]
+_tape_text = "  ·  ".join(_all_facts) + "  ·  " + "  ·  ".join(_all_facts)
+st.markdown(
+    f"""<style>
+    @keyframes tape {{
+        0%   {{ transform: translateX(0); }}
+        100% {{ transform: translateX(-50%); }}
+    }}
+    .ticker-outer {{
+        width: 100%;
+        overflow: hidden;
+        background: #0a1f12;
+        border: 1px solid #1e3a2a;
+        border-radius: 6px;
+        padding: 7px 0;
+        margin-bottom: 14px;
+    }}
+    .ticker-inner {{
+        display: inline-block;
+        white-space: nowrap;
+        animation: tape 60s linear infinite;
+        font-family: 'DM Mono', monospace;
+        font-size: 12px;
+        color: #10b981;
+        letter-spacing: 0.03em;
+    }}
+    </style>
+    <div class="ticker-outer">
+        <div class="ticker-inner">{_tape_text}</div>
+    </div>""",
+    unsafe_allow_html=True
+)
+
 # Split EGX30
 df_current_egx30 = df_current[df_current['Ticker'] == 'EGX30'].copy()
 df_closed_egx30  = df_closed[df_closed['Ticker']   == 'EGX30'].copy()
@@ -480,21 +538,25 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
-        # Clears/Tests Anchor signals
-        if 'Current_Clears_Anchor' in holds_df.columns:
-            clears = holds_df[holds_df['Current_Clears_Anchor'] == True]
-            if len(clears) > 0:
+        # Top 3 losers
+        negative_holds = holds_df[holds_df[pnl_col] < 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        if len(negative_holds) > 0:
+            st.markdown("<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;"
+                        "letter-spacing:.1em;margin:10px 0 4px'>📉 Top Losers</div>",
+                        unsafe_allow_html=True)
+            bot3 = negative_holds.nsmallest(3, pnl_col)[['Ticker', pnl_col]]
+            for _, r in bot3.iterrows():
                 st.markdown(
-                    f"<div style='background:#0f172a;border:1px solid #facc1540;border-radius:8px;"
-                    f"padding:10px 12px;margin:6px 0'>"
-                    f"<div style='font-size:10px;color:#facc15;text-transform:uppercase;letter-spacing:.1em'>⚡ Clears Anchor</div>"
-                    f"<div style='font-size:13px;color:#d1fae5'>{', '.join(clears['Ticker'].tolist())}</div>"
+                    f"<div style='display:flex;justify-content:space-between;"
+                    f"background:#1a0a0a;border:1px solid #3a1e1e;border-radius:6px;"
+                    f"padding:6px 10px;margin-bottom:4px'>"
+                    f"<span style='color:#fecaca;font-weight:600'>{r['Ticker']}</span>"
+                    f"<span style='color:#f87171;font-weight:700'>▼ {r[pnl_col]:.1f}%</span>"
                     f"</div>",
                     unsafe_allow_html=True
                 )
 
     st.markdown("---")
-    st.markdown(f"*{selected_facts}*")
 
 
 # ---------------------------
@@ -591,6 +653,12 @@ with tab_buys:
 
 # ── TAB 2: TAKE PROFIT ───────────────────────────────────────────────────────
 with tab_tp:
+    if len(take_profit_df) > 0:
+        _s1, _s2, _s3, _s4 = st.columns(4)
+        _s1.metric("🎯 Count",    len(take_profit_df))
+        _s2.metric("🚀 Best PnL", f"{take_profit_df['Trade_PnL_%'].max():.1f}%")
+        _s3.metric("📊 Avg PnL",  f"{take_profit_df['Trade_PnL_%'].mean():.1f}%")
+        _s4.metric("📋 Avg Days", f"{take_profit_df['Days_Held'].mean():.0f}" if 'Days_Held' in take_profit_df.columns else "—")
     stock_panel(
         take_profit_df, "tp_ticker",
         metric_cols=[
@@ -608,6 +676,12 @@ with tab_tp:
 
 # ── TAB 3: CLOSE NOW ─────────────────────────────────────────────────────────
 with tab_close:
+    if len(close_now_df) > 0:
+        _c1, _c2, _c3, _c4 = st.columns(4)
+        _c1.metric("❌ Count",    len(close_now_df))
+        _c2.metric("🚀 Best PnL", f"{close_now_df['Trade_PnL_%'].max():.1f}%")
+        _c3.metric("📊 Avg PnL",  f"{close_now_df['Trade_PnL_%'].mean():.1f}%")
+        _c4.metric("📋 Avg Days", f"{close_now_df['Days_Held'].mean():.0f}" if 'Days_Held' in close_now_df.columns else "—")
     stock_panel(
         close_now_df, "close_ticker",
         metric_cols=[
