@@ -90,10 +90,7 @@ def draw_candle_chart(
     start_pct    = round(start_idx / n * 100)
  
     # ── serialise data to JS-safe Python lists ────────────────────────────────
-    candle_data = [
-        [float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])]
-        for _, r in df.iterrows()
-    ]
+    candle_data = df[['open', 'close', 'low', 'high']].values.tolist()
     vol_data = [
         {"value": float(r["volume"]),
          "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}}
