@@ -187,7 +187,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     no_grid = dict(showgrid=False, showline=False, zeroline=False)
 
     fig.update_layout(
-        title=dict(text=f"EGX: {ticker}", font=dict(size=15, color='#d1fae5'), x=0.01),
+        title=dict(text=f"{ticker}", font=dict(size=15, color='#d1fae5'), x=0.01),
         paper_bgcolor='#0f172a', plot_bgcolor='#0a1a12',
         font=dict(color='#9ca3af', family='DM Mono'),
         height=height,
@@ -217,7 +217,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     price_ax = dict(
         side='right',
         showgrid=False, showline=False, zeroline=False,
-        fixedrange=False,
+        fixedrange=True,
     )
     vol_ax = dict(
         side='right',
