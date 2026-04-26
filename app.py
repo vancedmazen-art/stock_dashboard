@@ -8,7 +8,8 @@ import numpy as np
 import random
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from streamlit_echarts import st_echarts
+from streamlit_echarts import st_echarts, JsCode
+
 # ---------------------------
 # CHART DATA
 # ---------------------------
@@ -39,20 +40,8 @@ def draw_candle_chart(
     entry_date=None,
     closed_trades_df=None,
 ):
-    """
-    Full-featured ECharts candlestick chart:
-      • Hollow candles with % gain/loss on hover
-      • EMA 20 overlay
-      • Green triangle-up on entry date, red triangle-down on exit date
-      • PnL% label on exit candle
-      • Horizontal level lines (stop / entry / target)
-      • No grid lines
-      • Volume panel (bottom 25 %)
-      • Initial 3-month view; scrollable / zoomable via dataZoom
-    """
- 
     # ── load & filter ─────────────────────────────────────────────────────────
-    df_all = load_chart_data()          # your existing cached loader
+    df_all = load_chart_data()
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
  
     if df.empty:
@@ -61,154 +50,187 @@ def draw_candle_chart(
  
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     df["ema20"]    = _ema(df["close"], 20).round(4)
-    df["pct_chg"]  = ((df["close"] - df["open"]) / df["open"] * 100).round(2)
  
-    dates    = df["date_str"].tolist()
-    n        = len(dates)
+    dates = df["date_str"].tolist()
+    n     = len(dates)
  
-    # ── initial 3-month window expressed as index range ───────────────────────
-    max_date      = df["datetime"].max()
-    start_cutoff  = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
-    start_idx     = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
-    start_pct     = round(start_idx / n * 100)   # dataZoom uses 0-100 %
+    # ── initial 3-month window ────────────────────────────────────────────────
+    max_date     = df["datetime"].max()
+    start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
+    start_idx    = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
+    start_pct    = round(start_idx / n * 100)
  
-    # ── candlestick data  [open, close, low, high] ────────────────────────────
+    # ── candlestick data: plain [open, close, low, high] lists ───────────────
+    # Do NOT pass per-item itemStyle — that overrides the series-level
+    # up/down color logic and makes every candle the same color.
     candle_data = [
-        {
-            "value": [row["open"], row["close"], row["low"], row["high"]],
-            "itemStyle": {
-                "color":        "transparent",
-                "color0":       "transparent",
-                "borderColor":  "#10b981",
-                "borderColor0": "#f87171",
-                "borderWidth":  1,
-            },
-        }
-        for _, row in df.iterrows()
+        [float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])]
+        for _, r in df.iterrows()
     ]
  
     # ── volume data ───────────────────────────────────────────────────────────
     vol_data = [
         {
-            "value": row["volume"],
-            "itemStyle": {"color": _vol_color(row["close"], row["open"]), "opacity": 0.7},
+            "value": float(r["volume"]),
+            "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75},
         }
-        for _, row in df.iterrows()
+        for _, r in df.iterrows()
     ]
  
     # ── EMA 20 ────────────────────────────────────────────────────────────────
-    ema_data = df["ema20"].tolist()
+    ema_data = [round(v, 4) for v in df["ema20"].tolist()]
  
     # ── mark points (entry / exit arrows) ────────────────────────────────────
     mark_points = []
  
-    def _add_buy(date_str, price_low, hover_price):
-        idx = dates.index(date_str) if date_str in dates else None
-        if idx is None:
+    def _add_buy(date_str, price_low):
+        if date_str not in dates:
             return
-        y = price_low * 0.975
+        idx = dates.index(date_str)
+        y   = price_low * 0.975
         mark_points.append({
-            "name": "BUY",
-            "coord": [idx, y],
-            "value": "BUY",
-            "symbol": "triangle",
-            "symbolSize": 18,
+            "name":         "BUY",
+            "coord":        [idx, y],
+            "value":        "BUY",
+            "symbol":       "triangle",
+            "symbolSize":   20,
             "symbolRotate": 0,
-            "itemStyle": {"color": "#10b981"},
+            "itemStyle":    {"color": "#10b981"},
             "label": {
-                "show": True,
-                "formatter": "BUY",
-                "position": "bottom",
-                "color": "#10b981",
-                "fontSize": 9,
-            },
-        })
- 
-    def _add_sell(date_str, price_high, pnl_val):
-        idx = dates.index(date_str) if date_str in dates else None
-        if idx is None:
-            return
-        y   = price_high * 1.025
-        lbl = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
-        clr = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
-        mark_points.append({
-            "name": "SELL",
-            "coord": [idx, y],
-            "value": lbl,
-            "symbol": "triangle",
-            "symbolSize": 18,
-            "symbolRotate": 180,
-            "itemStyle": {"color": "#f87171"},
-            "label": {
-                "show": True,
-                "formatter": lbl,
-                "position": "top",
-                "color": clr,
-                "fontSize": 10,
+                "show":       True,
+                "formatter":  "BUY",
+                "position":   "bottom",
+                "color":      "#10b981",
+                "fontSize":   9,
                 "fontFamily": "DM Mono",
             },
         })
  
-    # current open trade entry arrow
+    def _add_sell(date_str, price_high, pnl_val):
+        if date_str not in dates:
+            return
+        idx = dates.index(date_str)
+        y   = price_high * 1.025
+        lbl = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
+        clr = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
+        mark_points.append({
+            "name":         "SELL",
+            "coord":        [idx, y],
+            "value":        lbl,
+            "symbol":       "triangle",
+            "symbolSize":   20,
+            "symbolRotate": 180,
+            "itemStyle":    {"color": "#f87171"},
+            "label": {
+                "show":       True,
+                "formatter":  lbl,
+                "position":   "top",
+                "color":      clr,
+                "fontSize":   10,
+                "fontFamily": "DM Mono",
+            },
+        })
+ 
+    # current open trade entry
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime("%Y-%m-%d")
         ed_row = df[df["date_str"] == ed_str]
         if not ed_row.empty:
-            _add_buy(ed_str, ed_row["low"].values[0], entry)
+            _add_buy(ed_str, float(ed_row["low"].values[0]))
  
-    # closed trades arrows
+    # closed trades
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
         ctdf["Entry_Date"] = pd.to_datetime(ctdf["Entry_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
         ctdf["Exit_Date"]  = pd.to_datetime(ctdf["Exit_Date"],  errors="coerce").dt.strftime("%Y-%m-%d")
  
         for _, tr in ctdf.iterrows():
-            # entry
             tr_ed  = tr.get("Entry_Date", "")
             tr_ep  = tr.get("Entry_Price", None)
             ed_row = df[df["date_str"] == tr_ed]
             if not ed_row.empty and pd.notna(tr_ep):
-                _add_buy(tr_ed, ed_row["low"].values[0], tr_ep)
+                _add_buy(tr_ed, float(ed_row["low"].values[0]))
  
-            # exit
             tr_xd  = tr.get("Exit_Date", "")
             tr_xp  = tr.get("Exit_Price", None)
             tr_pnl = tr.get("Trade_PnL_%", None)
             xd_row = df[df["date_str"] == tr_xd]
             if not xd_row.empty and pd.notna(tr_xp):
-                _add_sell(tr_xd, xd_row["high"].values[0], tr_pnl)
+                _add_sell(tr_xd, float(xd_row["high"].values[0]), tr_pnl)
  
-    # ── horizontal level lines (markLine on candle series) ────────────────────
+    # ── horizontal level lines ────────────────────────────────────────────────
+    # markLine data format: list of two-point pairs.
+    # Label goes ONLY on point[0]; point[1] must be a plain {yAxis: value} dict.
     mark_lines = []
-    level_cfg = [
-        (stop_loss, "#f87171", f"Stop  {stop_loss:.2f}"  if stop_loss else ""),
-        (entry,     "#94a3b8", f"Entry {entry:.2f}"       if entry     else ""),
-        (target,    "#10b981", f"Target {target:.2f}"     if target    else ""),
-    ]
-    for price, color, label in level_cfg:
-        if price:
-            mark_lines.append([
-                {"yAxis": price, "lineStyle": {"color": color, "width": 1.5, "type": "dashed"},
-                 "label": {"show": True, "formatter": label, "position": "end",
-                            "color": color, "fontSize": 11, "fontFamily": "DM Mono"}},
-                {"yAxis": price},
-            ])
+    level_cfg = []
+    if stop_loss:
+        level_cfg.append((stop_loss, "#f87171", f"Stop  {stop_loss:.2f}", "dashed"))
+    if entry:
+        level_cfg.append((entry,     "#94a3b8", f"Entry  {entry:.2f}",    "dotted"))
+    if target:
+        level_cfg.append((target,    "#10b981", f"Target  {target:.2f}",  "dashed"))
  
-    # ── tooltip formatter (JS string) ─────────────────────────────────────────
-    tooltip_fmt = """
+    for price, color, label, dash in level_cfg:
+        mark_lines.append([
+            {
+                "yAxis": price,
+                "lineStyle": {"color": color, "width": 1.5, "type": dash},
+                "label": {
+                    "show":       True,
+                    "formatter":  label,
+                    "position":   "insideEndTop",
+                    "color":      color,
+                    "fontSize":   11,
+                    "fontFamily": "DM Mono",
+                    "fontWeight": "600",
+                },
+            },
+            {
+                "yAxis": price,
+            },
+        ])
+ 
+    # ── tooltip JS formatter ──────────────────────────────────────────────────
+    # params is an array (trigger="axis"). We scan for the candlestick series
+    # whose value is a 4-element array, then also show EMA if present.
+    tooltip_js = JsCode("""
     function(params) {
-        var p = Array.isArray(params) ? params[0] : params;
-        if (!p || !p.value) return '';
-        var o = p.value[0], c = p.value[1], l = p.value[2], h = p.value[3];
-        var pct = ((c - o) / o * 100).toFixed(2);
-        var arrow = c >= o ? '▲' : '▼';
-        var col   = c >= o ? '#10b981' : '#f87171';
-        return '<b>' + p.name + '</b><br>'
-             + 'O: ' + o.toFixed(2) + '  H: ' + h.toFixed(2) + '<br>'
-             + 'L: ' + l.toFixed(2) + '  C: ' + c.toFixed(2) + '<br>'
-             + '<span style="color:' + col + '"><b>' + arrow + ' ' + (pct>0?'+':'') + pct + '%</b></span>';
+        if (!params || !params.length) return '';
+ 
+        var candle = null;
+        var ema    = null;
+        for (var i = 0; i < params.length; i++) {
+            var v = params[i].value;
+            if (Array.isArray(v) && v.length === 4) { candle = params[i]; }
+            else if (typeof v === 'number' && params[i].seriesName === 'EMA 20') { ema = params[i]; }
+        }
+        if (!candle) return '';
+ 
+        var o   = parseFloat(candle.value[0]);
+        var c   = parseFloat(candle.value[1]);
+        var low = parseFloat(candle.value[2]);
+        var h   = parseFloat(candle.value[3]);
+        var pct = ((c - o) / o * 100);
+        var arrow = pct >= 0 ? '\u25b2' : '\u25bc';
+        var col   = pct >= 0 ? '#10b981' : '#f87171';
+        var sign  = pct >= 0 ? '+' : '';
+ 
+        var html = '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.8;min-width:160px">'
+            + '<b style="color:#d1fae5;font-size:13px">' + candle.name + '</b><br>'
+            + '<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">' + o.toFixed(2) + '</b>'
+            + '&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">' + h.toFixed(2) + '</b><br>'
+            + '<span style="color:#6b7280">L</span> <b style="color:#e2e8f0">' + low.toFixed(2) + '</b>'
+            + '&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">' + c.toFixed(2) + '</b><br>'
+            + '<span style="color:' + col + ';font-size:13px"><b>' + arrow + ' ' + sign + pct.toFixed(2) + '%</b></span>';
+ 
+        if (ema) {
+            html += '<br><span style="color:#facc15">\u25a0 EMA20</span> <b style="color:#e2e8f0">' + parseFloat(ema.value).toFixed(2) + '</b>';
+        }
+ 
+        html += '</div>';
+        return html;
     }
-    """
+    """)
  
     # ── ECharts option ────────────────────────────────────────────────────────
     option = {
@@ -216,93 +238,115 @@ def draw_candle_chart(
         "animation": False,
         "title": {
             "text": f"EGX: {ticker}",
-            "textStyle": {"color": "#d1fae5", "fontSize": 15, "fontFamily": "DM Mono"},
+            "textStyle": {
+                "color": "#d1fae5", "fontSize": 15,
+                "fontFamily": "DM Mono", "fontWeight": "700",
+            },
             "left": "1%",
-            "top": 4,
+            "top": 6,
         },
         "tooltip": {
             "trigger": "axis",
-            "axisPointer": {"type": "cross", "crossStyle": {"color": "#4b6a57"}},
+            "axisPointer": {
+                "type": "cross",
+                "crossStyle": {"color": "#4b6a57", "width": 1},
+                "lineStyle":  {"color": "#4b6a57", "width": 1, "type": "dashed"},
+            },
             "backgroundColor": "#0f172a",
-            "borderColor": "#1e3a2a",
-            "textStyle": {"color": "#d1fae5", "fontFamily": "DM Mono", "fontSize": 12},
-            "formatter": tooltip_fmt,
+            "borderColor":     "#1e3a2a",
+            "borderWidth":     1,
+            "padding":         [8, 12],
+            "formatter":       tooltip_js,
         },
         "legend": {
             "data": ["EMA 20"],
-            "top": 4,
-            "right": "4%",
+            "top": 6,
+            "right": "2%",
             "textStyle": {"color": "#9ca3af", "fontSize": 11, "fontFamily": "DM Mono"},
         },
         "axisPointer": {"link": [{"xAxisIndex": "all"}]},
         "grid": [
-            {"left": "1%", "right": "12%", "top": 50,  "height": "62%"},   # price
-            {"left": "1%", "right": "12%", "top": "78%", "height": "16%"}, # volume
+            {"left": "1%", "right": "14%", "top": 50,    "height": "60%"},
+            {"left": "1%", "right": "14%", "top": "76%", "height": "14%"},
         ],
         "xAxis": [
             {
-                "type": "category",
-                "data": dates,
-                "gridIndex": 0,
-                "scale": True,
-                "boundaryGap": False,
-                "axisLine":   {"lineStyle": {"color": "#1e3a2a"}},
-                "axisTick":   {"show": False},
-                "axisLabel":  {"show": False},
-                "splitLine":  {"show": False},
+                "type":        "category",
+                "data":        dates,
+                "gridIndex":   0,
+                "scale":       True,
+                "boundaryGap": True,
+                "axisLine":    {"lineStyle": {"color": "#1e3a2a"}},
+                "axisTick":    {"show": False},
+                "axisLabel":   {"show": False},
+                "splitLine":   {"show": False},
             },
             {
-                "type": "category",
-                "data": dates,
-                "gridIndex": 1,
-                "scale": True,
-                "boundaryGap": False,
-                "axisLine":   {"lineStyle": {"color": "#1e3a2a"}},
-                "axisTick":   {"show": False},
-                "axisLabel":  {"color": "#4b6a57", "fontSize": 10, "rotate": -45,
-                                "fontFamily": "DM Mono"},
-                "splitLine":  {"show": False},
+                "type":        "category",
+                "data":        dates,
+                "gridIndex":   1,
+                "scale":       True,
+                "boundaryGap": True,
+                "axisLine":    {"lineStyle": {"color": "#1e3a2a"}},
+                "axisTick":    {"show": False},
+                "axisLabel": {
+                    "color":      "#6b7280",
+                    "fontSize":   11,
+                    "rotate":     -30,
+                    "fontFamily": "DM Mono",
+                    "interval":   "auto",
+                },
+                "splitLine": {"show": False},
             },
         ],
         "yAxis": [
             {
-                "scale": True,
+                "scale":     True,
                 "gridIndex": 0,
-                "position": "right",
+                "position":  "right",
                 "splitLine": {"show": False},
                 "axisLine":  {"show": False},
                 "axisTick":  {"show": False},
-                "axisLabel": {"color": "#9ca3af", "fontSize": 10, "fontFamily": "DM Mono"},
+                "axisLabel": {
+                    "color":      "#9ca3af",
+                    "fontSize":   13,
+                    "fontFamily": "DM Mono",
+                    "margin":     8,
+                },
             },
             {
-                "scale": True,
+                "scale":     True,
                 "gridIndex": 1,
-                "position": "right",
+                "position":  "right",
                 "splitLine": {"show": False},
                 "axisLine":  {"show": False},
                 "axisTick":  {"show": False},
-                "axisLabel": {"color": "#4b6a57", "fontSize": 9, "fontFamily": "DM Mono",
-                               "formatter": "{value}"},
-                "name": "Vol",
+                "axisLabel": {
+                    "color":      "#4b6a57",
+                    "fontSize":   11,
+                    "fontFamily": "DM Mono",
+                    "formatter":  "{value}",
+                },
+                "name":          "Vol",
                 "nameTextStyle": {"color": "#4b6a57", "fontSize": 10},
             },
         ],
         "dataZoom": [
             {
-                "type": "inside",
-                "xAxisIndex": [0, 1],
-                "start": start_pct,
-                "end": 100,
+                "type":             "inside",
+                "xAxisIndex":       [0, 1],
+                "start":            start_pct,
+                "end":              100,
                 "zoomOnMouseWheel": True,
-                "moveOnMouseMove": True,
+                "moveOnMouseMove":  True,
             },
             {
-                "type": "slider",
-                "xAxisIndex": [0, 1],
-                "start": start_pct,
-                "end": 100,
-                "bottom": 10,
-                "height": 18,
+                "type":        "slider",
+                "xAxisIndex":  [0, 1],
+                "start":       start_pct,
+                "end":         100,
+                "bottom":      4,
+                "height":      18,
                 "borderColor": "#1e3a2a",
                 "backgroundColor": "#0a1a12",
                 "dataBackground": {
@@ -315,47 +359,56 @@ def draw_candle_chart(
                 },
                 "fillerColor": "rgba(16,185,129,0.08)",
                 "handleStyle": {"color": "#10b981"},
-                "textStyle": {"color": "#4b6a57", "fontSize": 9},
+                "textStyle":   {"color": "#4b6a57", "fontSize": 9},
             },
         ],
         "series": [
-            # ── Candlestick ──────────────────────────────────────────────────
             {
-                "name": ticker,
-                "type": "candlestick",
+                "name":       ticker,
+                "type":       "candlestick",
                 "xAxisIndex": 0,
                 "yAxisIndex": 0,
-                "data": candle_data,
+                "data":       candle_data,
+                # Series-level itemStyle is what ECharts uses to decide
+                # bullish vs bearish colors. Per-item overrides break this.
+                # color / borderColor       = bullish (close >= open)
+                # color0 / borderColor0     = bearish (close <  open)
+                "itemStyle": {
+                    "color":        "transparent",   # bullish body hollow
+                    "color0":       "transparent",   # bearish body hollow
+                    "borderColor":  "#10b981",       # bullish border/wick green
+                    "borderColor0": "#f87171",       # bearish border/wick red
+                    "borderWidth":  1,
+                },
                 "markPoint": {
-                    "data": mark_points,
+                    "data":      mark_points,
                     "animation": False,
+                    "silent":    False,
                 },
                 "markLine": {
-                    "symbol": ["none", "none"],
-                    "data": mark_lines,
+                    "symbol":    ["none", "none"],
+                    "data":      mark_lines,
                     "animation": False,
-                    "silent": True,
+                    "silent":    True,
                 },
             },
-            # ── EMA 20 ───────────────────────────────────────────────────────
             {
-                "name": "EMA 20",
-                "type": "line",
+                "name":       "EMA 20",
+                "type":       "line",
                 "xAxisIndex": 0,
                 "yAxisIndex": 0,
-                "data": ema_data,
-                "smooth": False,
-                "lineStyle": {"color": "#facc15", "width": 1.5},
-                "symbol": "none",
-                "z": 3,
+                "data":       ema_data,
+                "smooth":     False,
+                "lineStyle":  {"color": "#facc15", "width": 1.5},
+                "symbol":     "none",
+                "z":          3,
             },
-            # ── Volume ───────────────────────────────────────────────────────
             {
-                "name": "Volume",
-                "type": "bar",
+                "name":       "Volume",
+                "type":       "bar",
                 "xAxisIndex": 1,
                 "yAxisIndex": 1,
-                "data": vol_data,
+                "data":       vol_data,
                 "barMaxWidth": 8,
             },
         ],
