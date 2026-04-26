@@ -493,6 +493,14 @@ with st.sidebar:
             f"</div>",
             unsafe_allow_html=True
         )
+        st.markdown(
+            f"<div style='background:#0f172a;border:1px solid #1e3a2a;border-radius:8px;"
+            f"padding:10px 12px;margin:6px 0'>"
+            f"<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;letter-spacing:.1em'>Outperforming (PnL &gt; 0)</div>"
+            f"<div style='font-size:18px;font-weight:700;color:#34d399'>{len(positive_holds)} / {len(holds_df)}</div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
         # Top 3 performers
         if len(positive_holds) > 0:
