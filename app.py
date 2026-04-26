@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import os
 import numpy as np
@@ -31,8 +31,9 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     - PnL% annotation on exit candle
     - Horizontal level lines (stop/entry/target)
     - No grid lines
-    - Drawing tools: horizontal line, trendline, extended line, tilted line, eraser
+    - Drawing tools
     - Volume panel
+    - Mobile-friendly: pinch-to-zoom, initial 3-month view, preserved price scale
     """
     df_all = load_chart_data()
     df = df_all[df_all['symbol'] == ticker].copy().sort_values('datetime')
@@ -41,7 +42,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         st.warning(f"No chart data for {ticker}")
         return
 
-    # Date only (no time)
+    df['date'] = df['datetime'].dt.normalize()
     df['date_str'] = df['datetime'].dt.strftime('%Y-%m-%d')
     df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
 
@@ -58,10 +59,25 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
     vol_colors = ['#10b981' if c >= o else '#f87171'
                   for c, o in zip(df['close'], df['open'])]
 
+    # ── Initial 3-month x-axis range via category indices ────────────────────
+    all_dates = df['date_str'].tolist()
+    max_date = df['date'].max()
+    min_view_date = max_date - timedelta(days=90)
+    min_view_str = min_view_date.strftime('%Y-%m-%d')
+
+    start_idx = 0
+    for i, d in enumerate(all_dates):
+        if d >= min_view_str:
+            start_idx = max(0, i - 1)
+            break
+    end_idx = len(all_dates) - 1
+    # Small right padding so last candle and annotations breathe
+    x_range = [start_idx - 0.5, end_idx + 5.5]
+
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         vertical_spacing=0.03, row_heights=[0.75, 0.25])
 
-    # ── Hollow candlesticks with custom hover ─────────────────────────────────
+    # ── Hollow candlesticks ───────────────────────────────────────────────────
     fig.add_trace(go.Candlestick(
         x=df['date_str'],
         open=df['open'], high=df['high'],
@@ -79,12 +95,11 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         line=dict(color='#facc15', width=1.5), name='EMA 20',
     ), row=1, col=1)
 
-    # ── Entry arrow (green triangle-up below candle) ──────────────────────────
+    # ── Entry arrow (current open trade) ─────────────────────────────────────
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
         ed_row = df[df['date_str'] == ed_str]
         if not ed_row.empty:
-            # offset 2.5% below the low for clear separation
             arrow_y = ed_row['low'].values[0] * 0.975
             fig.add_trace(go.Scatter(
                 x=[ed_str], y=[arrow_y],
@@ -98,14 +113,13 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
                 hovertemplate=f"<b>🟢 ENTRY</b><br>Date: {ed_str}<br>Price: {entry:.2f}<extra></extra>" if entry else f"🟢 Entry: {ed_str}<extra></extra>",
             ), row=1, col=1)
 
-    # ── Closed trade arrows from history ─────────────────────────────────────
+    # ── Closed trade arrows ───────────────────────────────────────────────────
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
         ctdf['Entry_Date'] = pd.to_datetime(ctdf['Entry_Date'], errors='coerce').dt.strftime('%Y-%m-%d')
         ctdf['Exit_Date']  = pd.to_datetime(ctdf['Exit_Date'],  errors='coerce').dt.strftime('%Y-%m-%d')
 
         for _, tr in ctdf.iterrows():
-            # Entry arrow — 2.5% below low for clear separation
             tr_ed = tr.get('Entry_Date', '')
             tr_ep = tr.get('Entry_Price', None)
             ed_row = df[df['date_str'] == tr_ed]
@@ -123,7 +137,6 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
                     hovertemplate=f"<b>🟢 ENTRY</b><br>{tr_ed}<br>{tr_ep:.2f}<extra></extra>",
                 ), row=1, col=1)
 
-            # Exit arrow — 2.5% above high with PnL%
             tr_xd  = tr.get('Exit_Date', '')
             tr_xp  = tr.get('Exit_Price', None)
             tr_pnl = tr.get('Trade_PnL_%', None)
@@ -178,42 +191,63 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
         paper_bgcolor='#0f172a', plot_bgcolor='#0a1a12',
         font=dict(color='#9ca3af', family='DM Mono'),
         height=height,
-        # generous right padding so annotations and last candle breathe
         margin=dict(l=10, r=160, t=45, b=50),
-        # pan by default — user scrolls to zoom via mouse wheel (scrollZoom=True)
-        dragmode='pan',
-        xaxis=dict(rangeslider=dict(visible=False), showticklabels=False, **no_grid),
-        xaxis2=dict(rangeslider=dict(visible=False), **no_grid),
+        # 'zoom' enables native pinch-to-zoom on touch devices (mobile/tablet)
+        # scrollZoom=True in config handles mouse-wheel on desktop
+        dragmode='zoom',
+        xaxis=dict(
+            rangeslider=dict(visible=False),
+            showticklabels=False,
+            range=x_range,   # initial 3-month window
+            **no_grid,
+        ),
+        xaxis2=dict(
+            rangeslider=dict(visible=False),
+            range=x_range,
+            **no_grid,
+        ),
         legend=dict(bgcolor='#0f172a', bordercolor='#1e3a2a',
                     font=dict(color='#9ca3af', size=11), x=0.01, y=0.99),
         modebar=dict(bgcolor='#0f172a', color='#4b6a57', activecolor='#10b981'),
         newshape=dict(line=dict(color='#facc15', width=1.5), fillcolor='rgba(0,0,0,0)'),
     )
 
-    price_ax = dict(side='right', showgrid=False, showline=False, zeroline=False,
-                    # preserve price scale — don't auto-rescale on x-pan
-                    fixedrange=False)
-    vol_ax   = dict(side='right', showgrid=False, showline=False, zeroline=False,
-                    tickformat='.2s', fixedrange=True,
-                    title=dict(text='Vol', font=dict(size=10, color='#4b6a57')))
+    # Price axis: fixedrange=False is critical — it lets the price scale
+    # stay intact when you pan/zoom the x axis (no auto-rescaling).
+    price_ax = dict(
+        side='right',
+        showgrid=False, showline=False, zeroline=False,
+        fixedrange=False,
+    )
+    vol_ax = dict(
+        side='right',
+        showgrid=False, showline=False, zeroline=False,
+        tickformat='.2s', fixedrange=True,
+        title=dict(text='Vol', font=dict(size=10, color='#4b6a57')),
+    )
 
-    fig.update_xaxes(type='category', tickangle=-45, nticks=20,
-                     showgrid=False, showline=False, zeroline=False,
-                     autorange=True, row=2, col=1)
-    fig.update_xaxes(type='category', showticklabels=False,
-                     showgrid=False, showline=False, zeroline=False,
-                     autorange=True, row=1, col=1)
+    fig.update_xaxes(
+        type='category', tickangle=-45, nticks=20,
+        showgrid=False, showline=False, zeroline=False,
+        row=2, col=1,
+    )
+    fig.update_xaxes(
+        type='category', showticklabels=False,
+        showgrid=False, showline=False, zeroline=False,
+        row=1, col=1,
+    )
     fig.update_yaxes(**price_ax, row=1, col=1)
     fig.update_yaxes(**vol_ax,   row=2, col=1)
 
     st.plotly_chart(fig, use_container_width=True,
                     config={
                         'displayModeBar': True,
-                        'scrollZoom': True,       # mouse-wheel zoom
+                        'scrollZoom': True,       # mouse-wheel zoom on desktop
+                        'doubleClick': 'reset',   # double-tap/click resets to initial 3m view
+                        'responsive': True,       # enables proper touch event handling on mobile
                         'modeBarButtonsToRemove': [
                             'toImage', 'sendDataToCloud',
-                            'zoom2d', 'zoomIn2d', 'zoomOut2d',  # remove box-zoom buttons
-                            'select2d', 'lasso2d',               # remove box/lasso select
+                            'select2d', 'lasso2d',
                             'autoScale2d',
                         ],
                         'modeBarButtonsToAdd': [
@@ -249,10 +283,10 @@ def load_data():
             st.stop()
             return {}, [], pd.DataFrame(), None, None
 
-        closed_trades  = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Closed_Trades")
-        current_trades = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Open_Trades")
+        closed_trades    = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Closed_Trades")
+        current_trades   = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Open_Trades")
         strategy_metrics = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="Best_Strategy_Summary")
-        refresh_df     = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="refresh_date")
+        refresh_df       = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="refresh_date")
         refresh_date_scalar = refresh_df['refresh_date'].iloc[0]
         refresh_date_obj = pd.to_datetime(refresh_date_scalar).date()
         refresh_date_str = refresh_date_scalar.strftime('%Y-%m-%d')
@@ -334,7 +368,6 @@ def get_levels(row):
     sl = float(row['Stop_Loss'])    if pd.notna(row.get('Stop_Loss'))    else None
     en = float(row['Entry_Price'])  if pd.notna(row.get('Entry_Price'))  else None
     tg = float(row['Target_Price']) if pd.notna(row.get('Target_Price')) else None
-    # Entry date — date only, strip time
     ed_raw = row.get('Entry_Date', None)
     ed = pd.to_datetime(ed_raw).strftime('%Y-%m-%d') if pd.notna(ed_raw) else None
     return sl, en, tg, ed
@@ -357,7 +390,6 @@ def render_metrics_list(row, metric_cols):
         if col not in row.index:
             continue
         val = row.get(col)
-        # Format dates as date-only strings
         if 'date' in col.lower() or 'Date' in col:
             try:
                 display = pd.to_datetime(val).strftime('%Y-%m-%d')
@@ -400,6 +432,14 @@ with c1:
     st.markdown("# 🚀 EGX Trading Dashboard")
 with c2:
     if st.button("🔄 Reload", type="primary"):
+        # ── FIX: Clear all radio session state keys so the displayed ticker
+        #    resets to match the first item in each tab after reload.
+        #    Without this, the radio widget resets visually to item[0]
+        #    but the old session_state value lingers, causing the chart
+        #    to render the previously selected ticker instead. ─────────────────
+        for key in ["buy_ticker", "tp_ticker", "close_ticker"]:
+            if key in st.session_state:
+                del st.session_state[key]
         st.rerun()
 
 # Load data
@@ -470,19 +510,15 @@ with st.sidebar:
     st.metric("✅ Holds",       len(holds_df))
     st.caption(f"📅 {refresh_date_str}")
 
-    # ── Market sentiment ──────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("### 📊 Market Pulse")
     st.markdown(f"{sentiment_emoji} **EGX30: {sentiment_text}**")
 
-    # Positive signals from holds
     if len(holds_df) > 0:
         pnl_col = 'Trade_PnL_%'
-        positive_holds = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
-        avg_pnl = holds_df[pnl_col].mean() if pnl_col in holds_df.columns else 0
-        above_market = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        positive_holds  = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        avg_pnl         = holds_df[pnl_col].mean() if pnl_col in holds_df.columns else 0
 
-        # Color avg PnL
         avg_color = "#34d399" if avg_pnl >= 0 else "#f87171"
         avg_sign  = "▲" if avg_pnl >= 0 else "▼"
         st.markdown(
@@ -494,7 +530,6 @@ with st.sidebar:
             unsafe_allow_html=True
         )
 
-        # Top 3 performers
         if len(positive_holds) > 0:
             st.markdown("<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;"
                         "letter-spacing:.1em;margin:10px 0 4px'>🏆 Top Performers</div>",
@@ -511,7 +546,6 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
-        # Top 3 losers
         negative_holds = holds_df[holds_df[pnl_col] < 0] if pnl_col in holds_df.columns else pd.DataFrame()
         if len(negative_holds) > 0:
             st.markdown("<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;"
@@ -562,7 +596,6 @@ def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news
         if show_levels:
             sl, en, tg, ed = get_levels(row)
 
-        # Pull closed trades for this ticker to overlay entry/exit arrows
         ticker_closed = df_closed_other[df_closed_other['Ticker'] == selected].copy()
         ticker_closed_arg = ticker_closed if len(ticker_closed) > 0 else None
 
@@ -570,7 +603,6 @@ def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news
                           stop_loss=sl, target=tg, entry=en, entry_date=ed,
                           closed_trades_df=ticker_closed_arg)
 
-        # History table
         if len(ticker_closed) > 0:
             with st.expander(f"📋 Trade History — {selected} ({len(ticker_closed)} trades)", expanded=False):
                 hist_cols = [c for c in [
@@ -696,7 +728,6 @@ with tab_holds:
 with tab_charts:
     st.markdown("### 📈 Chart Lookup")
 
-    # All known symbols from chart CSV (cached)
     chart_df_all = load_chart_data()
     available_symbols = sorted(chart_df_all['symbol'].dropna().unique().tolist())
 
@@ -709,11 +740,9 @@ with tab_charts:
         )
 
     if chart_symbol:
-        # Closed trades for this symbol (for entry/exit arrows)
         sym_closed = df_closed_other[df_closed_other['Ticker'] == chart_symbol].copy()
         sym_closed_arg = sym_closed if len(sym_closed) > 0 else None
 
-        # Open trade levels if exists
         sym_open = df_current_other[df_current_other['Ticker'] == chart_symbol]
         sl2 = en2 = tg2 = ed2 = None
         if len(sym_open) > 0:
@@ -723,7 +752,6 @@ with tab_charts:
                           stop_loss=sl2, target=tg2, entry=en2, entry_date=ed2,
                           closed_trades_df=sym_closed_arg)
 
-        # History table
         if sym_closed_arg is not None and len(sym_closed) > 0:
             with st.expander(f"📋 Trade History — {chart_symbol} ({len(sym_closed)} trades)", expanded=False):
                 hist_cols = [c for c in [
@@ -743,10 +771,9 @@ with tab_egx30:
 
     col_egx_tickers, col_egx_metrics, col_egx_chart = st.columns([1, 1, 5])
 
-    # EGX30 open trade levels
     egx30_sl = egx30_en = egx30_tg = egx30_ed = None
     if len(df_current_egx30) > 0:
-        egx_row = df_current_egx30.iloc[0]
+        egx_row  = df_current_egx30.iloc[0]
         egx30_sl = float(egx_row['Stop_Loss'])    if pd.notna(egx_row.get('Stop_Loss'))    else None
         egx30_en = float(egx_row['Entry_Price'])  if pd.notna(egx_row.get('Entry_Price'))  else None
         egx30_tg = float(egx_row['Target_Price']) if pd.notna(egx_row.get('Target_Price')) else None
