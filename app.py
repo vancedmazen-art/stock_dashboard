@@ -18,17 +18,11 @@ import streamlit.components.v1 as components
 # ---------------------------
 @st.cache_data(ttl=3600)
 def load_chart_data():
-    url = "https://raw.githubusercontent.com/vancedmazen-art/stockdashboard/main/chart6m.csv"
-    df = pd.read_csv(url)
+    url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
+    df = pd.read_csv(url, parse_dates=['datetime'])
     df.columns = df.columns.str.strip().str.lower()
-    
-    # Fix datetime placeholders before parsing
-    df['datetime'] = df['datetime'].astype(str).str.replace('########', '2026-01-01 09:30', regex=False)
-    df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')  # Flexible parsing
-    
-    df = df.dropna(subset=['datetime'])  # Drop any remaining bad rows
-    df = df.sort_values('datetime')
     return df
+
 
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
