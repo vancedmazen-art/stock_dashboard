@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 
-def get_OHLCV_data(symbol, exchange="EGX", interval="Daily", n_bars=20000):
+def get_OHLCV_data(symbol, exchange="EGX", interval="Daily", n_bars=1000):
 
     # TEMP MOCK DATA (so pipeline works)
-    dates = pd.date_range(end=pd.Timestamp.today(), periods=20000)
+    dates = pd.date_range(end=pd.Timestamp.today(), periods=5000)
 
     df = pd.DataFrame({
         "datetime": dates,
