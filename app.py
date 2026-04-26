@@ -75,14 +75,14 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
 
     # ── EMA 20 ────────────────────────────────────────────────────────────────
     fig.add_trace(go.Scatter(
-        x=df['date_str'], y=df['ema20'], mode='lines',
+        x=df['date'], y=df['ema20'], mode='lines',
         line=dict(color='#facc15', width=1.5), name='EMA 20',
     ), row=1, col=1)
 
     # ── Entry arrow (green triangle-up below candle) ──────────────────────────
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
-        ed_row = df[df['date_str'] == ed_str]
+        ed_row = df[df['date'] == ed_str]
         if not ed_row.empty:
             # offset 2.5% below the low for clear separation
             arrow_y = ed_row['low'].values[0] * 0.975
@@ -108,7 +108,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
             # Entry arrow — 2.5% below low for clear separation
             tr_ed = tr.get('Entry_Date', '')
             tr_ep = tr.get('Entry_Price', None)
-            ed_row = df[df['date_str'] == tr_ed]
+            ed_row = df[df['date'] == tr_ed]
             if not ed_row.empty and pd.notna(tr_ep):
                 arr_y = ed_row['low'].values[0] * 0.975
                 fig.add_trace(go.Scatter(
@@ -127,7 +127,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
             tr_xd  = tr.get('Exit_Date', '')
             tr_xp  = tr.get('Exit_Price', None)
             tr_pnl = tr.get('Trade_PnL_%', None)
-            xd_row = df[df['date_str'] == tr_xd]
+            xd_row = df[df['date'] == tr_xd]
             if not xd_row.empty and pd.notna(tr_xp):
                 arr_y2 = xd_row['high'].values[0] * 1.025
                 pnl_str = f"{tr_pnl:+.1f}%" if pd.notna(tr_pnl) else ""
@@ -166,7 +166,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, target=None,
 
     # ── Volume ────────────────────────────────────────────────────────────────
     fig.add_trace(go.Bar(
-        x=df['date_str'], y=df['volume'],
+        x=df['date'], y=df['volume'],
         marker_color=vol_colors, marker_opacity=0.7,
         name='Volume', showlegend=False,
     ), row=2, col=1)
@@ -257,7 +257,7 @@ def load_data():
         refresh_df     = pd.read_excel("Complete_Trades_Metrics.xlsx", sheet_name="refresh_date")
         refresh_date_scalar = refresh_df['refresh_date'].iloc[0]
         refresh_date_obj = pd.to_datetime(refresh_date_scalar).date()
-        refresh_date_str = refresh_date_scalar.strftime('%Y-%m-%d')
+        refresh_date = refresh_date_scalar.strftime('%Y-%m-%d')
 
         if os.path.exists("egx_company_map.csv"):
             company_map = pd.read_csv("egx_company_map.csv")
@@ -273,7 +273,7 @@ def load_data():
 
         st.success("✅ Data loaded")
         return ({"closed": closed_trades, "current": current_trades},
-                all_tickers, strategy_metrics, refresh_date_obj, refresh_date_str)
+                all_tickers, strategy_metrics, refresh_date_obj, refresh_date)
     except Exception as e:
         st.error(f"❌ Load failed: {e}")
         st.stop()
@@ -405,10 +405,10 @@ with c2:
         st.rerun()
 
 # Load data
-data, all_symbols, df_strategy, refresh_date_obj, refresh_date_str = load_data()
+data, all_symbols, df_strategy, refresh_date_obj, refresh_date = load_data()
 df_current = data["current"].copy()
 df_closed  = data["closed"].copy()
-st.caption(f"📅 Data as of: **{refresh_date_str}**")
+st.caption(f"📅 Data as of: **{refresh_date}**")
 
 # ── Moving ticker tape ────────────────────────────────────────────────────────
 _all_facts = [
@@ -470,7 +470,7 @@ with st.sidebar:
     st.metric("🎯 Take Profit", len(take_profit_df))
     st.metric("❌ Close Now",   len(close_now_df))
     st.metric("✅ Holds",       len(holds_df))
-    st.caption(f"📅 {refresh_date_str}")
+    st.caption(f"📅 {refresh_date}")
 
     # ── Market sentiment ──────────────────────────────────────────────────────
     st.markdown("---")
