@@ -21,6 +21,7 @@ def load_chart_data():
     url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
     df = pd.read_csv(url, parse_dates=['datetime'])
     df.columns = df.columns.str.strip().str.lower()
+    df["symbol"] = df["symbol"].str.replace("EGX:", "")  # 🔥 FIX
     return df
 
 
