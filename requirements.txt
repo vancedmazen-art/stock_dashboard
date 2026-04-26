@@ -3,7 +3,6 @@ plotly
 numpy
 streamlit-autorefresh
 pandas
-egxpy
 requests
 pytz
 openpyxl>=3.1.0
