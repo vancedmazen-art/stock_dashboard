@@ -948,48 +948,48 @@ with st.sidebar:
 
     st.markdown("---")
 
-	st.markdown("""
-	<style>
-	@keyframes waFloatPulse {
-		0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.7); }
-		70% { box-shadow: 0 0 0 18px rgba(37,211,102,0); }
-		100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
-	}
-	
-	.float-wa {
-		position: fixed;
-		bottom: 25px;
-		right: 25px;
-		width: 64px;
-		height: 64px;
-		background: #25D366;
-		border-radius: 50%;
-		display:flex;
-		align-items:center;
-		justify-content:center;
-		z-index: 99999;
-		animation: waFloatPulse 2s infinite;
-		box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-		transition: all 0.2s ease;
-	}
-	
-	.float-wa:hover {
-		transform: scale(1.1);
-	}
-	
-	.float-wa svg {
-		width:30px;
-		height:30px;
-		fill:white;
-	}
-	</style>
-	
-	<a href="https://wa.me/201067352509" target="_blank" class="float-wa">
-		<svg viewBox="0 0 32 32">
-			<path d="M16 .396C7.164.396 0 7.56 0 16.396c0 2.885.756 5.697 2.192 8.18L0 32l7.634-2.146a15.89 15.89 0 0 0 8.366 2.396c8.836 0 16-7.164 16-16S24.836.396 16 .396z"/>
-		</svg>
-	</a>
-	""", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    @keyframes waFloatPulse {
+    	0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.7); }
+    	70% { box-shadow: 0 0 0 18px rgba(37,211,102,0); }
+    	100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+    }
+    
+    .float-wa {
+    	position: fixed;
+    	bottom: 25px;
+    	right: 25px;
+    	width: 64px;
+    	height: 64px;
+    	background: #25D366;
+    	border-radius: 50%;
+    	display:flex;
+    	align-items:center;
+    	justify-content:center;
+    	z-index: 99999;
+    	animation: waFloatPulse 2s infinite;
+    	box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    	transition: all 0.2s ease;
+    }
+    
+    .float-wa:hover {
+    	transform: scale(1.1);
+    }
+    
+    .float-wa svg {
+    	width:30px;
+    	height:30px;
+    	fill:white;
+    }
+    </style>
+    
+    <a href="https://wa.me/201067352509" target="_blank" class="float-wa">
+    	<svg viewBox="0 0 32 32">
+    		<path d="M16 .396C7.164.396 0 7.56 0 16.396c0 2.885.756 5.697 2.192 8.18L0 32l7.634-2.146a15.89 15.89 0 0 0 8.366 2.396c8.836 0 16-7.164 16-16S24.836.396 16 .396z"/>
+    	</svg>
+    </a>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------
