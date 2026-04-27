@@ -1250,3 +1250,31 @@ st.markdown(
     "<div style='text-align:center;color:#888;font-size:11px;padding:12px'>"
     "⚠️ For educational purposes only. Not financial advice. All trading carries risk."
     "</div>", unsafe_allow_html=True)
+st.markdown("""
+<style>
+.float-wa {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #25D366;
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 9999;
+    animation: pulse 2s infinite;
+}
+.float-wa:hover {
+    transform: scale(1.1);
+}
+</style>
+
+<a href="https://wa.me/201067352509" target="_blank" class="float-wa">
+    💬
+</a>
+""", unsafe_allow_html=True)
