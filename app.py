@@ -1244,3 +1244,6 @@ with tab_egx30:
 
 st.markdown("---")
 st.markdown(
+    "<div style='text-align:center;color:#888;font-size:11px;padding:12px'>"
+    "⚠️ For educational purposes only. Not financial advice. All trading carries risk."
+    "</div>", unsafe_allow_html=True)
