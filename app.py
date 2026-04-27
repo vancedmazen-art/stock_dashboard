@@ -948,51 +948,53 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 💬 WhatsApp Contact Card
-    st.markdown("""
-    <style>
-    @keyframes pulse {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
-        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(16,185,129,0); }
-        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0); }
-    }
-    </style>
-
-    <div style="
-        background:#0f172a;
-        border:1px solid #1e3a2a;
-        border-radius:10px;
-        padding:12px;
-        text-align:center;
-        font-family:'DM Mono', monospace;
-    ">
-        <div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
-            Contact
-        </div>
-
-        <div style="font-size:16px;font-weight:700;color:#25D366;margin-bottom:8px">
-            🟢 WhatsApp Support
-        </div>
-
-        <a href="https://wa.me/201067352509" target="_blank" style="
-            display:inline-block;
-            background:#10b981;
-            color:#0f172a;
-            padding:8px 14px;
-            border-radius:6px;
-            font-size:13px;
-            text-decoration:none;
-            font-weight:700;
-            animation:pulse 2s infinite;
-        ">
-            💬 Chat Now
-        </a>
-
-        <div style="margin-top:8px;font-size:11px;color:#9ca3af">
-            01067352509
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown("""
+	<style>
+	@keyframes pulseWA {
+		0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,211,102,0.7); }
+		70% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(37,211,102,0); }
+		100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+	}
+	.wa-btn {
+		display:inline-block;
+		background:#25D366;
+		color:#0f172a;
+		padding:8px 14px;
+		border-radius:6px;
+		font-size:13px;
+		text-decoration:none;
+		font-weight:700;
+		animation:pulseWA 2s infinite;
+	}
+	</style>
+	
+	<div style="
+		background:#0f172a;
+		border:1px solid #1e3a2a;
+		border-radius:10px;
+		padding:12px;
+		text-align:center;
+		font-family:'DM Mono', monospace;
+	">
+	
+		<div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
+			Contact
+		</div>
+	
+		<div style="font-size:16px;font-weight:700;color:#25D366;margin-bottom:8px">
+			🟢 WhatsApp Support
+		</div>
+	
+		<a href="https://wa.me/201067352509" target="_blank" class="wa-btn">
+			💬 Chat Now
+		</a>
+	
+		<div style="margin-top:8px;font-size:11px;color:#9ca3af">
+			01067352509
+		</div>
+	
+	</div>
+	""", unsafe_allow_html=True)
 
 
 # ---------------------------
