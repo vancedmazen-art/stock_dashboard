@@ -903,107 +903,96 @@ with st.sidebar:
 
     if len(holds_df) > 0:
         pnl_col = 'Trade_PnL_%'
-        positive_holds  = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
-        avg_pnl         = holds_df[pnl_col].mean() if pnl_col in holds_df.columns else 0
+        positive_holds = holds_df[holds_df[pnl_col] > 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        negative_holds = holds_df[holds_df[pnl_col] < 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        avg_pnl = holds_df[pnl_col].mean() if pnl_col in holds_df.columns else 0
 
         avg_color = "#34d399" if avg_pnl >= 0 else "#f87171"
         avg_sign  = "▲" if avg_pnl >= 0 else "▼"
-        st.markdown(
-            f"<div style='background:#0f172a;border:1px solid #1e3a2a;border-radius:8px;"
-            f"padding:10px 12px;margin:6px 0'>"
-            f"<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;letter-spacing:.1em'>Portfolio Avg PnL</div>"
-            f"<div style='font-size:18px;font-weight:700;color:{avg_color}'>{avg_sign} {avg_pnl:.1f}%</div>"
-            f"</div>",
-            unsafe_allow_html=True
-        )
 
+        st.markdown(f"""
+        <div style='background:#0f172a;border:1px solid #1e3a2a;border-radius:8px;
+        padding:10px;margin:6px 0'>
+            <div style='font-size:10px;color:#4b6a57;text-transform:uppercase'>
+                Portfolio Avg PnL
+            </div>
+            <div style='font-size:18px;font-weight:700;color:{avg_color}'>
+                {avg_sign} {avg_pnl:.1f}%
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Top performers
         if len(positive_holds) > 0:
-            st.markdown("<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;"
-                        "letter-spacing:.1em;margin:10px 0 4px'>🏆 Top Performers</div>",
-                        unsafe_allow_html=True)
-            top3 = positive_holds.nlargest(3, pnl_col)[['Ticker', pnl_col]]
-            for _, r in top3.iterrows():
-                st.markdown(
-                    f"<div style='display:flex;justify-content:space-between;"
-                    f"background:#0a1f12;border:1px solid #1e3a2a;border-radius:6px;"
-                    f"padding:6px 10px;margin-bottom:4px'>"
-                    f"<span style='color:#d1fae5;font-weight:600'>{r['Ticker']}</span>"
-                    f"<span style='color:#34d399;font-weight:700'>▲ {r[pnl_col]:.1f}%</span>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
+            st.markdown("🏆 **Top Performers**")
+            for _, r in positive_holds.nlargest(3, pnl_col).iterrows():
+                st.markdown(f"""
+                <div style='display:flex;justify-content:space-between;
+                background:#0a1f12;padding:6px 10px;border-radius:6px;margin-bottom:4px'>
+                    <span style='color:#d1fae5'>{r['Ticker']}</span>
+                    <span style='color:#34d399'>▲ {r[pnl_col]:.1f}%</span>
+                </div>
+                """, unsafe_allow_html=True)
 
-        negative_holds = holds_df[holds_df[pnl_col] < 0] if pnl_col in holds_df.columns else pd.DataFrame()
+        # Top losers
         if len(negative_holds) > 0:
-            st.markdown("<div style='font-size:10px;color:#4b6a57;text-transform:uppercase;"
-                        "letter-spacing:.1em;margin:10px 0 4px'>📉 Top Losers</div>",
-                        unsafe_allow_html=True)
-            bot3 = negative_holds.nsmallest(3, pnl_col)[['Ticker', pnl_col]]
-            for _, r in bot3.iterrows():
-                st.markdown(
-                    f"<div style='display:flex;justify-content:space-between;"
-                    f"background:#1a0a0a;border:1px solid #3a1e1e;border-radius:6px;"
-                    f"padding:6px 10px;margin-bottom:4px'>"
-                    f"<span style='color:#fecaca;font-weight:600'>{r['Ticker']}</span>"
-                    f"<span style='color:#f87171;font-weight:700'>▼ {r[pnl_col]:.1f}%</span>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
+            st.markdown("📉 **Top Losers**")
+            for _, r in negative_holds.nsmallest(3, pnl_col).iterrows():
+                st.markdown(f"""
+                <div style='display:flex;justify-content:space-between;
+                background:#1a0a0a;padding:6px 10px;border-radius:6px;margin-bottom:4px'>
+                    <span style='color:#fecaca'>{r['Ticker']}</span>
+                    <span style='color:#f87171'>▼ {r[pnl_col]:.1f}%</span>
+                </div>
+                """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("---")
 
-	st.markdown("""
-	<div style="
-		background:#0f172a;
-		border:1px solid #1e3a2a;
-		border-radius:10px;
-		padding:12px;
-		margin-top:10px;
-		text-align:center;
-		font-family:'DM Mono', monospace;
-	">
-		<div style="
-			font-size:10px;
-			color:#4b6a57;
-			text-transform:uppercase;
-			letter-spacing:0.1em;
-			margin-bottom:6px;
-		">
-			Contact
-		</div>
-	
-		<div style="
-			font-size:16px;
-			font-weight:700;
-			color:#25D366;
-			margin-bottom:6px;
-		">
-			📱 WhatsApp
-		</div>
-	
-		<a href="https://wa.me/201067352509" target="_blank" style="
-			display:inline-block;
-			background:#10b981;
-			color:#0f172a;
-			padding:6px 12px;
-			border-radius:6px;
-			font-size:12px;
-			text-decoration:none;
-			font-weight:600;
-		">
-			Chat Now
-		</a>
-	
-		<div style="
-			margin-top:8px;
-			font-size:11px;
-			color:#9ca3af;
-		">
-			01067352509
-		</div>
-	</div>
-	""", unsafe_allow_html=True)
+    # 💬 WhatsApp Contact Card
+    st.markdown("""
+    <style>
+    @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+    }
+    </style>
+
+    <div style="
+        background:#0f172a;
+        border:1px solid #1e3a2a;
+        border-radius:10px;
+        padding:12px;
+        text-align:center;
+        font-family:'DM Mono', monospace;
+    ">
+        <div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
+            Contact
+        </div>
+
+        <div style="font-size:16px;font-weight:700;color:#25D366;margin-bottom:8px">
+            🟢 WhatsApp Support
+        </div>
+
+        <a href="https://wa.me/201067352509" target="_blank" style="
+            display:inline-block;
+            background:#10b981;
+            color:#0f172a;
+            padding:8px 14px;
+            border-radius:6px;
+            font-size:13px;
+            text-decoration:none;
+            font-weight:700;
+            animation:pulse 2s infinite;
+        ">
+            💬 Chat Now
+        </a>
+
+        <div style="margin-top:8px;font-size:11px;color:#9ca3af">
+            01067352509
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------
