@@ -950,45 +950,72 @@ with st.sidebar:
 
     st.markdown("""
     <style>
-    @keyframes waFloatPulse {
-    	0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.7); }
-    	70% { box-shadow: 0 0 0 18px rgba(37,211,102,0); }
-    	100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+    @keyframes waPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
     }
     
-    .float-wa {
-    	position: fixed;
-    	bottom: 25px;
-    	right: 25px;
-    	width: 64px;
-    	height: 64px;
-    	background: #25D366;
-    	border-radius: 50%;
-    	display:flex;
-    	align-items:center;
-    	justify-content:center;
-    	z-index: 99999;
-    	animation: waFloatPulse 2s infinite;
-    	box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-    	transition: all 0.2s ease;
+    .wa-box {
+        background:#0f172a;
+        border:1px solid #1e3a2a;
+        border-radius:10px;
+        padding:14px;
+        text-align:center;
+        font-family:'DM Mono', monospace;
     }
     
-    .float-wa:hover {
-    	transform: scale(1.1);
+    .wa-btn {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:6px;
+        background:#25D366;
+        color:#0f172a;
+        padding:8px 12px;
+        border-radius:6px;
+        font-size:13px;
+        text-decoration:none;
+        font-weight:700;
+        animation: waPulse 2s infinite;
+        width:100%;
+        margin-top:6px;
     }
     
-    .float-wa svg {
-    	width:30px;
-    	height:30px;
-    	fill:white;
+    .wa-btn:hover {
+        transform: scale(1.05);
+    }
+    
+    .wa-footer {
+        margin-top:10px;
+        font-size:10px;
+        color:#6b7280;
     }
     </style>
     
-    <a href="https://wa.me/201067352509" target="_blank" class="float-wa">
-    	<svg viewBox="0 0 32 32">
-    		<path d="M16 .396C7.164.396 0 7.56 0 16.396c0 2.885.756 5.697 2.192 8.18L0 32l7.634-2.146a15.89 15.89 0 0 0 8.366 2.396c8.836 0 16-7.164 16-16S24.836.396 16 .396z"/>
-    	</svg>
-    </a>
+    <div class="wa-box">
+    
+        <div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
+            Contact
+        </div>
+    
+        <div style="font-size:15px;font-weight:700;color:#25D366;margin-bottom:6px">
+            WhatsApp Support
+        </div>
+    
+        <a href="https://wa.me/201067352509" target="_blank" class="wa-btn">
+            💬 Chat Now
+        </a>
+    
+        <div style="margin-top:6px;font-size:11px;color:#9ca3af">
+            01067352509
+        </div>
+    
+        <div class="wa-footer">
+            Designed by Mazen Diab
+        </div>
+    
+    </div>
     """, unsafe_allow_html=True)
 
 
