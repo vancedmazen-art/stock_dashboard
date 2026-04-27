@@ -948,52 +948,47 @@ with st.sidebar:
 
     st.markdown("---")
 
-st.markdown("""
+	st.markdown("""
 	<style>
-	@keyframes pulseWA {
-		0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,211,102,0.7); }
-		70% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(37,211,102,0); }
-		100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+	@keyframes waFloatPulse {
+		0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.7); }
+		70% { box-shadow: 0 0 0 18px rgba(37,211,102,0); }
+		100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
 	}
-	.wa-btn {
-		display:inline-block;
-		background:#25D366;
-		color:#0f172a;
-		padding:8px 14px;
-		border-radius:6px;
-		font-size:13px;
-		text-decoration:none;
-		font-weight:700;
-		animation:pulseWA 2s infinite;
+	
+	.float-wa {
+		position: fixed;
+		bottom: 25px;
+		right: 25px;
+		width: 64px;
+		height: 64px;
+		background: #25D366;
+		border-radius: 50%;
+		display:flex;
+		align-items:center;
+		justify-content:center;
+		z-index: 99999;
+		animation: waFloatPulse 2s infinite;
+		box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+		transition: all 0.2s ease;
+	}
+	
+	.float-wa:hover {
+		transform: scale(1.1);
+	}
+	
+	.float-wa svg {
+		width:30px;
+		height:30px;
+		fill:white;
 	}
 	</style>
 	
-	<div style="
-		background:#0f172a;
-		border:1px solid #1e3a2a;
-		border-radius:10px;
-		padding:12px;
-		text-align:center;
-		font-family:'DM Mono', monospace;
-	">
-	
-		<div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
-			Contact
-		</div>
-	
-		<div style="font-size:16px;font-weight:700;color:#25D366;margin-bottom:8px">
-			🟢 WhatsApp Support
-		</div>
-	
-		<a href="https://wa.me/201067352509" target="_blank" class="wa-btn">
-			💬 Chat Now
-		</a>
-	
-		<div style="margin-top:8px;font-size:11px;color:#9ca3af">
-			01067352509
-		</div>
-	
-	</div>
+	<a href="https://wa.me/201067352509" target="_blank" class="float-wa">
+		<svg viewBox="0 0 32 32">
+			<path d="M16 .396C7.164.396 0 7.56 0 16.396c0 2.885.756 5.697 2.192 8.18L0 32l7.634-2.146a15.89 15.89 0 0 0 8.366 2.396c8.836 0 16-7.164 16-16S24.836.396 16 .396z"/>
+		</svg>
+	</a>
 	""", unsafe_allow_html=True)
 
 
@@ -1249,34 +1244,3 @@ with tab_egx30:
 
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center;color:#888;font-size:11px;padding:12px'>"
-    "⚠️ For educational purposes only. Not financial advice. All trading carries risk."
-    "</div>", unsafe_allow_html=True)
-st.markdown("""
-<style>
-.float-wa {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #25D366;
-    color: white;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    z-index: 9999;
-    animation: pulse 2s infinite;
-}
-.float-wa:hover {
-    transform: scale(1.1);
-}
-</style>
-
-<a href="https://wa.me/201067352509" target="_blank" class="float-wa">
-    💬
-</a>
-""", unsafe_allow_html=True)
