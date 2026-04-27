@@ -176,7 +176,7 @@ def draw_candle_chart(
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
       * {{ box-sizing:border-box; margin:0; padding:0; }}
-      html, body {{ width:100%; height:100%; background:#0f172a; font-family:'DM Mono',monospace; overflow:hidden; }}
+      html,body {{ width:100%; height:100%; background:#0f172a; font-family:'DM Mono',monospace; overflow:hidden; }}
       #toolbar {{
         display:flex; align-items:center; gap:5px;
         padding:5px 8px; background:#0a1f12;
@@ -205,22 +205,20 @@ def draw_candle_chart(
     </style>
     </head>
     <body>
-
     <div id="toolbar">
       <span>Draw</span>
-      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click to place horizontal price line">── H-Line</button>
-      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click to place vertical date line">│ V-Line</button>
-      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click and drag to draw trendline">↗ Trendline</button>
+      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')">── H-Line</button>
+      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')">│ V-Line</button>
+      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')">↗ Trendline (drag)</button>
       <span id="mode-hint">dragging…</span>
       <div class="tb-sep"></div>
       <button class="tb-btn danger" onclick="deleteLast()">✕ Last</button>
       <button class="tb-btn danger" onclick="clearAll()">✕ All</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn info"   onclick="resetZoom()">⟳ Reset</button>
+      <button class="tb-btn info" onclick="resetZoom()">⟳ Reset</button>
       <div class="tb-sep"></div>
       <button class="tb-btn active" id="btn-none" onclick="setMode(null)">✋ Pointer</button>
     </div>
-
     <div id="chart"></div>
 
     <script>
@@ -233,14 +231,14 @@ def draw_candle_chart(
     const START_PCT  = {start_pct};
     const TICKER     = "{ticker}";
 
-    function fmtVol(v) {{
-      if (v >= 1e9) return (v/1e9).toFixed(1).replace(/\\.0$/,'')+'B';
-      if (v >= 1e6) return (v/1e6).toFixed(1).replace(/\\.0$/,'')+'M';
-      if (v >= 1e3) return (v/1e3).toFixed(1).replace(/\\.0$/,'')+'K';
+    function fmtVol(v){{
+      if(v>=1e9)return(v/1e9).toFixed(1).replace(/\\.0$/,'')+'B';
+      if(v>=1e6)return(v/1e6).toFixed(1).replace(/\\.0$/,'')+'M';
+      if(v>=1e3)return(v/1e3).toFixed(1).replace(/\\.0$/,'')+'K';
       return v;
     }}
 
-    function buildOption(startPct) {{
+    function buildOption(startPct){{
       return {{
         backgroundColor:'#0f172a',
         animation:false,
@@ -256,13 +254,13 @@ def draw_candle_chart(
           formatter:function(p){{
             var v=p.value;
             if(!Array.isArray(v)||v.length<4){{
-              if(p.seriesName==='EMA 20') return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">'+parseFloat(v).toFixed(2)+'</b></div>';
-              if(p.seriesName==='Volume') return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">'+fmtVol(p.value)+'</b></div>';
-              return '';
+              if(p.seriesName==='EMA 20')return'<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">'+parseFloat(v).toFixed(2)+'</b></div>';
+              if(p.seriesName==='Volume')return'<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">'+fmtVol(p.value)+'</b></div>';
+              return'';
             }}
             var o=parseFloat(v[0]),c=parseFloat(v[1]),lo=parseFloat(v[2]),h=parseFloat(v[3]);
             var pct=((c-o)/o*100),arrow=pct>=0?'▲':'▼',col=pct>=0?'#10b981':'#f87171',sign=pct>=0?'+':'';
-            return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
+            return'<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
               +'<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
               +'<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(2)+'</b>'
               +'&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">'+h.toFixed(2)+'</b><br>'
@@ -282,6 +280,7 @@ def draw_candle_chart(
           {{
             type:'category',data:DATES,gridIndex:0,scale:true,
             boundaryGap:true,
+            // extra empty slots on right so last candle has breathing room from price axis
             axisLine:{{lineStyle:{{color:'#1e3a2a'}}}},
             axisTick:{{show:false}},axisLabel:{{show:false}},splitLine:{{show:false}},
           }},
@@ -297,8 +296,6 @@ def draw_candle_chart(
             scale:true,gridIndex:0,position:'right',
             splitLine:{{show:false}},axisLine:{{show:false}},axisTick:{{show:false}},
             axisLabel:{{color:'#d1fae5',fontSize:13,fontWeight:'bold',fontFamily:'DM Mono',margin:8}},
-            // adds breathing room so last candle doesn't hug the right edge
-            boundaryGap:['5%','5%'],
           }},
           {{
             scale:true,gridIndex:1,position:'right',
@@ -310,12 +307,13 @@ def draw_candle_chart(
         dataZoom:[
           {{
             type:'inside',xAxisIndex:[0,1],
-            start:startPct,end:100,
+            // end at 98 instead of 100 → leaves ~2% gap between last candle & right axis
+            start:startPct,end:98,
             zoomOnMouseWheel:true,moveOnMouseWheel:false,preventDefaultMouseMove:false,
           }},
           {{
             type:'slider',xAxisIndex:[0,1],
-            start:startPct,end:100,
+            start:startPct,end:98,
             bottom:4,height:18,
             borderColor:'#1e3a2a',backgroundColor:'#0a1a12',
             dataBackground:{{lineStyle:{{color:'#1e3a2a'}},areaStyle:{{color:'#0a1f12'}}}},
@@ -348,13 +346,13 @@ def draw_candle_chart(
       }};
     }}
 
-    const chart = echarts.init(document.getElementById('chart'),null,{{renderer:'canvas'}});
+    const chart=echarts.init(document.getElementById('chart'),null,{{renderer:'canvas'}});
     chart.setOption(buildOption(START_PCT));
     window.addEventListener('resize',()=>chart.resize());
 
     function resetZoom(){{
-      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:0,start:START_PCT,end:100}});
-      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:1,start:START_PCT,end:100}});
+      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:0,start:START_PCT,end:98}});
+      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:1,start:START_PCT,end:98}});
     }}
 
     document.getElementById('chart').addEventListener('wheel',function(e){{
@@ -368,256 +366,225 @@ def draw_candle_chart(
     }},{{passive:false}});
 
     // ══════════════════════════════════════════════════════════════════════════
-    // DRAWING TOOLS — manual pixel-math coordinate conversion
+    // DRAWING TOOLS
     //
-    // ROOT CAUSE of all previous failures:
-    //   chart.convertFromPixel() (both seriesIndex and gridIndex variants)
-    //   silently returns null or wrong values inside Streamlit iframes because
-    //   the iframe resize events corrupt ECharts' internal layout cache at the
-    //   exact moment of the query. This is a known ECharts iframe issue.
+    // APPROACH: use chart.convertToPixel() to build the pixel↔data transform.
     //
-    // SOLUTION — read layout directly from the model, compute manually:
-    //   1. chart.getModel().getComponent('grid',0).coordinateSystem.getRect()
-    //      gives the exact pixel bounding box of the price grid (x,y,w,h).
-    //   2. dataZoom start/end percentages give which slice of DATES is visible.
-    //   3. yAxis min/max comes from chart.getOption().yAxis[0] (ECharts writes
-    //      the computed range back into the option after each render).
-    //   4. Simple linear interpolation maps pixel → (barIndex, price).
+    // chart.convertToPixel({{seriesIndex:0}}, [barIdx, price]) IS reliable for
+    // output (pixel coords from data) — ECharts always knows how to render.
+    // We use this FORWARD direction to calibrate two anchor points, then derive
+    // the inverse linear transform ourselves.
     //
-    // DRAG vs CLICK:
-    //   mousedown stores start pixel. mousemove sets isDragging=true only after
-    //   moving >5px. mouseup: if NOT dragging → ignore (prevents accidental
-    //   zero-length trendlines from a single click in trendline mode).
-    //   H-Line and V-Line act on mouseup regardless of drag distance.
+    // Calibration (called once after render, and after every zoom):
+    //   anchorA = convertToPixel(seriesIndex:0, [0, yMid])       → pixA
+    //   anchorB = convertToPixel(seriesIndex:0, [lastIdx, yMid]) → pixB
+    //   anchorC = convertToPixel(seriesIndex:0, [0, yMin])       → pixC
+    //   anchorD = convertToPixel(seriesIndex:0, [0, yMax])       → pixD
+    //
+    // From these four points:
+    //   xScale = (lastIdx - 0) / (pixB.x - pixA.x)   bars per pixel
+    //   xOff   = 0 - pixA.x * xScale                  bar at pixel 0
+    //   yScale = (yMin - yMax) / (pixC.y - pixD.y)   price per pixel (y inverted)
+    //   yOff   = yMax - pixD.y * yScale
+    //
+    // Then pixelToData(px,py) = {{ idx: round(px*xScale+xOff), price: py*yScale+yOff }}
+    //
+    // WHY THIS WORKS IN IFRAMES:
+    //   convertToPixel output direction never fails — ECharts uses the same
+    //   internal layout that already rendered the chart. We only call it
+    //   after the chart is fully rendered (inside a 'finished' event callback
+    //   and re-calibrate on every dataZoom change).
     // ══════════════════════════════════════════════════════════════════════════
 
-    let drawMode   = null;
-    let drawnLines = [];
-    const DRAW_COLOR    = '#facc15';
-    const DRAG_MIN_PX   = 5;
+    var xScale=1, xOff=0, yScale=1, yOff=0;
+    var calibrated = false;
 
-    let mouseDownPx   = null;
-    let isDragging    = false;
-    let dragStartData = null;
-
-    // ── grid rect from rendered model ─────────────────────────────────────────
-    function getGridRect() {{
-      try {{
-        var cs = chart.getModel().getComponent('grid',0).coordinateSystem;
-        return cs.getRect();   // {{x,y,width,height}} in canvas pixels
-      }} catch(e) {{ return null; }}
-    }}
-
-    // ── visible bar range + price range from current zoom + option ────────────
-    function getVisibleRanges() {{
+    function calibrate() {{
       var opt = chart.getOption();
-      var dz  = opt.dataZoom[0];
       var ya  = opt.yAxis[0];
+      var dz  = opt.dataZoom[0];
+      var yMin = ya.min, yMax = ya.max;
+      if (yMin == null || yMax == null) return;
 
-      var sPct = (dz.start != null ? dz.start : 0)   / 100;
-      var ePct = (dz.end   != null ? dz.end   : 100) / 100;
-      // ECharts category zoom: start/end refer to index space
-      var barStart = Math.round(sPct * (DATES.length - 1));
-      var barEnd   = Math.min(Math.round(ePct * (DATES.length - 1)), DATES.length - 1);
+      var sPct = (dz.start||0)/100;
+      var ePct = (dz.end||98)/100;
+      var iStart = Math.round(sPct*(DATES.length-1));
+      var iEnd   = Math.min(Math.round(ePct*(DATES.length-1)), DATES.length-1);
+      var yMid   = (yMin+yMax)/2;
 
-      return {{
-        barStart : barStart,
-        barEnd   : barEnd,
-        barCount : barEnd - barStart + 1,
-        yMin     : ya.min,
-        yMax     : ya.max,
-      }};
+      var pA, pB, pC, pD;
+      try {{
+        pA = chart.convertToPixel({{seriesIndex:0}},[iStart, yMid]);
+        pB = chart.convertToPixel({{seriesIndex:0}},[iEnd,   yMid]);
+        pC = chart.convertToPixel({{seriesIndex:0}},[iStart, yMin]);
+        pD = chart.convertToPixel({{seriesIndex:0}},[iStart, yMax]);
+      }} catch(err) {{ return; }}
+
+      if (!pA||!pB||!pC||!pD) return;
+
+      var dxPx = pB[0]-pA[0];
+      var dBar = iEnd-iStart;
+      if (Math.abs(dxPx)<1 || dBar<1) return;
+
+      xScale = dBar/dxPx;
+      xOff   = iStart - pA[0]*xScale;
+
+      var dyPxY = pC[1]-pD[1];
+      var dPriceY = yMin-yMax;
+      if (Math.abs(dyPxY)<1) return;
+
+      yScale = dPriceY/dyPxY;
+      yOff   = yMax - pD[1]*yScale;
+
+      calibrated = true;
     }}
 
-    // ── pixel → {{idx, date, price}} ──────────────────────────────────────────
+    // recalibrate after every render + zoom
+    chart.on('finished', calibrate);
+    chart.on('dataZoom', calibrate);
+    // also recalibrate after a short delay to catch post-render layout settle
+    setTimeout(calibrate, 300);
+
     function pixelToData(px, py) {{
-      var rect = getGridRect();
-      if (!rect) return null;
-
-      var vr = getVisibleRanges();
-      if (vr.yMin == null || vr.yMax == null || vr.barCount <= 0) return null;
-
-      // X → bar index
-      var xRatio = (px - rect.x) / rect.width;
-      if (xRatio < 0) xRatio = 0;
-      if (xRatio > 1) xRatio = 1;
-      var barIdx = Math.round(vr.barStart + xRatio * (vr.barCount - 1));
-      barIdx = Math.max(0, Math.min(DATES.length - 1, barIdx));
-
-      // Y → price (y increases downward in canvas)
-      var yRatio = (py - rect.y) / rect.height;
-      if (yRatio < 0 || yRatio > 1) return null;
-      var price = vr.yMax - yRatio * (vr.yMax - vr.yMin);
-
-      return {{ idx:barIdx, date:DATES[barIdx], price:price }};
+      if (!calibrated) {{ calibrate(); if(!calibrated) return null; }}
+      var idx = Math.round(px*xScale + xOff);
+      idx = Math.max(0, Math.min(DATES.length-1, idx));
+      var price = py*yScale + yOff;
+      return {{idx:idx, date:DATES[idx], price:price}};
     }}
 
-    // ── preview ghost trendline while dragging ────────────────────────────────
-    function showPreview(d1, d2) {{
-      if (d1.idx === d2.idx) return;
-      var slope = (d2.price - d1.price) / (d2.idx - d1.idx);
-      var x0=0, xEnd=DATES.length-1;
-      var y0   = d1.price + slope*(x0   - d1.idx);
-      var yEnd = d1.price + slope*(xEnd - d1.idx);
-      chart.setOption({{
-        series:[{{
-          id:'__preview__',type:'scatter',xAxisIndex:0,yAxisIndex:0,
-          data:[],symbol:'none',
-          markLine:{{
-            symbol:['none','none'],silent:true,animation:false,
-            lineStyle:{{color:'rgba(250,204,21,0.35)',width:1.5,type:'dashed'}},
-            data:[[
-              {{xAxis:DATES[x0],  yAxis:y0  }},
-              {{xAxis:DATES[xEnd],yAxis:yEnd}},
-            ]],
-          }},
-        }}],
-      }},{{replaceMerge:[]}});
+    // ── drawing state ─────────────────────────────────────────────────────────
+    var drawMode   = null;
+    var drawnLines = [];
+    var DRAW_COLOR = '#facc15';
+    var DRAG_MIN   = 5;
+
+    var mouseDownPx   = null;
+    var isDragging    = false;
+    var dragStartData = null;
+
+    function showPreview(d1,d2){{
+      if(d1.idx===d2.idx)return;
+      var slope=(d2.price-d1.price)/(d2.idx-d1.idx);
+      var x0=0,xE=DATES.length-1;
+      var y0=d1.price+slope*(x0-d1.idx);
+      var yE=d1.price+slope*(xE-d1.idx);
+      chart.setOption({{series:[{{
+        id:'__pre__',type:'scatter',xAxisIndex:0,yAxisIndex:0,data:[],symbol:'none',
+        markLine:{{symbol:['none','none'],silent:true,animation:false,
+          lineStyle:{{color:'rgba(250,204,21,0.4)',width:1.5,type:'dashed'}},
+          data:[[{{xAxis:DATES[x0],yAxis:y0}},{{xAxis:DATES[xE],yAxis:yE}}]],
+        }},
+      }}]}},{{replaceMerge:[]}});
     }}
 
-    function clearPreview() {{
-      chart.setOption({{
-        series:[{{
-          id:'__preview__',type:'scatter',xAxisIndex:0,yAxisIndex:0,
-          data:[],symbol:'none',
-          markLine:{{symbol:['none','none'],silent:true,animation:false,data:[]}},
-        }}],
-      }},{{replaceMerge:[]}});
+    function clearPreview(){{
+      chart.setOption({{series:[{{
+        id:'__pre__',type:'scatter',xAxisIndex:0,yAxisIndex:0,data:[],symbol:'none',
+        markLine:{{symbol:['none','none'],silent:true,animation:false,data:[]}},
+      }}]}},{{replaceMerge:[]}});
     }}
 
-    // ── mode selector ─────────────────────────────────────────────────────────
-    function setMode(mode) {{
-      drawMode      = mode;
-      isDragging    = false;
-      mouseDownPx   = null;
-      dragStartData = null;
+    function setMode(mode){{
+      drawMode=mode; isDragging=false; mouseDownPx=null; dragStartData=null;
       clearPreview();
       document.getElementById('mode-hint').style.display='none';
-
       ['hline','vline','trend','none'].forEach(function(id){{
-        var btn=document.getElementById('btn-'+id);
-        if(btn) btn.classList.toggle('active',(mode===null&&id==='none')||id===mode);
+        var b=document.getElementById('btn-'+id);
+        if(b)b.classList.toggle('active',(mode===null&&id==='none')||id===mode);
       }});
-
-      // disable inside-zoom while drawing so raw mouse events reach ZRender
       chart.setOption({{dataZoom:[{{type:'inside',disabled:!!mode}}]}});
       chart.getZr().setCursorStyle(mode?'crosshair':'default');
     }}
 
-    // ── ZRender raw pointer events ────────────────────────────────────────────
-    var zr = chart.getZr();
+    var zr=chart.getZr();
 
-    zr.on('mousedown', function(e) {{
-      if (!drawMode) return;
-      mouseDownPx   = {{x:e.offsetX, y:e.offsetY}};
-      isDragging    = false;
-      dragStartData = pixelToData(e.offsetX, e.offsetY);
+    zr.on('mousedown',function(e){{
+      if(!drawMode)return;
+      mouseDownPx={{x:e.offsetX,y:e.offsetY}};
+      isDragging=false;
+      dragStartData=pixelToData(e.offsetX,e.offsetY);
     }});
 
-    zr.on('mousemove', function(e) {{
-      if (!drawMode || !mouseDownPx) return;
-      var dx = e.offsetX - mouseDownPx.x;
-      var dy = e.offsetY - mouseDownPx.y;
-      if (!isDragging && Math.sqrt(dx*dx+dy*dy) > DRAG_MIN_PX) {{
-        isDragging = true;
-        if (drawMode==='trend') {{
-          document.getElementById('mode-hint').style.display='inline-block';
-        }}
+    zr.on('mousemove',function(e){{
+      if(!drawMode||!mouseDownPx)return;
+      var dx=e.offsetX-mouseDownPx.x,dy=e.offsetY-mouseDownPx.y;
+      if(!isDragging&&Math.sqrt(dx*dx+dy*dy)>DRAG_MIN){{
+        isDragging=true;
+        if(drawMode==='trend')document.getElementById('mode-hint').style.display='inline-block';
       }}
-      if (isDragging && drawMode==='trend' && dragStartData) {{
-        var d = pixelToData(e.offsetX, e.offsetY);
-        if (d && d.idx !== dragStartData.idx) showPreview(dragStartData, d);
+      if(isDragging&&drawMode==='trend'&&dragStartData){{
+        var d=pixelToData(e.offsetX,e.offsetY);
+        if(d&&d.idx!==dragStartData.idx)showPreview(dragStartData,d);
       }}
     }});
 
-    zr.on('mouseup', function(e) {{
-      if (!drawMode || !mouseDownPx) return;
+    zr.on('mouseup',function(e){{
+      if(!drawMode||!mouseDownPx)return;
       document.getElementById('mode-hint').style.display='none';
+      var wasDrag=isDragging;
+      isDragging=false; mouseDownPx=null;
+      var d=pixelToData(e.offsetX,e.offsetY);
 
-      var wasDrag = isDragging;
-      isDragging  = false;
-      mouseDownPx = null;
-
-      var d = pixelToData(e.offsetX, e.offsetY);
-
-      if (drawMode==='hline') {{
-        if (d) drawnLines.push({{type:'hline',price:d.price,color:DRAW_COLOR}});
+      if(drawMode==='hline'){{
+        if(d)drawnLines.push({{type:'hline',price:d.price,color:DRAW_COLOR}});
         dragStartData=null; renderDrawn();
-
-      }} else if (drawMode==='vline') {{
-        if (d) drawnLines.push({{type:'vline',idx:d.idx,date:d.date,color:DRAW_COLOR}});
+      }}
+      else if(drawMode==='vline'){{
+        if(d)drawnLines.push({{type:'vline',idx:d.idx,date:d.date,color:DRAW_COLOR}});
         dragStartData=null; renderDrawn();
-
-      }} else if (drawMode==='trend') {{
+      }}
+      else if(drawMode==='trend'){{
         clearPreview();
-        // IMPORTANT: only commit if the user actually dragged (wasDrag===true)
-        // A bare click in trendline mode does nothing — prevents accidental vlines
-        if (!wasDrag || !dragStartData || !d) {{
-          dragStartData=null; return;
-        }}
-        if (dragStartData.idx===d.idx) {{
-          // degenerate (same bar) → treat as vline
+        // only commit on actual drag — bare click does nothing in trendline mode
+        if(!wasDrag||!dragStartData||!d){{dragStartData=null;return;}}
+        if(dragStartData.idx===d.idx){{
           drawnLines.push({{type:'vline',idx:d.idx,date:d.date,color:DRAW_COLOR}});
-        }} else {{
-          drawnLines.push({{
-            type:'trend',
-            x1:dragStartData.idx, y1:dragStartData.price,
-            x2:d.idx,             y2:d.price,
-            color:DRAW_COLOR,
-          }});
+        }}else{{
+          drawnLines.push({{type:'trend',x1:dragStartData.idx,y1:dragStartData.price,x2:d.idx,y2:d.price,color:DRAW_COLOR}});
         }}
-        dragStartData=null;
-        renderDrawn();
+        dragStartData=null; renderDrawn();
       }}
     }});
 
-    // ── render all committed lines ────────────────────────────────────────────
-    function deleteLast() {{ drawnLines.pop(); renderDrawn(); }}
-    function clearAll() {{
-      drawnLines=[]; isDragging=false; mouseDownPx=null; dragStartData=null;
+    function deleteLast(){{drawnLines.pop();renderDrawn();}}
+    function clearAll(){{
+      drawnLines=[];isDragging=false;mouseDownPx=null;dragStartData=null;
       clearPreview();
       document.getElementById('mode-hint').style.display='none';
       renderDrawn();
     }}
 
-    function renderDrawn() {{
+    function renderDrawn(){{
       var ml=[];
       drawnLines.forEach(function(ln){{
-        if (ln.type==='hline') {{
+        if(ln.type==='hline'){{
           ml.push({{
             yAxis:ln.price,
             lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
-            label:{{show:true,formatter:ln.price.toFixed(2),position:'insideEndTop',
-                   color:ln.color,fontSize:10,fontFamily:'DM Mono'}},
+            label:{{show:true,formatter:ln.price.toFixed(2),position:'insideEndTop',color:ln.color,fontSize:10,fontFamily:'DM Mono'}},
           }});
-        }} else if (ln.type==='vline') {{
+        }}else if(ln.type==='vline'){{
           ml.push([
-            {{xAxis:ln.date,yAxis:'min',
-              lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
-              label:{{show:true,formatter:ln.date,position:'insideEndTop',
-                     color:ln.color,fontSize:10,fontFamily:'DM Mono'}}}},
+            {{xAxis:ln.date,yAxis:'min',lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+              label:{{show:true,formatter:ln.date,position:'insideEndTop',color:ln.color,fontSize:10,fontFamily:'DM Mono'}}}},
             {{xAxis:ln.date,yAxis:'max'}},
           ]);
-        }} else if (ln.type==='trend') {{
+        }}else if(ln.type==='trend'){{
           var slope=(ln.y2-ln.y1)/(ln.x2-ln.x1);
-          var x0=0, xEnd=DATES.length-1;
-          var y0   = ln.y1+slope*(x0   -ln.x1);
-          var yEnd = ln.y1+slope*(xEnd -ln.x1);
+          var x0=0,xE=DATES.length-1;
+          var y0=ln.y1+slope*(x0-ln.x1);
+          var yE=ln.y1+slope*(xE-ln.x1);
           ml.push([
-            {{xAxis:DATES[x0],  yAxis:y0,
-              lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
-              label:{{show:false}}}},
-            {{xAxis:DATES[xEnd],yAxis:yEnd}},
+            {{xAxis:DATES[x0],yAxis:y0,lineStyle:{{color:ln.color,width:1.5,type:'solid'}},label:{{show:false}}}},
+            {{xAxis:DATES[xE],yAxis:yE}},
           ]);
         }}
       }});
-      chart.setOption({{
-        series:[{{
-          id:'__drawn__',type:'scatter',xAxisIndex:0,yAxisIndex:0,
-          data:[],symbol:'none',
-          markLine:{{symbol:['none','none'],silent:true,animation:false,data:ml}},
-        }}],
-      }},{{replaceMerge:[]}});
+      chart.setOption({{series:[{{
+        id:'__drawn__',type:'scatter',xAxisIndex:0,yAxisIndex:0,data:[],symbol:'none',
+        markLine:{{symbol:['none','none'],silent:true,animation:false,data:ml}},
+      }}]}},{{replaceMerge:[]}});
     }}
 
     renderDrawn();
