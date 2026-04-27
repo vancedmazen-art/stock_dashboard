@@ -275,7 +275,6 @@ def draw_candle_chart(
       <button class="tb-btn danger" onclick="clearAll()"   title="Clear all drawn lines">✕ All</button>
       <div class="tb-sep"></div>
       <button class="tb-btn info"   onclick="resetZoom()"  title="Reset to original 3-month view">⟳ Reset</button>
-      <button class="tb-btn info"   onclick="openFS()"     title="Fullscreen chart">⛶ Full</button>
       <div class="tb-sep"></div>
       <button class="tb-btn active" id="btn-none" onclick="setMode(null)" title="Pointer / pan mode">✋ Pointer</button>
     </div>
