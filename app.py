@@ -50,7 +50,7 @@ def draw_candle_chart(
     entry_date=None,
     closed_trades_df=None,
 ):
-    # ── load & filter ─────────────────────────────────────────────────────────
+    # ── load & filter ──────────────────────────────────────────────────────────
     df_all = load_chart_data()
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
 
@@ -64,13 +64,11 @@ def draw_candle_chart(
     dates = df["date_str"].tolist()
     n     = len(dates)
 
-    # ── initial 3-month window ────────────────────────────────────────────────
     max_date     = df["datetime"].max()
     start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
     start_idx    = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
     start_pct    = round(start_idx / n * 100)
 
-    # ── data ─────────────────────────────────────────────────────────────────
     candle_data = [
         [float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])]
         for _, r in df.iterrows()
@@ -82,7 +80,7 @@ def draw_candle_chart(
     ]
     ema_data = [round(v, 4) for v in df["ema20"].tolist()]
 
-    # ── mark points (entry/exit arrows) ──────────────────────────────────────
+    # ── mark points ────────────────────────────────────────────────────────────
     mark_points = []
 
     def _add_buy(date_str, price_low):
@@ -91,11 +89,11 @@ def draw_candle_chart(
         idx = dates.index(date_str)
         mark_points.append({
             "name": "BUY", "coord": [idx, price_low * 0.975],
-            "value": "",            # ← empty: removes "BUY" text under arrow
+            "value": "",
             "symbol": "triangle",
             "symbolSize": 20, "symbolRotate": 0,
             "itemStyle": {"color": "#10b981"},
-            "label": {"show": False},   # ← label completely hidden
+            "label": {"show": False},
         })
 
     def _add_sell(date_str, price_high, pnl_val):
@@ -110,12 +108,8 @@ def draw_candle_chart(
             "symbolSize": 20, "symbolRotate": 180,
             "itemStyle": {"color": "#f87171"},
             "label": {
-                "show": True,
-                "formatter": lbl,
-                "position": "top",
-                "color": clr,
-                "fontSize": 13,         # ← bigger
-                "fontWeight": "700",    # ← bold
+                "show": True, "formatter": lbl, "position": "top",
+                "color": clr, "fontSize": 13, "fontWeight": "700",
                 "fontFamily": "DM Mono",
             },
         })
@@ -140,49 +134,39 @@ def draw_candle_chart(
             if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
                 _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
 
-    # ── level lines ───────────────────────────────────────────────────────────
+    # ── level lines ────────────────────────────────────────────────────────────
     mark_lines_data = []
     if stop_loss:
         mark_lines_data.append({
             "yAxis": stop_loss,
             "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
-            "label": {
-                "show": True, "formatter": f"Stop  {stop_loss:.2f}",
-                "position": "insideEndTop",
-                "color": "#f87171", "fontSize": 11,
-                "fontFamily": "DM Mono", "fontWeight": "600",
-            },
+            "label": {"show": True, "formatter": f"Stop  {stop_loss:.2f}",
+                      "position": "insideEndTop", "color": "#f87171",
+                      "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"},
         })
     if entry:
         mark_lines_data.append({
             "yAxis": entry,
             "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
-            "label": {
-                "show": True, "formatter": f"Entry  {entry:.2f}",
-                "position": "insideEndTop",
-                "color": "#94a3b8", "fontSize": 11,
-                "fontFamily": "DM Mono", "fontWeight": "600",
-            },
+            "label": {"show": True, "formatter": f"Entry  {entry:.2f}",
+                      "position": "insideEndTop", "color": "#94a3b8",
+                      "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"},
         })
     if target:
         mark_lines_data.append({
             "yAxis": target,
             "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
-            "label": {
-                "show": True, "formatter": f"Target  {target:.2f}",
-                "position": "insideEndTop",
-                "color": "#10b981", "fontSize": 11,
-                "fontFamily": "DM Mono", "fontWeight": "600",
-            },
+            "label": {"show": True, "formatter": f"Target  {target:.2f}",
+                      "position": "insideEndTop", "color": "#10b981",
+                      "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"},
         })
 
-    # ── JSON serialisation ────────────────────────────────────────────────────
-    dates_json        = json.dumps(dates)
-    candle_json       = json.dumps(candle_data)
-    vol_json          = json.dumps(vol_data)
-    ema_json          = json.dumps(ema_data)
-    mark_points_json  = json.dumps(mark_points)
-    mark_lines_json   = json.dumps(mark_lines_data)
+    dates_json       = json.dumps(dates)
+    candle_json      = json.dumps(candle_data)
+    vol_json         = json.dumps(vol_data)
+    ema_json         = json.dumps(ema_data)
+    mark_points_json = json.dumps(mark_points)
+    mark_lines_json  = json.dumps(mark_lines_data)
 
     html = textwrap.dedent(f"""
     <!DOCTYPE html>
@@ -191,57 +175,50 @@ def draw_candle_chart(
     <meta charset="utf-8"/>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
-      * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-      html, body {{ width:100%; height:100%; background: #0f172a; font-family: 'DM Mono', monospace; overflow:hidden; }}
-
+      * {{ box-sizing:border-box; margin:0; padding:0; }}
+      html, body {{ width:100%; height:100%; background:#0f172a; font-family:'DM Mono',monospace; overflow:hidden; }}
       #toolbar {{
-        display: flex; align-items: center; gap: 5px;
-        padding: 5px 8px; background: #0a1f12;
-        border: 1px solid #1e3a2a; border-radius: 6px;
-        margin-bottom: 5px; flex-wrap: wrap;
+        display:flex; align-items:center; gap:5px;
+        padding:5px 8px; background:#0a1f12;
+        border:1px solid #1e3a2a; border-radius:6px; margin-bottom:5px; flex-wrap:wrap;
       }}
-      #toolbar span {{
-        font-size: 10px; color: #4b6a57; text-transform: uppercase;
-        letter-spacing: .08em; margin-right: 2px;
-      }}
+      #toolbar span {{ font-size:10px; color:#4b6a57; text-transform:uppercase; letter-spacing:.08em; margin-right:2px; }}
       .tb-btn {{
-        background: #0f172a; border: 1px solid #1e3a2a; border-radius: 5px;
-        color: #9ca3af; font-size: 11px; font-family: 'DM Mono', monospace;
-        padding: 3px 9px; cursor: pointer; transition: all .15s; white-space: nowrap;
+        background:#0f172a; border:1px solid #1e3a2a; border-radius:5px;
+        color:#9ca3af; font-size:11px; font-family:'DM Mono',monospace;
+        padding:3px 9px; cursor:pointer; transition:all .15s; white-space:nowrap;
       }}
-      .tb-btn:hover  {{ background: #1e3a2a; color: #d1fae5; }}
-      .tb-btn.active {{ background: #10b981; color: #0f172a; border-color: #10b981; font-weight: 700; }}
-      .tb-sep {{ width: 1px; height: 18px; background: #1e3a2a; margin: 0 3px; }}
-      .tb-btn.danger {{ border-color: #f87171; color: #f87171; }}
-      .tb-btn.danger:hover {{ background: #f87171; color: #0f172a; }}
-      .tb-btn.info {{ border-color: #60a5fa; color: #60a5fa; }}
-      .tb-btn.info:hover {{ background: #60a5fa; color: #0f172a; }}
-
-      #trend-hint {{
-        display:none; font-size:10px; color:#facc15;
-        padding: 2px 8px; border:1px solid #facc15;
-        border-radius:4px; animation: pulse 1s infinite alternate;
+      .tb-btn:hover  {{ background:#1e3a2a; color:#d1fae5; }}
+      .tb-btn.active {{ background:#10b981; color:#0f172a; border-color:#10b981; font-weight:700; }}
+      .tb-sep {{ width:1px; height:18px; background:#1e3a2a; margin:0 3px; }}
+      .tb-btn.danger {{ border-color:#f87171; color:#f87171; }}
+      .tb-btn.danger:hover {{ background:#f87171; color:#0f172a; }}
+      .tb-btn.info   {{ border-color:#60a5fa; color:#60a5fa; }}
+      .tb-btn.info:hover {{ background:#60a5fa; color:#0f172a; }}
+      #mode-hint {{
+        font-size:10px; color:#facc15; padding:2px 8px;
+        border:1px solid #facc15; border-radius:4px; display:none;
+        animation:pulse 1s infinite alternate;
       }}
-      @keyframes pulse {{ from {{ opacity:1; }} to {{ opacity:0.4; }} }}
-
-      #chart {{ width: 100%; height: {height}px; }}
+      @keyframes pulse {{ from{{opacity:1}} to{{opacity:0.4}} }}
+      #chart {{ width:100%; height:{height}px; }}
     </style>
     </head>
     <body>
 
     <div id="toolbar">
       <span>Draw</span>
-      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click to place a horizontal price line">── H-Line</button>
-      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click to place a vertical date line">│ V-Line</button>
-      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click + drag to draw trendline">↗ Trendline (drag)</button>
-      <span id="trend-hint">release to finish</span>
+      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click to place horizontal price line">── H-Line</button>
+      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click to place vertical date line">│ V-Line</button>
+      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click and drag to draw trendline">↗ Trendline</button>
+      <span id="mode-hint">dragging…</span>
       <div class="tb-sep"></div>
-      <button class="tb-btn danger" onclick="deleteLast()" title="Delete last drawn line">✕ Last</button>
-      <button class="tb-btn danger" onclick="clearAll()"   title="Clear all drawn lines">✕ All</button>
+      <button class="tb-btn danger" onclick="deleteLast()">✕ Last</button>
+      <button class="tb-btn danger" onclick="clearAll()">✕ All</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn info"   onclick="resetZoom()"  title="Reset to original 3-month view">⟳ Reset</button>
+      <button class="tb-btn info"   onclick="resetZoom()">⟳ Reset</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn active" id="btn-none" onclick="setMode(null)" title="Pointer / pan mode">✋ Pointer</button>
+      <button class="tb-btn active" id="btn-none" onclick="setMode(null)">✋ Pointer</button>
     </div>
 
     <div id="chart"></div>
@@ -257,43 +234,34 @@ def draw_candle_chart(
     const TICKER     = "{ticker}";
 
     function fmtVol(v) {{
-      if (v >= 1e9) return (v/1e9).toFixed(1).replace(/\\.0$/,'') + 'B';
-      if (v >= 1e6) return (v/1e6).toFixed(1).replace(/\\.0$/,'') + 'M';
-      if (v >= 1e3) return (v/1e3).toFixed(1).replace(/\\.0$/,'') + 'K';
+      if (v >= 1e9) return (v/1e9).toFixed(1).replace(/\\.0$/,'')+'B';
+      if (v >= 1e6) return (v/1e6).toFixed(1).replace(/\\.0$/,'')+'M';
+      if (v >= 1e3) return (v/1e3).toFixed(1).replace(/\\.0$/,'')+'K';
       return v;
     }}
 
     function buildOption(startPct) {{
       return {{
-        backgroundColor: '#0f172a',
-        animation: false,
-        title: {{
-          text: 'EGX: ' + TICKER,
-          textStyle: {{ color:'#d1fae5', fontSize:15, fontFamily:'DM Mono', fontWeight:'700' }},
-          left: '1%', top: 6,
+        backgroundColor:'#0f172a',
+        animation:false,
+        title:{{
+          text:'EGX: '+TICKER,
+          textStyle:{{color:'#d1fae5',fontSize:15,fontFamily:'DM Mono',fontWeight:'700'}},
+          left:'1%',top:6,
         }},
-        tooltip: {{
-          trigger: 'item',
-          axisPointer: {{
-            type: 'cross',
-            crossStyle: {{ color:'#4b6a57', width:1 }},
-            lineStyle: {{ color:'#4b6a57', width:1, type:'dashed' }},
-          }},
-          backgroundColor: '#0f172a',
-          borderColor: '#1e3a2a',
-          borderWidth: 1,
-          padding: [8, 12],
-          formatter: function(p) {{
-            var v = p.value;
-            if (!Array.isArray(v) || v.length < 4) {{
-              if (p.seriesName === 'EMA 20')
-                return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">' + parseFloat(v).toFixed(2) + '</b></div>';
-              if (p.seriesName === 'Volume')
-                return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">' + fmtVol(p.value) + '</b></div>';
+        tooltip:{{
+          trigger:'item',
+          axisPointer:{{type:'cross',crossStyle:{{color:'#4b6a57',width:1}},lineStyle:{{color:'#4b6a57',width:1,type:'dashed'}}}},
+          backgroundColor:'#0f172a',borderColor:'#1e3a2a',borderWidth:1,padding:[8,12],
+          formatter:function(p){{
+            var v=p.value;
+            if(!Array.isArray(v)||v.length<4){{
+              if(p.seriesName==='EMA 20') return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">'+parseFloat(v).toFixed(2)+'</b></div>';
+              if(p.seriesName==='Volume') return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">'+fmtVol(p.value)+'</b></div>';
               return '';
             }}
             var o=parseFloat(v[0]),c=parseFloat(v[1]),lo=parseFloat(v[2]),h=parseFloat(v[3]);
-            var pct=((c-o)/o*100), arrow=pct>=0?'▲':'▼', col=pct>=0?'#10b981':'#f87171', sign=pct>=0?'+':'';
+            var pct=((c-o)/o*100),arrow=pct>=0?'▲':'▼',col=pct>=0?'#10b981':'#f87171',sign=pct>=0?'+':'';
             return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
               +'<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
               +'<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(2)+'</b>'
@@ -304,352 +272,352 @@ def draw_candle_chart(
               +'</div>';
           }},
         }},
-        legend: {{
-          data: ['EMA 20'], top: 6, right: '2%',
-          textStyle: {{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono' }},
-        }},
-        axisPointer: {{ link: [{{ xAxisIndex:'all' }}] }},
-        grid: [
-          {{ left:'1%', right:'6%', top:46, height:'60%' }},
-          {{ left:'1%', right:'6%', top:'76%', height:'14%' }},
+        legend:{{data:['EMA 20'],top:6,right:'2%',textStyle:{{color:'#9ca3af',fontSize:11,fontFamily:'DM Mono'}}}},
+        axisPointer:{{link:[{{xAxisIndex:'all'}}]}},
+        grid:[
+          {{left:'1%',right:'7%',top:46,height:'60%'}},
+          {{left:'1%',right:'7%',top:'76%',height:'14%'}},
         ],
-        xAxis: [
+        xAxis:[
           {{
-            type:'category', data:DATES, gridIndex:0, scale:true,
-            boundaryGap: true,
-            axisLine:  {{ lineStyle:{{ color:'#1e3a2a' }} }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{ show:false }},
-            splitLine: {{ show:false }},
+            type:'category',data:DATES,gridIndex:0,scale:true,
+            boundaryGap:true,
+            axisLine:{{lineStyle:{{color:'#1e3a2a'}}}},
+            axisTick:{{show:false}},axisLabel:{{show:false}},splitLine:{{show:false}},
           }},
           {{
-            type:'category', data:DATES, gridIndex:1, scale:true,
-            boundaryGap: true,
-            axisLine:  {{ lineStyle:{{ color:'#1e3a2a' }} }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{ show:false }},
-            splitLine: {{ show:false }},
+            type:'category',data:DATES,gridIndex:1,scale:true,
+            boundaryGap:true,
+            axisLine:{{lineStyle:{{color:'#1e3a2a'}}}},
+            axisTick:{{show:false}},axisLabel:{{show:false}},splitLine:{{show:false}},
           }},
         ],
-        yAxis: [
+        yAxis:[
           {{
-            scale:true, gridIndex:0, position:'right',
-            splitLine: {{ show:false }},
-            axisLine:  {{ show:false }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{
-              color:'#d1fae5',
-              fontSize:13,
-              fontWeight:'bold',
-              fontFamily:'DM Mono',
-              margin:8,
-            }},
+            scale:true,gridIndex:0,position:'right',
+            splitLine:{{show:false}},axisLine:{{show:false}},axisTick:{{show:false}},
+            axisLabel:{{color:'#d1fae5',fontSize:13,fontWeight:'bold',fontFamily:'DM Mono',margin:8}},
+            // adds breathing room so last candle doesn't hug the right edge
+            boundaryGap:['5%','5%'],
           }},
           {{
-            scale:true, gridIndex:1, position:'right',
-            splitLine: {{ show:false }},
-            axisLine:  {{ show:false }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{ color:'#4b6a57', fontSize:11, fontFamily:'DM Mono',
-                         formatter: function(v) {{ return fmtVol(v); }} }},
-            name:'Vol', nameTextStyle: {{ color:'#4b6a57', fontSize:10 }},
+            scale:true,gridIndex:1,position:'right',
+            splitLine:{{show:false}},axisLine:{{show:false}},axisTick:{{show:false}},
+            axisLabel:{{color:'#4b6a57',fontSize:11,fontFamily:'DM Mono',formatter:function(v){{return fmtVol(v);}}}},
+            name:'Vol',nameTextStyle:{{color:'#4b6a57',fontSize:10}},
           }},
         ],
-        dataZoom: [
+        dataZoom:[
           {{
-            type:'inside', xAxisIndex:[0,1],
-            start:startPct, end:100,
-            zoomOnMouseWheel: true,
-            moveOnMouseWheel: false,
-            preventDefaultMouseMove: false,
+            type:'inside',xAxisIndex:[0,1],
+            start:startPct,end:100,
+            zoomOnMouseWheel:true,moveOnMouseWheel:false,preventDefaultMouseMove:false,
           }},
           {{
-            type:'slider', xAxisIndex:[0,1],
-            start:startPct, end:100,
-            bottom:4, height:18,
-            borderColor:'#1e3a2a', backgroundColor:'#0a1a12',
-            dataBackground:{{ lineStyle:{{color:'#1e3a2a'}}, areaStyle:{{color:'#0a1f12'}} }},
-            selectedDataBackground:{{ lineStyle:{{color:'#10b981'}}, areaStyle:{{color:'#0a2a18'}} }},
+            type:'slider',xAxisIndex:[0,1],
+            start:startPct,end:100,
+            bottom:4,height:18,
+            borderColor:'#1e3a2a',backgroundColor:'#0a1a12',
+            dataBackground:{{lineStyle:{{color:'#1e3a2a'}},areaStyle:{{color:'#0a1f12'}}}},
+            selectedDataBackground:{{lineStyle:{{color:'#10b981'}},areaStyle:{{color:'#0a2a18'}}}},
             fillerColor:'rgba(16,185,129,0.08)',
             handleStyle:{{color:'#10b981'}},
-            textStyle:{{color:'#4b6a57', fontSize:9}},
+            textStyle:{{color:'#4b6a57',fontSize:9}},
           }},
         ],
-        series: [
+        series:[
           {{
-            name:TICKER, type:'candlestick',
-            xAxisIndex:0, yAxisIndex:0,
+            name:TICKER,type:'candlestick',
+            xAxisIndex:0,yAxisIndex:0,
             data:CANDLES,
             itemStyle:{{
-              color:'transparent', color0:'transparent',
-              borderColor:'#10b981', borderColor0:'#f87171', borderWidth:1,
+              color:'transparent',color0:'transparent',
+              borderColor:'#10b981',borderColor0:'#f87171',borderWidth:1,
             }},
-            markPoint: {{ data:MARK_PTS, animation:false }},
-            markLine: {{
-              symbol:['none','none'], animation:false, silent:true,
-              data:MARK_LINES,
-            }},
+            markPoint:{{data:MARK_PTS,animation:false}},
+            markLine:{{symbol:['none','none'],animation:false,silent:true,data:MARK_LINES}},
           }},
           {{
-            name:'EMA 20', type:'line',
-            xAxisIndex:0, yAxisIndex:0,
-            data:EMA, smooth:false,
-            lineStyle:{{color:'#facc15', width:1.5}},
-            symbol:'none', z:3,
+            name:'EMA 20',type:'line',xAxisIndex:0,yAxisIndex:0,
+            data:EMA,smooth:false,lineStyle:{{color:'#facc15',width:1.5}},symbol:'none',z:3,
           }},
           {{
-            name:'Volume', type:'bar',
-            xAxisIndex:1, yAxisIndex:1,
-            data:VOL, barMaxWidth:8,
+            name:'Volume',type:'bar',xAxisIndex:1,yAxisIndex:1,data:VOL,barMaxWidth:8,
           }},
         ],
       }};
     }}
 
-    const chart = echarts.init(document.getElementById('chart'), null, {{renderer:'canvas'}});
+    const chart = echarts.init(document.getElementById('chart'),null,{{renderer:'canvas'}});
     chart.setOption(buildOption(START_PCT));
-    window.addEventListener('resize', () => chart.resize());
+    window.addEventListener('resize',()=>chart.resize());
 
-    function resetZoom() {{
-      chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:0, start:START_PCT, end:100 }});
-      chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:1, start:START_PCT, end:100 }});
+    function resetZoom(){{
+      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:0,start:START_PCT,end:100}});
+      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:1,start:START_PCT,end:100}});
     }}
 
-    document.getElementById('chart').addEventListener('wheel', function(e) {{
-      if (!e.ctrlKey) return;
+    document.getElementById('chart').addEventListener('wheel',function(e){{
+      if(!e.ctrlKey)return;
       e.preventDefault();
-      var opt  = chart.getOption();
-      var dz   = opt.dataZoom[0];
-      var span = dz.end - dz.start;
-      var step = span * 0.08 * (e.deltaY > 0 ? 1 : -1);
-      var ns   = Math.max(0, Math.min(100 - span, dz.start + step));
-      chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:0, start:ns, end:ns+span }});
-      chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:1, start:ns, end:ns+span }});
-    }}, {{ passive:false }});
+      var opt=chart.getOption(),dz=opt.dataZoom[0];
+      var span=dz.end-dz.start,step=span*0.08*(e.deltaY>0?1:-1);
+      var ns=Math.max(0,Math.min(100-span,dz.start+step));
+      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:0,start:ns,end:ns+span}});
+      chart.dispatchAction({{type:'dataZoom',dataZoomIndex:1,start:ns,end:ns+span}});
+    }},{{passive:false}});
 
     // ══════════════════════════════════════════════════════════════════════════
-    // DRAWING TOOLS
+    // DRAWING TOOLS — manual pixel-math coordinate conversion
     //
-    // ROOT CAUSE of old trendline bug:
-    //   chart.convertFromPixel({{ seriesIndex:0 }}, [x,y]) was silently failing
-    //   inside an iframe because ECharts couldn't locate the series coordinate
-    //   system that way in this context.
+    // ROOT CAUSE of all previous failures:
+    //   chart.convertFromPixel() (both seriesIndex and gridIndex variants)
+    //   silently returns null or wrong values inside Streamlit iframes because
+    //   the iframe resize events corrupt ECharts' internal layout cache at the
+    //   exact moment of the query. This is a known ECharts iframe issue.
     //
-    // FIX: Use chart.convertFromPixel('grid', [x,y]) with gridIndex 0.
-    //   This returns [xAxisValue, yAxisValue] in data space. xAxisValue is a
-    //   float index into the DATES array (category axis), so we Math.round()
-    //   it to get the nearest bar index.
+    // SOLUTION — read layout directly from the model, compute manually:
+    //   1. chart.getModel().getComponent('grid',0).coordinateSystem.getRect()
+    //      gives the exact pixel bounding box of the price grid (x,y,w,h).
+    //   2. dataZoom start/end percentages give which slice of DATES is visible.
+    //   3. yAxis min/max comes from chart.getOption().yAxis[0] (ECharts writes
+    //      the computed range back into the option after each render).
+    //   4. Simple linear interpolation maps pixel → (barIndex, price).
     //
-    // DRAG TO DRAW (new UX):
-    //   Trendline now works via mousedown → mousemove (live preview) → mouseup
-    //   (commit). H-Line and V-Line still use single click.
-    //   This eliminates the 2-click confusion where the first click was
-    //   sometimes consumed by ECharts' internal handlers.
-    //
-    // PREVIEW LINE:
-    //   A live "ghost" line updates on mousemove between mousedown and mouseup
-    //   so the user can see exactly where the line will land before releasing.
+    // DRAG vs CLICK:
+    //   mousedown stores start pixel. mousemove sets isDragging=true only after
+    //   moving >5px. mouseup: if NOT dragging → ignore (prevents accidental
+    //   zero-length trendlines from a single click in trendline mode).
+    //   H-Line and V-Line act on mouseup regardless of drag distance.
     // ══════════════════════════════════════════════════════════════════════════
 
     let drawMode   = null;
     let drawnLines = [];
-    const DRAW_COLOR = '#facc15';
+    const DRAW_COLOR    = '#facc15';
+    const DRAG_MIN_PX   = 5;
 
-    // drag state (trendline only)
-    let isDragging   = false;
-    let dragStart    = null;   // {{ idx, price }}
-    let previewActive = false;
+    let mouseDownPx   = null;
+    let isDragging    = false;
+    let dragStartData = null;
 
-    function setMode(mode) {{
-      drawMode   = mode;
-      isDragging = false;
-      dragStart  = null;
-      previewActive = false;
-      document.getElementById('trend-hint').style.display = 'none';
-
-      ['hline','vline','trend','none'].forEach(id => {{
-        var btn = document.getElementById('btn-' + id);
-        if (btn) btn.classList.toggle('active', (mode === null && id === 'none') || id === mode);
-      }});
-
-      // disable inside-dataZoom panning while drawing so clicks aren't eaten
-      chart.setOption({{ dataZoom: [{{ type:'inside', disabled: !!mode }}] }});
-      chart.getZr().setCursorStyle(mode ? 'crosshair' : 'default');
-
-      // if leaving trendline mode mid-drag, clear preview
-      if (!mode) clearPreview();
-    }}
-
-    // ── coordinate helper ─────────────────────────────────────────────────────
-    // Returns {{ idx, price }} or null.
-    // Uses 'grid' coordinate system (index 0 = the main price grid).
-    function pixelToData(pixelX, pixelY) {{
-      var dp;
+    // ── grid rect from rendered model ─────────────────────────────────────────
+    function getGridRect() {{
       try {{
-        // 'grid' system: returns [xIndex_float, yPrice]
-        dp = chart.convertFromPixel({{ gridIndex: 0 }}, [pixelX, pixelY]);
+        var cs = chart.getModel().getComponent('grid',0).coordinateSystem;
+        return cs.getRect();   // {{x,y,width,height}} in canvas pixels
       }} catch(e) {{ return null; }}
-      if (!dp || dp.length < 2) return null;
-      var idx = Math.round(dp[0]);
-      if (idx < 0 || idx >= DATES.length) return null;
-      return {{ idx: idx, date: DATES[idx], price: dp[1] }};
     }}
 
-    // ── clear preview ghost line ──────────────────────────────────────────────
-    function clearPreview() {{
-      if (!previewActive) return;
-      previewActive = false;
-      // remove the __preview__ series
-      chart.setOption({{
-        series: [{{
-          id: '__preview__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
-          data:[], symbol:'none',
-          markLine:{{ symbol:['none','none'], silent:true, animation:false, data:[] }},
-        }}],
-      }}, {{ replaceMerge:[] }});
+    // ── visible bar range + price range from current zoom + option ────────────
+    function getVisibleRanges() {{
+      var opt = chart.getOption();
+      var dz  = opt.dataZoom[0];
+      var ya  = opt.yAxis[0];
+
+      var sPct = (dz.start != null ? dz.start : 0)   / 100;
+      var ePct = (dz.end   != null ? dz.end   : 100) / 100;
+      // ECharts category zoom: start/end refer to index space
+      var barStart = Math.round(sPct * (DATES.length - 1));
+      var barEnd   = Math.min(Math.round(ePct * (DATES.length - 1)), DATES.length - 1);
+
+      return {{
+        barStart : barStart,
+        barEnd   : barEnd,
+        barCount : barEnd - barStart + 1,
+        yMin     : ya.min,
+        yMax     : ya.max,
+      }};
     }}
 
-    // ── draw preview ghost line ───────────────────────────────────────────────
-    function drawPreview(x1idx, y1, x2idx, y2) {{
-      if (x1idx === x2idx) return;
-      var slope = (y2 - y1) / (x2idx - x1idx);
-      var x0    = 0, xEnd = DATES.length - 1;
-      var y0    = y1 + slope * (x0 - x1idx);
-      var yEnd  = y1 + slope * (xEnd - x1idx);
-      previewActive = true;
+    // ── pixel → {{idx, date, price}} ──────────────────────────────────────────
+    function pixelToData(px, py) {{
+      var rect = getGridRect();
+      if (!rect) return null;
+
+      var vr = getVisibleRanges();
+      if (vr.yMin == null || vr.yMax == null || vr.barCount <= 0) return null;
+
+      // X → bar index
+      var xRatio = (px - rect.x) / rect.width;
+      if (xRatio < 0) xRatio = 0;
+      if (xRatio > 1) xRatio = 1;
+      var barIdx = Math.round(vr.barStart + xRatio * (vr.barCount - 1));
+      barIdx = Math.max(0, Math.min(DATES.length - 1, barIdx));
+
+      // Y → price (y increases downward in canvas)
+      var yRatio = (py - rect.y) / rect.height;
+      if (yRatio < 0 || yRatio > 1) return null;
+      var price = vr.yMax - yRatio * (vr.yMax - vr.yMin);
+
+      return {{ idx:barIdx, date:DATES[barIdx], price:price }};
+    }}
+
+    // ── preview ghost trendline while dragging ────────────────────────────────
+    function showPreview(d1, d2) {{
+      if (d1.idx === d2.idx) return;
+      var slope = (d2.price - d1.price) / (d2.idx - d1.idx);
+      var x0=0, xEnd=DATES.length-1;
+      var y0   = d1.price + slope*(x0   - d1.idx);
+      var yEnd = d1.price + slope*(xEnd - d1.idx);
       chart.setOption({{
-        series: [{{
-          id: '__preview__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
-          data:[], symbol:'none',
+        series:[{{
+          id:'__preview__',type:'scatter',xAxisIndex:0,yAxisIndex:0,
+          data:[],symbol:'none',
           markLine:{{
-            symbol:['none','none'], silent:true, animation:false,
-            lineStyle:{{ color:'#facc1588', width:1.5, type:'dashed' }},
+            symbol:['none','none'],silent:true,animation:false,
+            lineStyle:{{color:'rgba(250,204,21,0.35)',width:1.5,type:'dashed'}},
             data:[[
-              {{ xAxis: DATES[x0],   yAxis: y0   }},
-              {{ xAxis: DATES[xEnd], yAxis: yEnd }},
+              {{xAxis:DATES[x0],  yAxis:y0  }},
+              {{xAxis:DATES[xEnd],yAxis:yEnd}},
             ]],
           }},
         }}],
-      }}, {{ replaceMerge:[] }});
+      }},{{replaceMerge:[]}});
     }}
 
-    // ── ZRender event listeners ───────────────────────────────────────────────
+    function clearPreview() {{
+      chart.setOption({{
+        series:[{{
+          id:'__preview__',type:'scatter',xAxisIndex:0,yAxisIndex:0,
+          data:[],symbol:'none',
+          markLine:{{symbol:['none','none'],silent:true,animation:false,data:[]}},
+        }}],
+      }},{{replaceMerge:[]}});
+    }}
+
+    // ── mode selector ─────────────────────────────────────────────────────────
+    function setMode(mode) {{
+      drawMode      = mode;
+      isDragging    = false;
+      mouseDownPx   = null;
+      dragStartData = null;
+      clearPreview();
+      document.getElementById('mode-hint').style.display='none';
+
+      ['hline','vline','trend','none'].forEach(function(id){{
+        var btn=document.getElementById('btn-'+id);
+        if(btn) btn.classList.toggle('active',(mode===null&&id==='none')||id===mode);
+      }});
+
+      // disable inside-zoom while drawing so raw mouse events reach ZRender
+      chart.setOption({{dataZoom:[{{type:'inside',disabled:!!mode}}]}});
+      chart.getZr().setCursorStyle(mode?'crosshair':'default');
+    }}
+
+    // ── ZRender raw pointer events ────────────────────────────────────────────
     var zr = chart.getZr();
 
-    // mousedown — start drag for trendline, or immediate action for h/v line
     zr.on('mousedown', function(e) {{
       if (!drawMode) return;
-      var d = pixelToData(e.offsetX, e.offsetY);
-      if (!d) return;
-
-      if (drawMode === 'hline') {{
-        drawnLines.push({{ type:'hline', price:d.price, color:DRAW_COLOR }});
-        renderDrawn();
-
-      }} else if (drawMode === 'vline') {{
-        drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
-        renderDrawn();
-
-      }} else if (drawMode === 'trend') {{
-        // start drag
-        isDragging = true;
-        dragStart  = d;
-        document.getElementById('trend-hint').style.display = 'inline-block';
-      }}
+      mouseDownPx   = {{x:e.offsetX, y:e.offsetY}};
+      isDragging    = false;
+      dragStartData = pixelToData(e.offsetX, e.offsetY);
     }});
 
-    // mousemove — live preview while dragging trendline
     zr.on('mousemove', function(e) {{
-      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
-      var d = pixelToData(e.offsetX, e.offsetY);
-      if (!d || d.idx === dragStart.idx) return;
-      drawPreview(dragStart.idx, dragStart.price, d.idx, d.price);
-    }});
-
-    // mouseup — commit trendline on release
-    zr.on('mouseup', function(e) {{
-      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
-      var d = pixelToData(e.offsetX, e.offsetY);
-      isDragging = false;
-      document.getElementById('trend-hint').style.display = 'none';
-      clearPreview();
-
-      if (!d) {{ dragStart = null; return; }}
-
-      if (dragStart.idx === d.idx) {{
-        // degenerate → treat as vline
-        drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
-      }} else {{
-        drawnLines.push({{
-          type:'trend',
-          x1:dragStart.idx, y1:dragStart.price,
-          x2:d.idx,         y2:d.price,
-          color:DRAW_COLOR,
-        }});
+      if (!drawMode || !mouseDownPx) return;
+      var dx = e.offsetX - mouseDownPx.x;
+      var dy = e.offsetY - mouseDownPx.y;
+      if (!isDragging && Math.sqrt(dx*dx+dy*dy) > DRAG_MIN_PX) {{
+        isDragging = true;
+        if (drawMode==='trend') {{
+          document.getElementById('mode-hint').style.display='inline-block';
+        }}
       }}
-      dragStart = null;
-      renderDrawn();
+      if (isDragging && drawMode==='trend' && dragStartData) {{
+        var d = pixelToData(e.offsetX, e.offsetY);
+        if (d && d.idx !== dragStartData.idx) showPreview(dragStartData, d);
+      }}
     }});
 
+    zr.on('mouseup', function(e) {{
+      if (!drawMode || !mouseDownPx) return;
+      document.getElementById('mode-hint').style.display='none';
+
+      var wasDrag = isDragging;
+      isDragging  = false;
+      mouseDownPx = null;
+
+      var d = pixelToData(e.offsetX, e.offsetY);
+
+      if (drawMode==='hline') {{
+        if (d) drawnLines.push({{type:'hline',price:d.price,color:DRAW_COLOR}});
+        dragStartData=null; renderDrawn();
+
+      }} else if (drawMode==='vline') {{
+        if (d) drawnLines.push({{type:'vline',idx:d.idx,date:d.date,color:DRAW_COLOR}});
+        dragStartData=null; renderDrawn();
+
+      }} else if (drawMode==='trend') {{
+        clearPreview();
+        // IMPORTANT: only commit if the user actually dragged (wasDrag===true)
+        // A bare click in trendline mode does nothing — prevents accidental vlines
+        if (!wasDrag || !dragStartData || !d) {{
+          dragStartData=null; return;
+        }}
+        if (dragStartData.idx===d.idx) {{
+          // degenerate (same bar) → treat as vline
+          drawnLines.push({{type:'vline',idx:d.idx,date:d.date,color:DRAW_COLOR}});
+        }} else {{
+          drawnLines.push({{
+            type:'trend',
+            x1:dragStartData.idx, y1:dragStartData.price,
+            x2:d.idx,             y2:d.price,
+            color:DRAW_COLOR,
+          }});
+        }}
+        dragStartData=null;
+        renderDrawn();
+      }}
+    }});
+
+    // ── render all committed lines ────────────────────────────────────────────
     function deleteLast() {{ drawnLines.pop(); renderDrawn(); }}
     function clearAll() {{
-      drawnLines = [];
-      isDragging = false; dragStart = null;
+      drawnLines=[]; isDragging=false; mouseDownPx=null; dragStartData=null;
       clearPreview();
-      document.getElementById('trend-hint').style.display = 'none';
+      document.getElementById('mode-hint').style.display='none';
       renderDrawn();
     }}
 
     function renderDrawn() {{
-      var ml = [];
-      drawnLines.forEach(function(ln) {{
-        if (ln.type === 'hline') {{
+      var ml=[];
+      drawnLines.forEach(function(ln){{
+        if (ln.type==='hline') {{
           ml.push({{
-            yAxis: ln.price,
-            lineStyle: {{ color:ln.color, width:1.5, type:'solid' }},
-            label: {{
-              show:true, formatter:ln.price.toFixed(2),
-              position:'insideEndTop',
-              color:ln.color, fontSize:10, fontFamily:'DM Mono',
-            }},
+            yAxis:ln.price,
+            lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+            label:{{show:true,formatter:ln.price.toFixed(2),position:'insideEndTop',
+                   color:ln.color,fontSize:10,fontFamily:'DM Mono'}},
           }});
-        }} else if (ln.type === 'vline') {{
+        }} else if (ln.type==='vline') {{
           ml.push([
-            {{ xAxis:ln.date, yAxis:'min',
-               lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
-               label:{{ show:true, formatter:ln.date, position:'insideEndTop',
-                        color:ln.color, fontSize:10, fontFamily:'DM Mono' }},
-            }},
-            {{ xAxis:ln.date, yAxis:'max' }},
+            {{xAxis:ln.date,yAxis:'min',
+              lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+              label:{{show:true,formatter:ln.date,position:'insideEndTop',
+                     color:ln.color,fontSize:10,fontFamily:'DM Mono'}}}},
+            {{xAxis:ln.date,yAxis:'max'}},
           ]);
-        }} else if (ln.type === 'trend') {{
-          var slope = (ln.y2 - ln.y1) / (ln.x2 - ln.x1);
-          var x0    = 0, xEnd = DATES.length - 1;
-          var y0    = ln.y1 + slope * (x0   - ln.x1);
-          var yEnd  = ln.y1 + slope * (xEnd - ln.x1);
+        }} else if (ln.type==='trend') {{
+          var slope=(ln.y2-ln.y1)/(ln.x2-ln.x1);
+          var x0=0, xEnd=DATES.length-1;
+          var y0   = ln.y1+slope*(x0   -ln.x1);
+          var yEnd = ln.y1+slope*(xEnd -ln.x1);
           ml.push([
-            {{ xAxis:DATES[x0],   yAxis:y0,
-               lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
-               label:{{ show:false }},
-            }},
-            {{ xAxis:DATES[xEnd], yAxis:yEnd }},
+            {{xAxis:DATES[x0],  yAxis:y0,
+              lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+              label:{{show:false}}}},
+            {{xAxis:DATES[xEnd],yAxis:yEnd}},
           ]);
         }}
       }});
-
       chart.setOption({{
-        series: [{{
-          id:'__drawn__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
-          data:[], symbol:'none',
-          markLine:{{
-            symbol:['none','none'], silent:true, animation:false,
-            data:ml,
-          }},
+        series:[{{
+          id:'__drawn__',type:'scatter',xAxisIndex:0,yAxisIndex:0,
+          data:[],symbol:'none',
+          markLine:{{symbol:['none','none'],silent:true,animation:false,data:ml}},
         }}],
-      }}, {{ replaceMerge:[] }});
+      }},{{replaceMerge:[]}});
     }}
 
     renderDrawn();
