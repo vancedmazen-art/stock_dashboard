@@ -285,14 +285,14 @@ def draw_candle_chart(
           padding: [8, 12],
           formatter: function(p) {{
             var v = p.value;
-            if (!Array.isArray(v) || v.length < 4) {{
+            if (!Array.isArray(v) || v.length < 5) {{
               if (p.seriesName === 'EMA 20')
                 return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">' + parseFloat(v).toFixed(2) + '</b></div>';
               if (p.seriesName === 'Volume')
                 return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">' + fmtVol(p.value) + '</b></div>';
               return '';
             }}
-            var o=parseFloat(v[0]),c=parseFloat(v[1]),lo=parseFloat(v[2]),h=parseFloat(v[3]);
+            var o=parseFloat(v[1]),c=parseFloat(v[2]),lo=parseFloat(v[3]),h=parseFloat(v[4]);
             var pct=((c-o)/o*100), arrow=pct>=0?'▲':'▼', col=pct>=0?'#10b981':'#f87171', sign=pct>=0?'+':'';
             return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
               +'<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
