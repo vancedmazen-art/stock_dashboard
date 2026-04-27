@@ -281,15 +281,7 @@ def draw_candle_chart(
 
     <div id="chart"></div>
 
-    <!-- fullscreen overlay (own ECharts instance) -->
-    <div id="fs-overlay">
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#0a1f12;border-bottom:1px solid #1e3a2a">
-        <span style="color:#d1fae5;font-family:DM Mono,monospace;font-size:13px;font-weight:700">EGX: {ticker} — Fullscreen</span>
-        <span style="flex:1"></span>
-        <button class="tb-btn info" onclick="closeFS()">✕ Close</button>
-      </div>
-      <div id="fs-chart"></div>
-    </div>
+
 
     <script>
     const DATES      = {dates_json};
