@@ -951,6 +951,59 @@ with st.sidebar:
                 )
 
     st.markdown("---")
+    st.markdown("---")
+
+	st.markdown("""
+	<div style="
+		background:#0f172a;
+		border:1px solid #1e3a2a;
+		border-radius:10px;
+		padding:12px;
+		margin-top:10px;
+		text-align:center;
+		font-family:'DM Mono', monospace;
+	">
+		<div style="
+			font-size:10px;
+			color:#4b6a57;
+			text-transform:uppercase;
+			letter-spacing:0.1em;
+			margin-bottom:6px;
+		">
+			Contact
+		</div>
+	
+		<div style="
+			font-size:16px;
+			font-weight:700;
+			color:#25D366;
+			margin-bottom:6px;
+		">
+			📱 WhatsApp
+		</div>
+	
+		<a href="https://wa.me/201067352509" target="_blank" style="
+			display:inline-block;
+			background:#10b981;
+			color:#0f172a;
+			padding:6px 12px;
+			border-radius:6px;
+			font-size:12px;
+			text-decoration:none;
+			font-weight:600;
+		">
+			Chat Now
+		</a>
+	
+		<div style="
+			margin-top:8px;
+			font-size:11px;
+			color:#9ca3af;
+		">
+			01067352509
+		</div>
+	</div>
+	""", unsafe_allow_html=True)
 
 
 # ---------------------------
