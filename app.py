@@ -523,7 +523,7 @@ def draw_candle_chart(
 
       drawnLines.forEach(function(ln) {{
         if (ln.type === 'hline') {{
-          // BUG 2 FIX: single-item { yAxis } format — same fix as level lines.
+          // BUG 2 FIX: single-item yAxis format — same fix as level lines.
           // ECharts draws this as a full-width horizontal line automatically.
           ml.push({{
             yAxis: ln.price,
