@@ -50,35 +50,6 @@ def draw_candle_chart(
     entry_date=None,
     closed_trades_df=None,
 ):
-    """
-    ECharts candlestick via iframe — all bugs fixed:
-    
-    BUG 1 FIX — right space: grid right reduced from 16% → 6%, boundaryGap
-                 changed from array ['2%','5%'] to boolean true (small uniform pad).
-    
-    BUG 2 FIX — drawing tools:
-      • hline: was using two-point pair format which requires lineStyle at series
-                level (ignored at item level in ECharts 5). Fixed by using the
-                SINGLE-item { yAxis } format for horizontal lines — ECharts 
-                renders it as a full-width horizontal line automatically.
-      • trendline: convertFromPixel was called with { gridIndex:0 } but in an
-                   iframe the chart element is the root, not a sub-grid.
-                   Fixed: wrapped convertFromPixel in a try/catch and also 
-                   check that dp is non-null before using it.
-                   Also fixed: trendline x-coords now passed as integer indices,
-                   not date strings, so the two-point pair coordinates are
-                   consistent (both numeric).
-    
-    BUG 3 FIX — level lines (stop/entry/target):
-      • Was using two-point pair format { yAxis, xAxis:DATES[0] } / { yAxis }.
-        ECharts requires xAxis to be present on BOTH endpoints of a pair, and
-        when xAxis is a category string, both must resolve to valid categories.
-        When only yAxis is specified (no xAxis), ECharts ignores the item.
-        Fixed: use SINGLE-item format { yAxis: price } — ECharts 5 draws a
-        full-width horizontal line automatically. lineStyle and label go on
-        the item itself. No xAxis needed.
-    """
-
     # ── load & filter ─────────────────────────────────────────────────────────
     df_all = load_chart_data()
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
@@ -120,11 +91,11 @@ def draw_candle_chart(
         idx = dates.index(date_str)
         mark_points.append({
             "name": "BUY", "coord": [idx, price_low * 0.975],
-            "value": "BUY", "symbol": "triangle",
+            "value": "",            # ← empty: removes "BUY" text under arrow
+            "symbol": "triangle",
             "symbolSize": 20, "symbolRotate": 0,
             "itemStyle": {"color": "#10b981"},
-            "label": {"show": True, "formatter": "BUY", "position": "bottom",
-                      "color": "#10b981", "fontSize": 9, "fontFamily": "DM Mono"},
+            "label": {"show": False},   # ← label completely hidden
         })
 
     def _add_sell(date_str, price_high, pnl_val):
@@ -138,8 +109,15 @@ def draw_candle_chart(
             "value": lbl, "symbol": "triangle",
             "symbolSize": 20, "symbolRotate": 180,
             "itemStyle": {"color": "#f87171"},
-            "label": {"show": True, "formatter": lbl, "position": "top",
-                      "color": clr, "fontSize": 10, "fontFamily": "DM Mono"},
+            "label": {
+                "show": True,
+                "formatter": lbl,
+                "position": "top",
+                "color": clr,
+                "fontSize": 13,         # ← bigger
+                "fontWeight": "700",    # ← bold
+                "fontFamily": "DM Mono",
+            },
         })
 
     if entry_date:
@@ -162,11 +140,7 @@ def draw_candle_chart(
             if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
                 _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
 
-    # ── BUG 3 FIX: level lines using single-item { yAxis } format ────────────
-    # ECharts 5: a single { yAxis: value } item in markLine.data draws a full-
-    # width horizontal line. lineStyle and label can be set directly on the item.
-    # The old two-point pair format required xAxis on BOTH endpoints to resolve;
-    # omitting xAxis caused ECharts to silently skip the line.
+    # ── level lines ───────────────────────────────────────────────────────────
     mark_lines_data = []
     if stop_loss:
         mark_lines_data.append({
@@ -243,7 +217,6 @@ def draw_candle_chart(
       .tb-btn.info {{ border-color: #60a5fa; color: #60a5fa; }}
       .tb-btn.info:hover {{ background: #60a5fa; color: #0f172a; }}
 
-      /* hint shown while waiting for 2nd trendline click */
       #trend-hint {{
         display:none; font-size:10px; color:#facc15;
         padding: 2px 8px; border:1px solid #facc15;
@@ -252,24 +225,16 @@ def draw_candle_chart(
       @keyframes pulse {{ from {{ opacity:1; }} to {{ opacity:0.4; }} }}
 
       #chart {{ width: 100%; height: {height}px; }}
-
-      /* fullscreen overlay */
-      #fs-overlay {{
-        display:none; position:fixed; inset:0; z-index:9999;
-        background:#0f172a; flex-direction:column;
-      }}
-      #fs-overlay.open {{ display:flex; }}
-      #fs-chart {{ flex:1; width:100%; }}
     </style>
     </head>
     <body>
 
     <div id="toolbar">
       <span>Draw</span>
-      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click anywhere to place a horizontal price line">── H-Line</button>
-      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click anywhere to place a vertical date line">│ V-Line</button>
-      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click point 1, then click point 2 to draw extended trendline">↗ Trendline</button>
-      <span id="trend-hint">click 2nd point</span>
+      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click to place a horizontal price line">── H-Line</button>
+      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click to place a vertical date line">│ V-Line</button>
+      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click + drag to draw trendline">↗ Trendline (drag)</button>
+      <span id="trend-hint">release to finish</span>
       <div class="tb-sep"></div>
       <button class="tb-btn danger" onclick="deleteLast()" title="Delete last drawn line">✕ Last</button>
       <button class="tb-btn danger" onclick="clearAll()"   title="Clear all drawn lines">✕ All</button>
@@ -280,8 +245,6 @@ def draw_candle_chart(
     </div>
 
     <div id="chart"></div>
-
-
 
     <script>
     const DATES      = {dates_json};
@@ -300,7 +263,6 @@ def draw_candle_chart(
       return v;
     }}
 
-    // ── shared option builder ─────────────────────────────────────────────────
     function buildOption(startPct) {{
       return {{
         backgroundColor: '#0f172a',
@@ -375,7 +337,13 @@ def draw_candle_chart(
             splitLine: {{ show:false }},
             axisLine:  {{ show:false }},
             axisTick:  {{ show:false }},
-            axisLabel: {{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono', margin:8 }},
+            axisLabel: {{
+              color:'#d1fae5',
+              fontSize:13,
+              fontWeight:'bold',
+              fontFamily:'DM Mono',
+              margin:8,
+            }},
           }},
           {{
             scale:true, gridIndex:1, position:'right',
@@ -391,7 +359,6 @@ def draw_candle_chart(
           {{
             type:'inside', xAxisIndex:[0,1],
             start:startPct, end:100,
-            // scroll = zoom, Ctrl+scroll = pan (moveOnMouseWheel)
             zoomOnMouseWheel: true,
             moveOnMouseWheel: false,
             preventDefaultMouseMove: false,
@@ -439,99 +406,140 @@ def draw_candle_chart(
       }};
     }}
 
-    // ── main chart ────────────────────────────────────────────────────────────
     const chart = echarts.init(document.getElementById('chart'), null, {{renderer:'canvas'}});
     chart.setOption(buildOption(START_PCT));
     window.addEventListener('resize', () => chart.resize());
 
-    // ── fullscreen chart ──────────────────────────────────────────────────────
-    let fsChart = null;
-    function openFS() {{
-      document.getElementById('fs-overlay').classList.add('open');
-      if (!fsChart) {{
-        fsChart = echarts.init(document.getElementById('fs-chart'), null, {{renderer:'canvas'}});
-      }}
-      // grab current zoom from main chart so FS opens at same view
-      var opt = chart.getOption();
-      var dz  = opt.dataZoom;
-      var s = dz ? dz[0].start : START_PCT;
-      var e = dz ? dz[0].end   : 100;
-      fsChart.setOption(buildOption(START_PCT));
-      fsChart.dispatchAction({{ type:'dataZoom', start:s, end:e }});
-      setTimeout(() => fsChart.resize(), 50);
-    }}
-    function closeFS() {{
-      document.getElementById('fs-overlay').classList.remove('open');
-    }}
-    window.addEventListener('resize', () => {{ if(fsChart) fsChart.resize(); }});
-
-    // ── reset zoom ────────────────────────────────────────────────────────────
     function resetZoom() {{
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:0, start:START_PCT, end:100 }});
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:1, start:START_PCT, end:100 }});
     }}
 
-    // ── Ctrl+scroll → pan (move left/right) ──────────────────────────────────
-    // ECharts 'inside' dataZoom handles scroll=zoom natively.
-    // We intercept Ctrl+wheel ourselves and dispatch a move action instead.
     document.getElementById('chart').addEventListener('wheel', function(e) {{
-      if (!e.ctrlKey) return;   // plain scroll → ECharts handles (zoom)
+      if (!e.ctrlKey) return;
       e.preventDefault();
-      var opt    = chart.getOption();
-      var dz     = opt.dataZoom[0];
-      var span   = dz.end - dz.start;
-      var step   = span * 0.08 * (e.deltaY > 0 ? 1 : -1);
-      var ns     = Math.max(0, Math.min(100 - span, dz.start + step));
+      var opt  = chart.getOption();
+      var dz   = opt.dataZoom[0];
+      var span = dz.end - dz.start;
+      var step = span * 0.08 * (e.deltaY > 0 ? 1 : -1);
+      var ns   = Math.max(0, Math.min(100 - span, dz.start + step));
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:0, start:ns, end:ns+span }});
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:1, start:ns, end:ns+span }});
     }}, {{ passive:false }});
 
     // ══════════════════════════════════════════════════════════════════════════
     // DRAWING TOOLS
-    // How to draw a trendline:
-    //   1. Click "Trendline" button — cursor becomes crosshair, hint appears
-    //   2. Click on the FIRST anchor point on the chart (e.g. a swing low)
-    //      — button glows amber, hint says "click 2nd point"
-    //   3. Click on the SECOND point — line is drawn extended to chart edges
-    //   4. Click "✕ Last" to remove it, or "✕ All" to clear everything
     //
-    // Trendline fix: ECharts markLine two-point pair requires BOTH endpoints
-    // to have a valid xAxis category value. We store integer indices during
-    // drawing (from convertFromPixel) and look up DATES[idx] at render time.
-    // The slope extension is computed in index space (not pixel space) so it
-    // stays correct after zoom/pan.
+    // ROOT CAUSE of old trendline bug:
+    //   chart.convertFromPixel({{ seriesIndex:0 }}, [x,y]) was silently failing
+    //   inside an iframe because ECharts couldn't locate the series coordinate
+    //   system that way in this context.
+    //
+    // FIX: Use chart.convertFromPixel('grid', [x,y]) with gridIndex 0.
+    //   This returns [xAxisValue, yAxisValue] in data space. xAxisValue is a
+    //   float index into the DATES array (category axis), so we Math.round()
+    //   it to get the nearest bar index.
+    //
+    // DRAG TO DRAW (new UX):
+    //   Trendline now works via mousedown → mousemove (live preview) → mouseup
+    //   (commit). H-Line and V-Line still use single click.
+    //   This eliminates the 2-click confusion where the first click was
+    //   sometimes consumed by ECharts' internal handlers.
+    //
+    // PREVIEW LINE:
+    //   A live "ghost" line updates on mousemove between mousedown and mouseup
+    //   so the user can see exactly where the line will land before releasing.
     // ══════════════════════════════════════════════════════════════════════════
 
     let drawMode   = null;
     let drawnLines = [];
-    let trendFirst = null;
     const DRAW_COLOR = '#facc15';
+
+    // drag state (trendline only)
+    let isDragging   = false;
+    let dragStart    = null;   // {{ idx, price }}
+    let previewActive = false;
 
     function setMode(mode) {{
       drawMode   = mode;
-      trendFirst = null;
+      isDragging = false;
+      dragStart  = null;
+      previewActive = false;
       document.getElementById('trend-hint').style.display = 'none';
+
       ['hline','vline','trend','none'].forEach(id => {{
         var btn = document.getElementById('btn-' + id);
         if (btn) btn.classList.toggle('active', (mode === null && id === 'none') || id === mode);
       }});
-      // disable ECharts inside-dataZoom mouse panning when in draw mode
-      // so clicking doesn't also trigger a pan
+
+      // disable inside-dataZoom panning while drawing so clicks aren't eaten
       chart.setOption({{ dataZoom: [{{ type:'inside', disabled: !!mode }}] }});
       chart.getZr().setCursorStyle(mode ? 'crosshair' : 'default');
+
+      // if leaving trendline mode mid-drag, clear preview
+      if (!mode) clearPreview();
     }}
 
+    // ── coordinate helper ─────────────────────────────────────────────────────
+    // Returns {{ idx, price }} or null.
+    // Uses 'grid' coordinate system (index 0 = the main price grid).
     function pixelToData(pixelX, pixelY) {{
       var dp;
-      try {{ dp = chart.convertFromPixel({{ seriesIndex:0 }}, [pixelX, pixelY]); }}
-      catch(e) {{ dp = null; }}
+      try {{
+        // 'grid' system: returns [xIndex_float, yPrice]
+        dp = chart.convertFromPixel({{ gridIndex: 0 }}, [pixelX, pixelY]);
+      }} catch(e) {{ return null; }}
       if (!dp || dp.length < 2) return null;
       var idx = Math.round(dp[0]);
       if (idx < 0 || idx >= DATES.length) return null;
-      return {{ idx:idx, date:DATES[idx], price:dp[1] }};
+      return {{ idx: idx, date: DATES[idx], price: dp[1] }};
     }}
 
-    chart.getZr().on('click', function(e) {{
+    // ── clear preview ghost line ──────────────────────────────────────────────
+    function clearPreview() {{
+      if (!previewActive) return;
+      previewActive = false;
+      // remove the __preview__ series
+      chart.setOption({{
+        series: [{{
+          id: '__preview__', type:'scatter',
+          xAxisIndex:0, yAxisIndex:0,
+          data:[], symbol:'none',
+          markLine:{{ symbol:['none','none'], silent:true, animation:false, data:[] }},
+        }}],
+      }}, {{ replaceMerge:[] }});
+    }}
+
+    // ── draw preview ghost line ───────────────────────────────────────────────
+    function drawPreview(x1idx, y1, x2idx, y2) {{
+      if (x1idx === x2idx) return;
+      var slope = (y2 - y1) / (x2idx - x1idx);
+      var x0    = 0, xEnd = DATES.length - 1;
+      var y0    = y1 + slope * (x0 - x1idx);
+      var yEnd  = y1 + slope * (xEnd - x1idx);
+      previewActive = true;
+      chart.setOption({{
+        series: [{{
+          id: '__preview__', type:'scatter',
+          xAxisIndex:0, yAxisIndex:0,
+          data:[], symbol:'none',
+          markLine:{{
+            symbol:['none','none'], silent:true, animation:false,
+            lineStyle:{{ color:'#facc1588', width:1.5, type:'dashed' }},
+            data:[[
+              {{ xAxis: DATES[x0],   yAxis: y0   }},
+              {{ xAxis: DATES[xEnd], yAxis: yEnd }},
+            ]],
+          }},
+        }}],
+      }}, {{ replaceMerge:[] }});
+    }}
+
+    // ── ZRender event listeners ───────────────────────────────────────────────
+    var zr = chart.getZr();
+
+    // mousedown — start drag for trendline, or immediate action for h/v line
+    zr.on('mousedown', function(e) {{
       if (!drawMode) return;
       var d = pixelToData(e.offsetX, e.offsetY);
       if (!d) return;
@@ -545,38 +553,51 @@ def draw_candle_chart(
         renderDrawn();
 
       }} else if (drawMode === 'trend') {{
-        if (!trendFirst) {{
-          // First click — store anchor, show hint
-          trendFirst = d;
-          document.getElementById('trend-hint').style.display = 'inline-block';
-          var btn = document.getElementById('btn-trend');
-          if (btn) {{ btn.style.background='#92400e'; btn.style.color='#fef3c7'; }}
-        }} else {{
-          // Second click — complete the trendline
-          // Guard: if both points are the same index, extend vertically isn't meaningful
-          if (trendFirst.idx === d.idx) {{
-            // treat as vline instead
-            drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
-          }} else {{
-            drawnLines.push({{
-              type:'trend',
-              x1:trendFirst.idx, y1:trendFirst.price,
-              x2:d.idx,          y2:d.price,
-              color:DRAW_COLOR,
-            }});
-          }}
-          trendFirst = null;
-          document.getElementById('trend-hint').style.display = 'none';
-          var btn = document.getElementById('btn-trend');
-          if (btn) {{ btn.style.background=''; btn.style.color=''; }}
-          renderDrawn();
-        }}
+        // start drag
+        isDragging = true;
+        dragStart  = d;
+        document.getElementById('trend-hint').style.display = 'inline-block';
       }}
+    }});
+
+    // mousemove — live preview while dragging trendline
+    zr.on('mousemove', function(e) {{
+      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
+      var d = pixelToData(e.offsetX, e.offsetY);
+      if (!d || d.idx === dragStart.idx) return;
+      drawPreview(dragStart.idx, dragStart.price, d.idx, d.price);
+    }});
+
+    // mouseup — commit trendline on release
+    zr.on('mouseup', function(e) {{
+      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
+      var d = pixelToData(e.offsetX, e.offsetY);
+      isDragging = false;
+      document.getElementById('trend-hint').style.display = 'none';
+      clearPreview();
+
+      if (!d) {{ dragStart = null; return; }}
+
+      if (dragStart.idx === d.idx) {{
+        // degenerate → treat as vline
+        drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
+      }} else {{
+        drawnLines.push({{
+          type:'trend',
+          x1:dragStart.idx, y1:dragStart.price,
+          x2:d.idx,         y2:d.price,
+          color:DRAW_COLOR,
+        }});
+      }}
+      dragStart = null;
+      renderDrawn();
     }});
 
     function deleteLast() {{ drawnLines.pop(); renderDrawn(); }}
     function clearAll() {{
-      drawnLines = []; trendFirst = null;
+      drawnLines = [];
+      isDragging = false; dragStart = null;
+      clearPreview();
       document.getElementById('trend-hint').style.display = 'none';
       renderDrawn();
     }}
@@ -594,7 +615,6 @@ def draw_candle_chart(
               color:ln.color, fontSize:10, fontFamily:'DM Mono',
             }},
           }});
-
         }} else if (ln.type === 'vline') {{
           ml.push([
             {{ xAxis:ln.date, yAxis:'min',
@@ -604,17 +624,11 @@ def draw_candle_chart(
             }},
             {{ xAxis:ln.date, yAxis:'max' }},
           ]);
-
         }} else if (ln.type === 'trend') {{
-          // Extend the line defined by (x1,y1)→(x2,y2) to the full date range.
-          // All x-coordinates are integer DATES indices; y-coordinates are prices.
-          // We clamp the extended x so DATES[x] is always valid.
           var slope = (ln.y2 - ln.y1) / (ln.x2 - ln.x1);
-          var x0    = 0;
-          var xEnd  = DATES.length - 1;
+          var x0    = 0, xEnd = DATES.length - 1;
           var y0    = ln.y1 + slope * (x0   - ln.x1);
           var yEnd  = ln.y1 + slope * (xEnd - ln.x1);
-          // Two-point pair: BOTH endpoints need a valid xAxis category string
           ml.push([
             {{ xAxis:DATES[x0],   yAxis:y0,
                lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
