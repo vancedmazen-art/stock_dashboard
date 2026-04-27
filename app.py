@@ -949,71 +949,30 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown("""
-    <style>
-    @keyframes waPulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
+    <div style="text-align:center">
     
-    .wa-box {
-        background:#0f172a;
-        border:1px solid #1e3a2a;
-        border-radius:10px;
-        padding:14px;
-        text-align:center;
-        font-family:'DM Mono', monospace;
-    }
+    <div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
+        Contact
+    </div>
     
-    .wa-btn {
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        gap:6px;
-        background:#25D366;
-        color:#0f172a;
-        padding:8px 12px;
-        border-radius:6px;
-        font-size:13px;
-        text-decoration:none;
-        font-weight:700;
-        animation: waPulse 2s infinite;
-        width:100%;
-        margin-top:6px;
-    }
+    <div style="font-size:15px;font-weight:700;color:#25D366;margin-bottom:6px">
+        WhatsApp Support
+    </div>
     
-    .wa-btn:hover {
-        transform: scale(1.05);
-    }
+    <a href="https://wa.me/201067352509" target="_blank"
+    style="display:inline-block;background:#25D366;color:#0f172a;
+    padding:8px 12px;border-radius:6px;font-size:13px;
+    text-decoration:none;font-weight:700;">
+        💬 Chat Now
+    </a>
     
-    .wa-footer {
-        margin-top:10px;
-        font-size:10px;
-        color:#6b7280;
-    }
-    </style>
+    <div style="margin-top:6px;font-size:11px;color:#9ca3af">
+        01067352509
+    </div>
     
-    <div class="wa-box">
-    
-        <div style="font-size:10px;color:#4b6a57;text-transform:uppercase;margin-bottom:6px">
-            Contact
-        </div>
-    
-        <div style="font-size:15px;font-weight:700;color:#25D366;margin-bottom:6px">
-            WhatsApp Support
-        </div>
-    
-        <a href="https://wa.me/201067352509" target="_blank" class="wa-btn">
-            💬 Chat Now
-        </a>
-    
-        <div style="margin-top:6px;font-size:11px;color:#9ca3af">
-            01067352509
-        </div>
-    
-        <div class="wa-footer">
-            Designed by Mazen Diab
-        </div>
+    <div style="margin-top:10px;font-size:10px;color:#6b7280">
+        Designed by Mazen Diab
+    </div>
     
     </div>
     """, unsafe_allow_html=True)
