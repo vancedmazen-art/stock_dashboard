@@ -731,37 +731,93 @@ def safe(v, dec=1):
         return str(v) if v else "—"
 
 
-def fetch_latest_news(symbol, max_items=3):
-    try:
-        r = requests.get(
-            "https://news-mediator.tradingview.com/news-flow/v2/news?"
-            "filter=lang%3Aen&filter=market%3Astock&filter=market_country%3AEG&client=screener",
-            timeout=10)
-        r.raise_for_status()
-        payload = r.json()
-    except:
-        return []
-    result = []
-    for news in payload.get("items", []):
-        news_id = news.get("id")
-        if not news_id:
-            continue
-        syms = [s.get("symbol", "").replace("EGX:", "")
-                for s in news.get("relatedSymbols", [])
-                if s.get("symbol", "").startswith("EGX:")]
-        if symbol.upper() not in [s.upper() for s in syms]:
-            continue
+def fetch_latest_news(symbol: str, max_items: int = 3) -> list:
+    """
+    Two-attempt strategy:
+    1. Symbol-specific endpoint (most accurate)
+    2. Egypt market feed with title fallback (catches untagged articles)
+    """
+    tz = pytz.timezone("Africa/Cairo")
+    symbol_upper = symbol.strip().upper()
+    egx_symbol   = f"EGX:{symbol_upper}"
+    seen_ids     = set()
+    result       = []
+
+    def _fmt_date(ts):
         try:
-            tz = pytz.timezone("Africa/Cairo")
-            dt = datetime.utcfromtimestamp(news["published"]).replace(tzinfo=pytz.UTC).astimezone(tz)
-            nd = dt.strftime('%Y-%m-%d %H:%M')
-        except:
-            nd = "Recent"
-        result.append({"title": news.get("title", ""),
-                        "url": f"https://www.tradingview.com{news.get('storyPath', '')}",
-                        "provider": news.get("provider", {}).get("name", ""),
-                        "date": nd})
-    return result[:max_items]
+            return (datetime.utcfromtimestamp(ts)
+                    .replace(tzinfo=pytz.UTC)
+                    .astimezone(tz)
+                    .strftime('%Y-%m-%d %H:%M'))
+        except Exception:
+            return "Recent"
+
+    def _parse_items(items):
+        found = []
+        for news in items:
+            news_id = news.get("id", "")
+            if not news_id or news_id in seen_ids:
+                continue
+
+            title = news.get("title", "")
+
+            # Match via relatedSymbols (fixed: plain str.replace, no regex= kwarg)
+            syms = [
+                s.get("symbol", "").replace("EGX:", "")
+                for s in news.get("relatedSymbols", [])
+                if "EGX:" in s.get("symbol", "")
+            ]
+            symbol_match = symbol_upper in [s.upper() for s in syms]
+
+            # Fallback: ticker appears in the headline (catches untagged articles)
+            title_match = symbol_upper in title.upper()
+
+            if not (symbol_match or title_match):
+                continue
+
+            seen_ids.add(news_id)
+            found.append({
+                "title":    title,
+                "url":      f"https://www.tradingview.com{news.get('storyPath', '')}",
+                "provider": news.get("provider", {}).get("name", ""),
+                "date":     _fmt_date(news.get("published", 0)),
+            })
+        return found
+
+    # ── Attempt 1: symbol-specific URL ───────────────────────────────────────
+    try:
+        r1 = requests.get(
+            "https://news-mediator.tradingview.com/news-flow/v2/news"
+            f"?filter=lang%3Aen&filter=symbol%3A{egx_symbol}&client=screener",
+            timeout=10,
+        )
+        r1.raise_for_status()
+        result.extend(_parse_items(r1.json().get("items", [])))
+    except Exception:
+        pass
+
+    # ── Attempt 2: broad Egypt feed (catches what attempt 1 misses) ───────────
+    if len(result) < max_items:
+        try:
+            r2 = requests.get(
+                "https://news-mediator.tradingview.com/news-flow/v2/news"
+                "?filter=lang%3Aen&filter=market%3Astock"
+                "&filter=market_country%3AEG&client=screener",
+                timeout=10,
+            )
+            r2.raise_for_status()
+            result.extend(_parse_items(r2.json().get("items", [])))
+        except Exception:
+            pass
+
+    # ── Deduplicate by URL then slice ─────────────────────────────────────────
+    seen_urls, deduped = set(), []
+    for item in result:
+        if item["url"] not in seen_urls:
+            seen_urls.add(item["url"])
+            deduped.append(item)
+
+    return deduped[:max_items]
 
 
 def render_metrics_list(row, metric_cols):
