@@ -1184,7 +1184,7 @@ with tab_holds:
     )
 
 with tab_charts:
-    st.markdown("### 📈 Chart Lookup")
+    st.markdown("### 📈 Chart")
     chart_df_all = load_chart_data()
     available_symbols = sorted(chart_df_all['symbol'].dropna().unique().tolist())
     ch_col1, ch_col2 = st.columns([2, 5])
@@ -1209,6 +1209,15 @@ with tab_charts:
                              use_container_width=True, height=300)
         else:
             st.caption("No trade history for this symbol.")
+        st.markdown("#### 📰 Latest News")
+        chart_news = fetch_latest_news(chart_symbol, max_items=3)
+        if chart_news:
+            for n in chart_news:
+                st.markdown(f"**{n['title']}**")
+                st.caption(f"📅 {n['date']} | {n['provider']} | [Read]({n['url']})")
+                st.divider()
+        else:
+            st.caption("No recent news found.")
 
 with tab_egx30:
     st.markdown(f"## 📊 EGX30  {sentiment_emoji} {sentiment_text}")
