@@ -720,6 +720,9 @@ PCT_COLS = {
     "Trade_PnL_%", "Risk_%", "Reward_%", "win_rate", "median_pnl",
 }
 
+# Columns that need exactly 1 decimal place
+ONE_DEC_COLS = {"RR_Ratio"}
+
 
 def fetch_latest_news(symbol: str, max_items: int = 3) -> list:
     """
@@ -829,6 +832,15 @@ def render_metrics_list(row, metric_cols):
             try:
                 display = pd.to_datetime(val).strftime('%Y-%m-%d')
             except Exception:
+                display = str(val) if pd.notna(val) else "—"
+
+        # ── R:R ratio → 1 decimal place ───────────────────────────────────────
+        elif col in ONE_DEC_COLS:
+            if isinstance(val, (int, float)):
+                display = safepct(val, dec=1)
+            elif isinstance(val, str) and val.replace('.', '', 1).lstrip('-').isdigit():
+                display = safepct(float(val), dec=1)
+            else:
                 display = str(val) if pd.notna(val) else "—"
 
         # ── percentage columns → 2 decimal places ─────────────────────────────
