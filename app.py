@@ -889,7 +889,7 @@ c1, c2 = st.columns([5, 1])
 with c1:
     st.markdown("# 🚀 EGX Trading Dashboard")
 with c2:
-    if st.button("🗑️ Clear Cache", type="primary"):
+    if st.button("Refresh", type="primary"):
         # Clear all cached data (load_chart_data, any other cached functions)
         st.cache_data.clear()
         st.cache_resource.clear()
