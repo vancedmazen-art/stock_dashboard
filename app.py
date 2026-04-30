@@ -147,7 +147,7 @@ def draw_candle_chart(
             "yAxis": stop_loss,
             "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
             "label": {
-                "show": True, "formatter": f"Stop  {stop_loss:.2f}",
+                "show": True, "formatter": f"Stop  {stop_loss:.3f}",
                 "position": "insideEndTop",
                 "color": "#f87171", "fontSize": 11,
                 "fontFamily": "DM Mono", "fontWeight": "600",
