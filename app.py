@@ -158,7 +158,7 @@ def draw_candle_chart(
             "yAxis": entry,
             "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
             "label": {
-                "show": True, "formatter": f"Entry  {entry:.2f}",
+                "show": True, "formatter": f"Entry  {entry:.3f}",
                 "position": "insideEndTop",
                 "color": "#94a3b8", "fontSize": 11,
                 "fontFamily": "DM Mono", "fontWeight": "600",
@@ -169,7 +169,7 @@ def draw_candle_chart(
             "yAxis": target,
             "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
             "label": {
-                "show": True, "formatter": f"Target  {target:.2f}",
+                "show": True, "formatter": f"Target  {target:.3f}",
                 "position": "insideEndTop",
                 "color": "#10b981", "fontSize": 11,
                 "fontFamily": "DM Mono", "fontWeight": "600",
@@ -287,7 +287,7 @@ def draw_candle_chart(
             var v = p.value;
             if (!Array.isArray(v) || v.length < 5) {{
               if (p.seriesName === 'EMA 20')
-                return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">' + parseFloat(v).toFixed(2) + '</b></div>';
+                return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">' + parseFloat(v).toFixed(3) + '</b></div>';
               if (p.seriesName === 'Volume')
                 return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">' + fmtVol(p.value) + '</b></div>';
               return '';
@@ -610,7 +610,7 @@ def draw_candle_chart(
             yAxis: ln.price,
             lineStyle: {{ color:ln.color, width:1.5, type:'solid' }},
             label: {{
-              show:true, formatter:ln.price.toFixed(2),
+              show:true, formatter:ln.price.toFixed(3),
               position:'insideEndTop',
               color:ln.color, fontSize:10, fontFamily:'DM Mono',
             }},
