@@ -296,10 +296,10 @@ def draw_candle_chart(
             var pct=((c-o)/o*100), arrow=pct>=0?'▲':'▼', col=pct>=0?'#10b981':'#f87171', sign=pct>=0?'+':'';
             return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
               +'<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
-              +'<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(2)+'</b>'
-              +'&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">'+h.toFixed(2)+'</b><br>'
-              +'<span style="color:#6b7280">L</span> <b style="color:#e2e8f0">'+lo.toFixed(2)+'</b>'
-              +'&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">'+c.toFixed(2)+'</b><br>'
+              +'<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(3)+'</b>'
+              +'&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">'+h.toFixed(3)+'</b><br>'
+              +'<span style="color:#6b7280">L</span> <b style="color:#e2e8f0">'+lo.toFixed(3)+'</b>'
+              +'&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">'+c.toFixed(3)+'</b><br>'
               +'<span style="color:'+col+';font-size:13px"><b>'+arrow+' '+sign+pct.toFixed(2)+'%</b></span>'
               +'</div>';
           }},
@@ -343,6 +343,7 @@ def draw_candle_chart(
               fontWeight:'bold',
               fontFamily:'DM Mono',
               margin:8,
+              formatter: function(v) {{ return parseFloat(v).toFixed(3); }},
             }},
           }},
           {{
@@ -429,35 +430,14 @@ def draw_candle_chart(
 
     // ══════════════════════════════════════════════════════════════════════════
     // DRAWING TOOLS
-    //
-    // ROOT CAUSE of old trendline bug:
-    //   chart.convertFromPixel({{ seriesIndex:0 }}, [x,y]) was silently failing
-    //   inside an iframe because ECharts couldn't locate the series coordinate
-    //   system that way in this context.
-    //
-    // FIX: Use chart.convertFromPixel('grid', [x,y]) with gridIndex 0.
-    //   This returns [xAxisValue, yAxisValue] in data space. xAxisValue is a
-    //   float index into the DATES array (category axis), so we Math.round()
-    //   it to get the nearest bar index.
-    //
-    // DRAG TO DRAW (new UX):
-    //   Trendline now works via mousedown → mousemove (live preview) → mouseup
-    //   (commit). H-Line and V-Line still use single click.
-    //   This eliminates the 2-click confusion where the first click was
-    //   sometimes consumed by ECharts' internal handlers.
-    //
-    // PREVIEW LINE:
-    //   A live "ghost" line updates on mousemove between mousedown and mouseup
-    //   so the user can see exactly where the line will land before releasing.
     // ══════════════════════════════════════════════════════════════════════════
 
     let drawMode   = null;
     let drawnLines = [];
     const DRAW_COLOR = '#facc15';
 
-    // drag state (trendline only)
     let isDragging   = false;
-    let dragStart    = null;   // {{ idx, price }}
+    let dragStart    = null;
     let previewActive = false;
 
     function setMode(mode) {{
@@ -472,21 +452,15 @@ def draw_candle_chart(
         if (btn) btn.classList.toggle('active', (mode === null && id === 'none') || id === mode);
       }});
 
-      // disable inside-dataZoom panning while drawing so clicks aren't eaten
       chart.setOption({{ dataZoom: [{{ type:'inside', disabled: !!mode }}] }});
       chart.getZr().setCursorStyle(mode ? 'crosshair' : 'default');
 
-      // if leaving trendline mode mid-drag, clear preview
       if (!mode) clearPreview();
     }}
 
-    // ── coordinate helper ─────────────────────────────────────────────────────
-    // Returns {{ idx, price }} or null.
-    // Uses 'grid' coordinate system (index 0 = the main price grid).
     function pixelToData(pixelX, pixelY) {{
       var dp;
       try {{
-        // 'grid' system: returns [xIndex_float, yPrice]
         dp = chart.convertFromPixel({{ gridIndex: 0 }}, [pixelX, pixelY]);
       }} catch(e) {{ return null; }}
       if (!dp || dp.length < 2) return null;
@@ -495,11 +469,9 @@ def draw_candle_chart(
       return {{ idx: idx, date: DATES[idx], price: dp[1] }};
     }}
 
-    // ── clear preview ghost line ──────────────────────────────────────────────
     function clearPreview() {{
       if (!previewActive) return;
       previewActive = false;
-      // remove the __preview__ series
       chart.setOption({{
         series: [{{
           id: '__preview__', type:'scatter',
@@ -510,7 +482,6 @@ def draw_candle_chart(
       }}, {{ replaceMerge:[] }});
     }}
 
-    // ── draw preview ghost line ───────────────────────────────────────────────
     function drawPreview(x1idx, y1, x2idx, y2) {{
       if (x1idx === x2idx) return;
       var slope = (y2 - y1) / (x2idx - x1idx);
@@ -535,10 +506,8 @@ def draw_candle_chart(
       }}, {{ replaceMerge:[] }});
     }}
 
-    // ── ZRender event listeners ───────────────────────────────────────────────
     var zr = chart.getZr();
 
-    // mousedown — start drag for trendline, or immediate action for h/v line
     zr.on('mousedown', function(e) {{
       if (!drawMode) return;
       var d = pixelToData(e.offsetX, e.offsetY);
@@ -553,14 +522,12 @@ def draw_candle_chart(
         renderDrawn();
 
       }} else if (drawMode === 'trend') {{
-        // start drag
         isDragging = true;
         dragStart  = d;
         document.getElementById('trend-hint').style.display = 'inline-block';
       }}
     }});
 
-    // mousemove — live preview while dragging trendline
     zr.on('mousemove', function(e) {{
       if (!isDragging || drawMode !== 'trend' || !dragStart) return;
       var d = pixelToData(e.offsetX, e.offsetY);
@@ -568,7 +535,6 @@ def draw_candle_chart(
       drawPreview(dragStart.idx, dragStart.price, d.idx, d.price);
     }});
 
-    // mouseup — commit trendline on release
     zr.on('mouseup', function(e) {{
       if (!isDragging || drawMode !== 'trend' || !dragStart) return;
       var d = pixelToData(e.offsetX, e.offsetY);
@@ -579,7 +545,6 @@ def draw_candle_chart(
       if (!d) {{ dragStart = null; return; }}
 
       if (dragStart.idx === d.idx) {{
-        // degenerate → treat as vline
         drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
       }} else {{
         drawnLines.push({{
@@ -723,12 +688,37 @@ def fix_pyarrow_df(df):
     return df_display
 
 
+# ── Formatting helpers ────────────────────────────────────────────────────────
+# safe()    → 3 decimal places for prices / ratios
+# safepct() → 2 decimal places for percentages
+
 def safe(v, dec=3):
+    """Format a numeric value to `dec` decimal places (default 3 for prices)."""
     try:
-        if pd.isna(v): return "—"
+        if pd.isna(v):
+            return "—"
         return f"{float(v):.{dec}f}"
-    except:
+    except Exception:
         return str(v) if v else "—"
+
+
+def safepct(v, dec=2):
+    """Format a percentage value to `dec` decimal places (default 2)."""
+    try:
+        if pd.isna(v):
+            return "—"
+        return f"{float(v):.{dec}f}"
+    except Exception:
+        return str(v) if v else "—"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Column sets that contain percentages so render_metrics_list knows which
+# columns to display with safepct() instead of safe().
+# ─────────────────────────────────────────────────────────────────────────────
+PCT_COLS = {
+    "Trade_PnL_%", "Risk_%", "Reward_%", "win_rate", "median_pnl",
+}
 
 
 def fetch_latest_news(symbol: str, max_items: int = 3) -> list:
@@ -761,16 +751,13 @@ def fetch_latest_news(symbol: str, max_items: int = 3) -> list:
 
             title = news.get("title", "")
 
-            # Match via relatedSymbols (fixed: plain str.replace, no regex= kwarg)
             syms = [
                 s.get("symbol", "").replace("EGX:", "")
                 for s in news.get("relatedSymbols", [])
                 if "EGX:" in s.get("symbol", "")
             ]
             symbol_match = symbol_upper in [s.upper() for s in syms]
-
-            # Fallback: ticker appears in the headline (catches untagged articles)
-            title_match = symbol_upper in title.upper()
+            title_match  = symbol_upper in title.upper()
 
             if not (symbol_match or title_match):
                 continue
@@ -796,7 +783,7 @@ def fetch_latest_news(symbol: str, max_items: int = 3) -> list:
     except Exception:
         pass
 
-    # ── Attempt 2: broad Egypt feed (catches what attempt 1 misses) ───────────
+    # ── Attempt 2: broad Egypt feed ───────────────────────────────────────────
     if len(result) < max_items:
         try:
             r2 = requests.get(
@@ -810,7 +797,6 @@ def fetch_latest_news(symbol: str, max_items: int = 3) -> list:
         except Exception:
             pass
 
-    # ── Deduplicate by URL then slice ─────────────────────────────────────────
     seen_urls, deduped = set(), []
     for item in result:
         if item["url"] not in seen_urls:
@@ -837,14 +823,27 @@ def render_metrics_list(row, metric_cols):
         if col not in row.index:
             continue
         val = row.get(col)
+
+        # ── date columns ──────────────────────────────────────────────────────
         if 'date' in col.lower() or 'Date' in col:
             try:
                 display = pd.to_datetime(val).strftime('%Y-%m-%d')
-            except:
+            except Exception:
                 display = str(val) if pd.notna(val) else "—"
+
+        # ── percentage columns → 2 decimal places ─────────────────────────────
+        elif col in PCT_COLS:
+            if isinstance(val, (int, float)):
+                display = safepct(val)
+            elif isinstance(val, str) and val.replace('.', '', 1).lstrip('-').isdigit():
+                display = safepct(float(val))
+            else:
+                display = str(val) if pd.notna(val) else "—"
+
+        # ── all other numeric columns → 3 decimal places ──────────────────────
         elif isinstance(val, (int, float)):
             display = safe(val)
-        elif isinstance(val, str) and val.replace('.','',1).lstrip('-').isdigit():
+        elif isinstance(val, str) and val.replace('.', '', 1).lstrip('-').isdigit():
             display = safe(float(val))
         else:
             display = str(val) if pd.notna(val) else "—"
@@ -1250,19 +1249,19 @@ with tab_egx30:
             strat = df_strategy_egx30.iloc[0]
             egx_metric_rows = [
                 ("Best Strategy", strat.get('Best_Strategy', '—')),
-                ("Score",         safe(strat.get('composite_score'))),
-                ("Win Rate",      f"{safe(strat.get('win_rate'))}%"),
-                ("Median PnL",    f"{safe(strat.get('median_pnl'))}%"),
+                ("Score",         safe(strat.get('composite_score'))),           # 3 dec
+                ("Win Rate",      f"{safepct(strat.get('win_rate'))}%"),          # 2 dec
+                ("Median PnL",    f"{safepct(strat.get('median_pnl'))}%"),        # 2 dec
                 ("Total Trades",  safe(strat.get('total_trades'), 0)),
             ]
             if len(df_current_egx30) > 0:
                 egx_row = df_current_egx30.iloc[0]
                 egx_metric_rows += [
                     ("Entry Date",  pd.to_datetime(egx_row.get('Entry_Date')).strftime('%Y-%m-%d') if pd.notna(egx_row.get('Entry_Date')) else '—'),
-                    ("Entry Price", safe(egx_row.get('Entry_Price'))),
-                    ("Stop Loss",   safe(egx_row.get('Stop_Loss'))),
-                    ("Target",      safe(egx_row.get('Target_Price'))),
-                    ("PnL %",       safe(egx_row.get('Trade_PnL_%'))),
+                    ("Entry Price", safe(egx_row.get('Entry_Price'))),            # 3 dec
+                    ("Stop Loss",   safe(egx_row.get('Stop_Loss'))),              # 3 dec
+                    ("Target",      safe(egx_row.get('Target_Price'))),           # 3 dec
+                    ("PnL %",       f"{safepct(egx_row.get('Trade_PnL_%'))}%"),  # 2 dec
                     ("Days Held",   safe(egx_row.get('Days_Held'), 0)),
                 ]
             for lbl, val in egx_metric_rows:
