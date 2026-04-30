@@ -16,7 +16,7 @@ import streamlit.components.v1 as components
 # ---------------------------
 # CHART DATA
 # ---------------------------
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_chart_data():
     url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
     df = pd.read_csv(url, parse_dates=['datetime'])
