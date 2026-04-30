@@ -702,7 +702,7 @@ def safe(v, dec=3):
         return str(v) if v else "—"
 
 
-def safepct(v, dec=2):
+def safepct(v, dec=1):
     """Format a percentage value to `dec` decimal places (default 2)."""
     try:
         if pd.isna(v):
