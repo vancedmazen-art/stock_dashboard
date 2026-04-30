@@ -723,7 +723,7 @@ def fix_pyarrow_df(df):
     return df_display
 
 
-def safe(v, dec=1):
+def safe(v, dec=3):
     try:
         if pd.isna(v): return "—"
         return f"{float(v):.{dec}f}"
