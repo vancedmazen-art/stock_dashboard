@@ -16,7 +16,7 @@ import streamlit.components.v1 as components
 # ---------------------------
 # CHART DATA
 # ---------------------------
-#@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_chart_data():
     url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/chart_6m.csv"
     df = pd.read_csv(url, parse_dates=['datetime'])
@@ -702,7 +702,7 @@ def safe(v, dec=3):
         return str(v) if v else "—"
 
 
-def safepct(v, dec=1):
+def safepct(v, dec=2):
     """Format a percentage value to `dec` decimal places (default 2)."""
     try:
         if pd.isna(v):
@@ -890,10 +890,12 @@ with c1:
     st.markdown("# 🚀 EGX Trading Dashboard")
 with c2:
     if st.button("🗑️ Clear Cache", type="primary"):
+        # Clear all cached data (load_chart_data, any other cached functions)
         st.cache_data.clear()
-        for key in ["buy_ticker", "tp_ticker", "close_ticker"]:
-            if key in st.session_state:
-                del st.session_state[key]
+        st.cache_resource.clear()
+        # Clear relevant session state keys
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
 
 # Load data
