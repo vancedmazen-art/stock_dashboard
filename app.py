@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 from streamlit_echarts import st_echarts, JsCode
 import streamlit.components.v1 as components
 
+
 # ---------------------------
 # CHART DATA
 # ---------------------------
@@ -23,7 +24,23 @@ def load_chart_data():
     df.columns = df.columns.str.strip().str.lower()
     return df
 
-
+def load_corporate_actions():
+    """Load and process Splits + Dividends from the uploaded Excel file"""
+    try:
+        # Splits
+        splits = pd.read_excel("/home/workdir/attachments/EGX_Corporate_Actions.xlsx", sheet_name="Splits")
+        splits['Date'] = pd.to_datetime(splits['Date'], unit='d', origin='1899-12-30')
+        splits = splits.rename(columns={'Split_Ratio': 'Ratio', 'Type': 'Event_Type'})
+        
+        # Dividends
+        dividends = pd.read_excel("/home/workdir/attachments/EGX_Corporate_Actions.xlsx", sheet_name="Dividends")
+        dividends['Date'] = pd.to_datetime(dividends['Date'], unit='d', origin='1899-12-30')
+        dividends = dividends.rename(columns={'Dividend_EGP': 'Amount'})
+        
+        return splits, dividends
+    except Exception as e:
+        st.warning(f"Could not load corporate actions: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
@@ -49,15 +66,86 @@ def draw_candle_chart(
     entry=None,
     entry_date=None,
     closed_trades_df=None,
+    show_corporate_actions=True   # ← new
 ):
     # ── load & filter ─────────────────────────────────────────────────────────
     df_all = load_chart_data()
+    splits_df, dividends_df = load_corporate_actions()
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
 
     if df.empty:
         st.warning(f"No chart data for {ticker}")
         return
+    # Filter corporate actions for this ticker
+    ticker_splits = splits_df[splits_df['Symbol'] == ticker].copy() if not splits_df.empty else pd.DataFrame()
+    ticker_divs   = dividends_df[dividends_df['Symbol'] == ticker].copy() if not dividends_df.empty else pd.DataFrame()
 
+    # Convert dates to string format matching chart
+    df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
+    dates = df["date_str"].tolist()
+
+    # Prepare markPoints for corporate actions
+    ca_mark_points = []
+
+    # === DIVIDENDS ===
+    for _, row in ticker_divs.iterrows():
+        div_date = row['Date'].strftime("%Y-%m-%d")
+        if div_date in dates:
+            idx = dates.index(div_date)
+            amount = float(row['Amount'])
+            ca_mark_points.append({
+                "name": "DIV",
+                "coord": [idx, float(df.iloc[idx]["low"]) * 0.96],   # below candle
+                "value": f"Div {amount:.3f}",
+                "symbol": "circle",
+                "symbolSize": 14,
+                "itemStyle": {"color": "#60a5fa"},   # blue
+                "label": {
+                    "show": True,
+                    "formatter": f"↓{amount:.2f}",
+                    "position": "bottom",
+                    "color": "#60a5fa",
+                    "fontSize": 11,
+                    "fontFamily": "DM Mono"
+                }
+            })
+
+    # === SPLITS ===
+    for _, row in ticker_splits.iterrows():
+        split_date = row['Date'].strftime("%Y-%m-%d")
+        if split_date not in dates:
+            continue
+            
+        idx = dates.index(split_date)
+        ratio = float(row['Ratio'])
+        event_type = row['Event_Type']
+        
+        is_reverse = "Reverse" in event_type or ratio < 1.0
+        
+        color = "#f87171" if is_reverse else "#34d399"   # red for reverse, green for forward
+        symbol = "diamond" if is_reverse else "triangle"
+        
+        label_text = f"Split {ratio:.2f}x" if ratio != int(ratio) else f"Split {int(ratio)}x"
+        
+        ca_mark_points.append({
+            "name": "SPLIT",
+            "coord": [idx, float(df.iloc[idx]["high"]) * 1.04],   # above candle
+            "value": label_text,
+            "symbol": symbol,
+            "symbolSize": 16,
+            "itemStyle": {"color": color},
+            "label": {
+                "show": True,
+                "formatter": "S" if is_reverse else "F",
+                "position": "top",
+                "color": color,
+                "fontSize": 12,
+                "fontWeight": "bold"
+            }
+        })
+
+    # Merge with existing mark_points (trades)
+    all_mark_points = MARK_PTS + ca_mark_points   # MARK_PTS is your existing one
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     df["ema20"]    = _ema(df["close"], 20).round(4)
 
@@ -251,7 +339,7 @@ def draw_candle_chart(
     const CANDLES    = {candle_json};
     const VOL        = {vol_json};
     const EMA        = {ema_json};
-    const MARK_PTS   = {mark_points_json};
+    const MARK_PTS   = {json.dumps(all_mark_points)};   # after merging in Python
     const MARK_LINES = {mark_lines_json};
     const START_PCT  = {start_pct};
     const TICKER     = "{ticker}";
