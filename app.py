@@ -59,7 +59,7 @@ def load_corporate_actions(path: str = "EGX_Corporate_Actions.xlsx") -> dict:
         ca[sym]["dividends"].append({"date": date, "amount": amt})
  
     return ca
-
+ca = load_corporate_actions("EGX_Corporate_Actions.xlsx")
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
