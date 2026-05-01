@@ -66,28 +66,30 @@ def draw_candle_chart(
     entry=None,
     entry_date=None,
     closed_trades_df=None,
-    show_corporate_actions=True   # ← new
+    show_corporate_actions=True
 ):
     # ── load & filter ─────────────────────────────────────────────────────────
     df_all = load_chart_data()
     splits_df, dividends_df = load_corporate_actions()
+
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
 
     if df.empty:
         st.warning(f"No chart data for {ticker}")
         return
+
     # Filter corporate actions for this ticker
     ticker_splits = splits_df[splits_df['Symbol'] == ticker].copy() if not splits_df.empty else pd.DataFrame()
     ticker_divs   = dividends_df[dividends_df['Symbol'] == ticker].copy() if not dividends_df.empty else pd.DataFrame()
 
-    # Convert dates to string format matching chart
+    # Convert dates
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     dates = df["date_str"].tolist()
 
-    # Prepare markPoints for corporate actions
+    # === CORPORATE ACTIONS MARK POINTS ===
     ca_mark_points = []
 
-    # === DIVIDENDS ===
+    # DIVIDENDS
     for _, row in ticker_divs.iterrows():
         div_date = row['Date'].strftime("%Y-%m-%d")
         if div_date in dates:
@@ -95,11 +97,11 @@ def draw_candle_chart(
             amount = float(row['Amount'])
             ca_mark_points.append({
                 "name": "DIV",
-                "coord": [idx, float(df.iloc[idx]["low"]) * 0.96],   # below candle
+                "coord": [idx, float(df.iloc[idx]["low"]) * 0.96],
                 "value": f"Div {amount:.3f}",
                 "symbol": "circle",
                 "symbolSize": 14,
-                "itemStyle": {"color": "#60a5fa"},   # blue
+                "itemStyle": {"color": "#60a5fa"},
                 "label": {
                     "show": True,
                     "formatter": f"↓{amount:.2f}",
@@ -110,7 +112,7 @@ def draw_candle_chart(
                 }
             })
 
-    # === SPLITS ===
+    # SPLITS (Forward & Reverse)
     for _, row in ticker_splits.iterrows():
         split_date = row['Date'].strftime("%Y-%m-%d")
         if split_date not in dates:
@@ -118,18 +120,18 @@ def draw_candle_chart(
             
         idx = dates.index(split_date)
         ratio = float(row['Ratio'])
-        event_type = row['Event_Type']
+        event_type = row.get('Event_Type', '')
         
-        is_reverse = "Reverse" in event_type or ratio < 1.0
+        is_reverse = "Reverse" in str(event_type) or ratio < 1.0
         
-        color = "#f87171" if is_reverse else "#34d399"   # red for reverse, green for forward
+        color = "#f87171" if is_reverse else "#34d399"
         symbol = "diamond" if is_reverse else "triangle"
         
-        label_text = f"Split {ratio:.2f}x" if ratio != int(ratio) else f"Split {int(ratio)}x"
+        label_text = f"{ratio:.2f}x" if ratio != int(ratio) else f"{int(ratio)}x"
         
         ca_mark_points.append({
             "name": "SPLIT",
-            "coord": [idx, float(df.iloc[idx]["high"]) * 1.04],   # above candle
+            "coord": [idx, float(df.iloc[idx]["high"]) * 1.05],
             "value": label_text,
             "symbol": symbol,
             "symbolSize": 16,
@@ -144,133 +146,99 @@ def draw_candle_chart(
             }
         })
 
-    # Merge with existing mark_points (trades)
-    all_mark_points = MARK_PTS + ca_mark_points   # MARK_PTS is your existing one
-    df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
-    df["ema20"]    = _ema(df["close"], 20).round(4)
-
+    # ── EMA & basic data ─────────────────────────────────────────────────────
+    df["ema20"] = _ema(df["close"], 20).round(4)
     dates = df["date_str"].tolist()
-    n     = len(dates)
+    n = len(dates)
 
-    # ── initial 3-month window ────────────────────────────────────────────────
-    max_date     = df["datetime"].max()
+    # Initial 3-month window
+    max_date = df["datetime"].max()
     start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
-    start_idx    = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
-    start_pct    = round(start_idx / n * 100)
+    start_idx = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
+    start_pct = round(start_idx / n * 100)
 
-    # ── data ─────────────────────────────────────────────────────────────────
-    candle_data = [
-        [float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])]
-        for _, r in df.iterrows()
-    ]
-    vol_data = [
-        {"value": float(r["volume"]),
-         "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}}
-        for _, r in df.iterrows()
-    ]
+    # Candle, Volume, EMA data
+    candle_data = [[float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])] 
+                   for _, r in df.iterrows()]
+    vol_data = [{"value": float(r["volume"]),
+                 "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}}
+                for _, r in df.iterrows()]
     ema_data = [round(v, 4) for v in df["ema20"].tolist()]
 
-    # ── mark points (entry/exit arrows) ──────────────────────────────────────
+    # ── Trade mark points (Buy/Sell) ────────────────────────────────────────
     mark_points = []
 
     def _add_buy(date_str, price_low):
-        if date_str not in dates:
-            return
+        if date_str not in dates: return
         idx = dates.index(date_str)
         mark_points.append({
             "name": "BUY", "coord": [idx, price_low * 0.975],
-            "value": "",            # ← empty: removes "BUY" text under arrow
-            "symbol": "triangle",
-            "symbolSize": 20, "symbolRotate": 0,
+            "value": "", "symbol": "triangle", "symbolSize": 20, "symbolRotate": 0,
             "itemStyle": {"color": "#10b981"},
-            "label": {"show": False},   # ← label completely hidden
+            "label": {"show": False}
         })
 
     def _add_sell(date_str, price_high, pnl_val):
-        if date_str not in dates:
-            return
-        idx  = dates.index(date_str)
-        lbl  = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
-        clr  = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
+        if date_str not in dates: return
+        idx = dates.index(date_str)
+        lbl = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
+        clr = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
         mark_points.append({
             "name": "SELL", "coord": [idx, price_high * 1.025],
-            "value": lbl, "symbol": "triangle",
-            "symbolSize": 20, "symbolRotate": 180,
+            "value": lbl, "symbol": "triangle", "symbolSize": 20, "symbolRotate": 180,
             "itemStyle": {"color": "#f87171"},
-            "label": {
-                "show": True,
-                "formatter": lbl,
-                "position": "top",
-                "color": clr,
-                "fontSize": 13,         # ← bigger
-                "fontWeight": "700",    # ← bold
-                "fontFamily": "DM Mono",
-            },
+            "label": {"show": True, "formatter": lbl, "position": "top",
+                      "color": clr, "fontSize": 13, "fontWeight": "700", "fontFamily": "DM Mono"}
         })
 
+    # Add entry from current trade
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime("%Y-%m-%d")
         ed_row = df[df["date_str"] == ed_str]
         if not ed_row.empty:
             _add_buy(ed_str, float(ed_row["low"].values[0]))
 
+    # Add closed trades
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
         ctdf["Entry_Date"] = pd.to_datetime(ctdf["Entry_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
         ctdf["Exit_Date"]  = pd.to_datetime(ctdf["Exit_Date"],  errors="coerce").dt.strftime("%Y-%m-%d")
         for _, tr in ctdf.iterrows():
             tr_ed = tr.get("Entry_Date", "")
-            ed_r  = df[df["date_str"] == tr_ed]
+            ed_r = df[df["date_str"] == tr_ed]
             if not ed_r.empty and pd.notna(tr.get("Entry_Price")):
                 _add_buy(tr_ed, float(ed_r["low"].values[0]))
+
             tr_xd = tr.get("Exit_Date", "")
-            xd_r  = df[df["date_str"] == tr_xd]
+            xd_r = df[df["date_str"] == tr_xd]
             if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
                 _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
 
-    # ── level lines ───────────────────────────────────────────────────────────
+    # Combine trade marks + corporate actions
+    all_mark_points = mark_points + ca_mark_points
+
+    # ── Level lines (Stop, Entry, Target) ───────────────────────────────────
     mark_lines_data = []
     if stop_loss:
-        mark_lines_data.append({
-            "yAxis": stop_loss,
-            "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
-            "label": {
-                "show": True, "formatter": f"Stop  {stop_loss:.3f}",
-                "position": "insideEndTop",
-                "color": "#f87171", "fontSize": 11,
-                "fontFamily": "DM Mono", "fontWeight": "600",
-            },
-        })
+        mark_lines_data.append({"yAxis": stop_loss, "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
+                                "label": {"show": True, "formatter": f"Stop  {stop_loss:.3f}", "position": "insideEndTop",
+                                          "color": "#f87171", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}})
     if entry:
-        mark_lines_data.append({
-            "yAxis": entry,
-            "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
-            "label": {
-                "show": True, "formatter": f"Entry  {entry:.3f}",
-                "position": "insideEndTop",
-                "color": "#94a3b8", "fontSize": 11,
-                "fontFamily": "DM Mono", "fontWeight": "600",
-            },
-        })
+        mark_lines_data.append({"yAxis": entry, "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
+                                "label": {"show": True, "formatter": f"Entry  {entry:.3f}", "position": "insideEndTop",
+                                          "color": "#94a3b8", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}})
     if target:
-        mark_lines_data.append({
-            "yAxis": target,
-            "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
-            "label": {
-                "show": True, "formatter": f"Target  {target:.3f}",
-                "position": "insideEndTop",
-                "color": "#10b981", "fontSize": 11,
-                "fontFamily": "DM Mono", "fontWeight": "600",
-            },
-        })
+        mark_lines_data.append({"yAxis": target, "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
+                                "label": {"show": True, "formatter": f"Target  {target:.3f}", "position": "insideEndTop",
+                                          "color": "#10b981", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}})
 
-    # ── JSON serialisation ────────────────────────────────────────────────────
-    dates_json        = json.dumps(dates)
-    candle_json       = json.dumps(candle_data)
-    vol_json          = json.dumps(vol_data)
-    ema_json          = json.dumps(ema_data)
-    mark_points_json  = json.dumps(mark_points)
-    mark_lines_json   = json.dumps(mark_lines_data)
+    # ── JSON serialization ───────────────────────────────────────────────────
+    dates_json       = json.dumps(dates)
+    candle_json      = json.dumps(candle_data)
+    vol_json         = json.dumps(vol_data)
+    ema_json         = json.dumps(ema_data)
+    mark_points_json = json.dumps(all_mark_points)      # ← Fixed: using all_mark_points
+    mark_lines_json  = json.dumps(mark_lines_data)
 
     html = textwrap.dedent(f"""
     <!DOCTYPE html>
