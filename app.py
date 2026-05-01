@@ -1279,7 +1279,7 @@ def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news
 
         draw_candle_chart(selected, height=650,
                           stop_loss=sl, target=tg, entry=en, entry_date=ed,
-                          closed_trades_df=ticker_closed_arg,  load_chart_data_fn=load_chart_data)
+                          closed_trades_df=ticker_closed_arg, corporate_actions=ca, load_chart_data_fn=load_chart_data)
 
         if len(ticker_closed) > 0:
             with st.expander(f"📋 Trade History — {selected} ({len(ticker_closed)} trades)", expanded=False):
