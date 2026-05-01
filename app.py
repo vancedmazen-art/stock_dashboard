@@ -82,11 +82,10 @@ def draw_candle_chart(
         st.warning(f"No chart data for {ticker}")
         return
 
-    # Filter corporate actions for this ticker
+    # Filter corporate actions
     ticker_splits = splits_df[splits_df['Symbol'] == ticker].copy() if not splits_df.empty else pd.DataFrame()
     ticker_divs   = dividends_df[dividends_df['Symbol'] == ticker].copy() if not dividends_df.empty else pd.DataFrame()
 
-    # Convert dates
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     dates = df["date_str"].tolist()
 
@@ -95,6 +94,7 @@ def draw_candle_chart(
 
     # DIVIDENDS
     for _, row in ticker_divs.iterrows():
+        if pd.isna(row['Date']): continue
         div_date = row['Date'].strftime("%Y-%m-%d")
         if div_date in dates:
             idx = dates.index(div_date)
@@ -116,8 +116,9 @@ def draw_candle_chart(
                 }
             })
 
-    # SPLITS (Forward & Reverse)
+    # SPLITS
     for _, row in ticker_splits.iterrows():
+        if pd.isna(row['Date']): continue
         split_date = row['Date'].strftime("%Y-%m-%d")
         if split_date not in dates:
             continue
@@ -127,10 +128,8 @@ def draw_candle_chart(
         event_type = row.get('Event_Type', '')
         
         is_reverse = "Reverse" in str(event_type) or ratio < 1.0
-        
         color = "#f87171" if is_reverse else "#34d399"
         symbol = "diamond" if is_reverse else "triangle"
-        
         label_text = f"{ratio:.2f}x" if ratio != int(ratio) else f"{int(ratio)}x"
         
         ca_mark_points.append({
@@ -150,26 +149,7 @@ def draw_candle_chart(
             }
         })
 
-    # ── EMA & basic data ─────────────────────────────────────────────────────
-    df["ema20"] = _ema(df["close"], 20).round(4)
-    dates = df["date_str"].tolist()
-    n = len(dates)
-
-    # Initial 3-month window
-    max_date = df["datetime"].max()
-    start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
-    start_idx = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
-    start_pct = round(start_idx / n * 100)
-
-    # Candle, Volume, EMA data
-    candle_data = [[float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])] 
-                   for _, r in df.iterrows()]
-    vol_data = [{"value": float(r["volume"]),
-                 "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}}
-                for _, r in df.iterrows()]
-    ema_data = [round(v, 4) for v in df["ema20"].tolist()]
-
-    # ── Trade mark points (Buy/Sell) ────────────────────────────────────────
+    # ── Trade marks (Buy / Sell) ─────────────────────────────────────────────
     mark_points = []
 
     def _add_buy(date_str, price_low):
@@ -195,7 +175,7 @@ def draw_candle_chart(
                       "color": clr, "fontSize": 13, "fontWeight": "700", "fontFamily": "DM Mono"}
         })
 
-    # Add entry from current trade
+    # Add current trade entry
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime("%Y-%m-%d")
         ed_row = df[df["date_str"] == ed_str]
@@ -205,45 +185,66 @@ def draw_candle_chart(
     # Add closed trades
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
-        ctdf["Entry_Date"] = pd.to_datetime(ctdf["Entry_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-        ctdf["Exit_Date"]  = pd.to_datetime(ctdf["Exit_Date"],  errors="coerce").dt.strftime("%Y-%m-%d")
+        ctdf["Entry_Date"] = pd.to_datetime(ctdf.get("Entry_Date"), errors="coerce").dt.strftime("%Y-%m-%d")
+        ctdf["Exit_Date"]  = pd.to_datetime(ctdf.get("Exit_Date"),  errors="coerce").dt.strftime("%Y-%m-%d")
         for _, tr in ctdf.iterrows():
-            tr_ed = tr.get("Entry_Date", "")
-            ed_r = df[df["date_str"] == tr_ed]
-            if not ed_r.empty and pd.notna(tr.get("Entry_Price")):
-                _add_buy(tr_ed, float(ed_r["low"].values[0]))
+            tr_ed = str(tr.get("Entry_Date", ""))[:10]
+            if tr_ed in dates:
+                ed_r = df[df["date_str"] == tr_ed]
+                if not ed_r.empty and pd.notna(tr.get("Entry_Price")):
+                    _add_buy(tr_ed, float(ed_r["low"].values[0]))
 
-            tr_xd = tr.get("Exit_Date", "")
-            xd_r = df[df["date_str"] == tr_xd]
-            if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
-                _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
+            tr_xd = str(tr.get("Exit_Date", ""))[:10]
+            if tr_xd in dates:
+                xd_r = df[df["date_str"] == tr_xd]
+                if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
+                    _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
 
-    # Combine trade marks + corporate actions
+    # Combine all mark points
     all_mark_points = mark_points + ca_mark_points
 
-    # ── Level lines (Stop, Entry, Target) ───────────────────────────────────
+    # EMA, candles, volume
+    df["ema20"] = _ema(df["close"], 20).round(4)
+    dates = df["date_str"].tolist()
+    n = len(dates)
+
+    max_date = df["datetime"].max()
+    start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
+    start_idx = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
+    start_pct = round(start_idx / n * 100)
+
+    candle_data = [[float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])] 
+                   for _, r in df.iterrows()]
+    vol_data = [{"value": float(r["volume"]),
+                 "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}}
+                for _, r in df.iterrows()]
+    ema_data = [round(v, 4) for v in df["ema20"].tolist()]
+
+    # Level lines
     mark_lines_data = []
-    if stop_loss:
-        mark_lines_data.append({"yAxis": stop_loss, "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
-                                "label": {"show": True, "formatter": f"Stop  {stop_loss:.3f}", "position": "insideEndTop",
-                                          "color": "#f87171", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}})
-    if entry:
-        mark_lines_data.append({"yAxis": entry, "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
-                                "label": {"show": True, "formatter": f"Entry  {entry:.3f}", "position": "insideEndTop",
-                                          "color": "#94a3b8", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}})
-    if target:
-        mark_lines_data.append({"yAxis": target, "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
-                                "label": {"show": True, "formatter": f"Target  {target:.3f}", "position": "insideEndTop",
-                                          "color": "#10b981", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}})
+    if stop_loss is not None:
+        mark_lines_data.append({
+            "yAxis": float(stop_loss),
+            "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
+            "label": {"show": True, "formatter": f"Stop  {float(stop_loss):.3f}", "position": "insideEndTop",
+                      "color": "#f87171", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}
+        })
+    if entry is not None:
+        mark_lines_data.append({
+            "yAxis": float(entry),
+            "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
+            "label": {"show": True, "formatter": f"Entry  {float(entry):.3f}", "position": "insideEndTop",
+                      "color": "#94a3b8", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}
+        })
+    if target is not None:
+        mark_lines_data.append({
+            "yAxis": float(target),
+            "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
+            "label": {"show": True, "formatter": f"Target  {float(target):.3f}", "position": "insideEndTop",
+                      "color": "#10b981", "fontSize": 11, "fontFamily": "DM Mono", "fontWeight": "600"}
+        })
 
-    # ── JSON serialization ───────────────────────────────────────────────────
-    dates_json       = json.dumps(dates)
-    candle_json      = json.dumps(candle_data)
-    vol_json         = json.dumps(vol_data)
-    ema_json         = json.dumps(ema_data)
-    mark_points_json = json.dumps(all_mark_points)      # ← Fixed: using all_mark_points
-    mark_lines_json  = json.dumps(mark_lines_data)
-
+    # JSON
     html = textwrap.dedent(f"""
     <!DOCTYPE html>
     <html>
@@ -253,37 +254,12 @@ def draw_candle_chart(
     <style>
       * {{ box-sizing: border-box; margin: 0; padding: 0; }}
       html, body {{ width:100%; height:100%; background: #0f172a; font-family: 'DM Mono', monospace; overflow:hidden; }}
-
-      #toolbar {{
-        display: flex; align-items: center; gap: 5px;
-        padding: 5px 8px; background: #0a1f12;
-        border: 1px solid #1e3a2a; border-radius: 6px;
-        margin-bottom: 5px; flex-wrap: wrap;
-      }}
-      #toolbar span {{
-        font-size: 10px; color: #4b6a57; text-transform: uppercase;
-        letter-spacing: .08em; margin-right: 2px;
-      }}
-      .tb-btn {{
-        background: #0f172a; border: 1px solid #1e3a2a; border-radius: 5px;
-        color: #9ca3af; font-size: 11px; font-family: 'DM Mono', monospace;
-        padding: 3px 9px; cursor: pointer; transition: all .15s; white-space: nowrap;
-      }}
+      #toolbar {{ display: flex; align-items: center; gap: 5px; padding: 5px 8px; background: #0a1f12;
+        border: 1px solid #1e3a2a; border-radius: 6px; margin-bottom: 5px; flex-wrap: wrap; }}
+      .tb-btn {{ background: #0f172a; border: 1px solid #1e3a2a; border-radius: 5px; color: #9ca3af;
+        font-size: 11px; font-family: 'DM Mono', monospace; padding: 3px 9px; cursor: pointer; }}
       .tb-btn:hover  {{ background: #1e3a2a; color: #d1fae5; }}
       .tb-btn.active {{ background: #10b981; color: #0f172a; border-color: #10b981; font-weight: 700; }}
-      .tb-sep {{ width: 1px; height: 18px; background: #1e3a2a; margin: 0 3px; }}
-      .tb-btn.danger {{ border-color: #f87171; color: #f87171; }}
-      .tb-btn.danger:hover {{ background: #f87171; color: #0f172a; }}
-      .tb-btn.info {{ border-color: #60a5fa; color: #60a5fa; }}
-      .tb-btn.info:hover {{ background: #60a5fa; color: #0f172a; }}
-
-      #trend-hint {{
-        display:none; font-size:10px; color:#facc15;
-        padding: 2px 8px; border:1px solid #facc15;
-        border-radius:4px; animation: pulse 1s infinite alternate;
-      }}
-      @keyframes pulse {{ from {{ opacity:1; }} to {{ opacity:0.4; }} }}
-
       #chart {{ width: 100%; height: {height}px; }}
     </style>
     </head>
@@ -291,17 +267,17 @@ def draw_candle_chart(
 
     <div id="toolbar">
       <span>Draw</span>
-      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click to place a horizontal price line">── H-Line</button>
-      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click to place a vertical date line">│ V-Line</button>
-      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click + drag to draw trendline">↗ Trendline (drag)</button>
+      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')">── H-Line</button>
+      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')">│ V-Line</button>
+      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')">↗ Trendline</button>
       <span id="trend-hint">release to finish</span>
       <div class="tb-sep"></div>
-      <button class="tb-btn danger" onclick="deleteLast()" title="Delete last drawn line">✕ Last</button>
-      <button class="tb-btn danger" onclick="clearAll()"   title="Clear all drawn lines">✕ All</button>
+      <button class="tb-btn danger" onclick="deleteLast()">✕ Last</button>
+      <button class="tb-btn danger" onclick="clearAll()">✕ All</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn info"   onclick="resetZoom()"  title="Reset to original 3-month view">⟳ Reset</button>
+      <button class="tb-btn info" onclick="resetZoom()">⟳ Reset</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn active" id="btn-none" onclick="setMode(null)" title="Pointer / pan mode">✋ Pointer</button>
+      <button class="tb-btn active" id="btn-none" onclick="setMode(null)">✋ Pointer</button>
     </div>
 
     <div id="chart"></div>
@@ -311,7 +287,7 @@ def draw_candle_chart(
     const CANDLES    = {candle_json};
     const VOL        = {vol_json};
     const EMA        = {ema_json};
-    const MARK_PTS   = {json.dumps(all_mark_points)};   # after merging in Python
+    const MARK_PTS   = {mark_points_json};
     const MARK_LINES = {mark_lines_json};
     const START_PCT  = {start_pct};
     const TICKER     = "{ticker}";
