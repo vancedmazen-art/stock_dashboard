@@ -25,22 +25,28 @@ def load_chart_data():
     return df
 
 def load_corporate_actions():
-    """Load and process Splits + Dividends from the uploaded Excel file"""
+    """Load Splits and Dividends from GitHub (raw URL)"""
     try:
-        # Splits
-        splits = pd.read_excel("/home/workdir/attachments/EGX_Corporate_Actions.xlsx", sheet_name="Splits")
+        base_url = "https://raw.githubusercontent.com/vancedmazen-art/stock_dashboard/main/"
+        
+        # Load Splits
+        splits_url = base_url + "EGX_Corporate_Actions.xlsx"
+        splits = pd.read_excel(splits_url, sheet_name="Splits")
         splits['Date'] = pd.to_datetime(splits['Date'], unit='d', origin='1899-12-30')
         splits = splits.rename(columns={'Split_Ratio': 'Ratio', 'Type': 'Event_Type'})
         
-        # Dividends
-        dividends = pd.read_excel("/home/workdir/attachments/EGX_Corporate_Actions.xlsx", sheet_name="Dividends")
+        # Load Dividends
+        dividends = pd.read_excel(splits_url, sheet_name="Dividends")
         dividends['Date'] = pd.to_datetime(dividends['Date'], unit='d', origin='1899-12-30')
         dividends = dividends.rename(columns={'Dividend_EGP': 'Amount'})
         
+        st.success("✅ Corporate actions loaded from GitHub")
         return splits, dividends
+        
     except Exception as e:
-        st.warning(f"Could not load corporate actions: {e}")
+        st.warning(f"⚠️ Could not load corporate actions: {e}")
         return pd.DataFrame(), pd.DataFrame()
+        
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
