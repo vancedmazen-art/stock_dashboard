@@ -23,7 +23,42 @@ def load_chart_data():
     df.columns = df.columns.str.strip().str.lower()
     return df
 
-
+def load_corporate_actions(path: str = "EGX_Corporate_Actions.xlsx") -> dict:
+    """
+    Returns a dict keyed by ticker symbol:
+        {
+          "ABUK": {
+              "dividends":  [{"date": "2024-05-01", "amount": 1.30}, ...],
+              "forward":    [{"date": "2017-11-09", "ratio": 10.0},  ...],
+              "reverse":    [{"date": "2008-09-23", "ratio": 0.5},   ...],
+          },
+          ...
+        }
+    """
+    xl      = pd.read_excel(path, sheet_name=None)
+    splits  = xl.get("Splits",    pd.DataFrame())
+    divs    = xl.get("Dividends", pd.DataFrame())
+ 
+    ca: dict = {}
+ 
+    # --- Splits ---
+    for _, row in splits.iterrows():
+        sym  = str(row["Symbol"]).strip().upper()
+        date = pd.to_datetime(row["Date"]).strftime("%Y-%m-%d")
+        kind = "forward" if "Forward" in str(row["Type"]) else "reverse"
+        ratio = float(row["Split_Ratio"])
+        ca.setdefault(sym, {"dividends": [], "forward": [], "reverse": []})
+        ca[sym][kind].append({"date": date, "ratio": ratio})
+ 
+    # --- Dividends ---
+    for _, row in divs.iterrows():
+        sym  = str(row["Symbol"]).strip().upper()
+        date = pd.to_datetime(row["Date"]).strftime("%Y-%m-%d")
+        amt  = round(float(row["Dividend_EGP"]), 4)
+        ca.setdefault(sym, {"dividends": [], "forward": [], "reverse": []})
+        ca[sym]["dividends"].append({"date": date, "amount": amt})
+ 
+    return ca
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
