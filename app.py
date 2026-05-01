@@ -77,35 +77,47 @@ def get_levels(row):
 
 
 def draw_candle_chart(
-    ticker: str,
-    height: int = 650,
-    stop_loss=None,
-    target=None,
-    entry=None,
-    entry_date=None,
-    closed_trades_df=None,
+    ticker:            str,
+    height:            int              = 650,
+    stop_loss                           = None,
+    target                              = None,
+    entry                               = None,
+    entry_date                          = None,
+    closed_trades_df:  pd.DataFrame     = None,
+    corporate_actions: dict             = None,   # ← NEW (optional)
+    load_chart_data_fn                  = None,   # ← pass your @st.cache_data loader
 ):
+    """
+    Backward-compatible replacement.
+    Pass `corporate_actions` (from load_corporate_actions()) to show
+    D / FR / RR markers on the price chart.
+    """
+    from datetime import timedelta
+ 
     # ── load & filter ─────────────────────────────────────────────────────────
-    df_all = load_chart_data()
-    df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
-
+    if load_chart_data_fn is None:
+        raise ValueError("Pass your load_chart_data function as load_chart_data_fn=")
+ 
+    df_all = load_chart_data_fn()
+    df     = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
+ 
     if df.empty:
         st.warning(f"No chart data for {ticker}")
         return
-
+ 
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     df["ema20"]    = _ema(df["close"], 20).round(4)
-
+ 
     dates = df["date_str"].tolist()
     n     = len(dates)
-
+ 
     # ── initial 3-month window ────────────────────────────────────────────────
     max_date     = df["datetime"].max()
     start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
     start_idx    = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
     start_pct    = round(start_idx / n * 100)
-
-    # ── data ─────────────────────────────────────────────────────────────────
+ 
+    # ── raw series ────────────────────────────────────────────────────────────
     candle_data = [
         [float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])]
         for _, r in df.iterrows()
@@ -116,51 +128,46 @@ def draw_candle_chart(
         for _, r in df.iterrows()
     ]
     ema_data = [round(v, 4) for v in df["ema20"].tolist()]
-
-    # ── mark points (entry/exit arrows) ──────────────────────────────────────
+ 
+    # ── mark points (buy/sell arrows) ─────────────────────────────────────────
     mark_points = []
-
+ 
     def _add_buy(date_str, price_low):
         if date_str not in dates:
             return
         idx = dates.index(date_str)
         mark_points.append({
             "name": "BUY", "coord": [idx, price_low * 0.975],
-            "value": "",            # ← empty: removes "BUY" text under arrow
-            "symbol": "triangle",
+            "value": "", "symbol": "triangle",
             "symbolSize": 20, "symbolRotate": 0,
             "itemStyle": {"color": "#10b981"},
-            "label": {"show": False},   # ← label completely hidden
+            "label": {"show": False},
         })
-
+ 
     def _add_sell(date_str, price_high, pnl_val):
         if date_str not in dates:
             return
-        idx  = dates.index(date_str)
-        lbl  = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
-        clr  = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
+        idx = dates.index(date_str)
+        lbl = f"{pnl_val:+.1f}%" if pd.notna(pnl_val) else ""
+        clr = "#34d399" if (pd.notna(pnl_val) and pnl_val >= 0) else "#f87171"
         mark_points.append({
             "name": "SELL", "coord": [idx, price_high * 1.025],
             "value": lbl, "symbol": "triangle",
             "symbolSize": 20, "symbolRotate": 180,
             "itemStyle": {"color": "#f87171"},
             "label": {
-                "show": True,
-                "formatter": lbl,
-                "position": "top",
-                "color": clr,
-                "fontSize": 13,         # ← bigger
-                "fontWeight": "700",    # ← bold
-                "fontFamily": "DM Mono",
+                "show": True, "formatter": lbl,
+                "position": "top", "color": clr,
+                "fontSize": 13, "fontWeight": "700", "fontFamily": "DM Mono",
             },
         })
-
+ 
     if entry_date:
         ed_str = pd.to_datetime(entry_date).strftime("%Y-%m-%d")
         ed_row = df[df["date_str"] == ed_str]
         if not ed_row.empty:
             _add_buy(ed_str, float(ed_row["low"].values[0]))
-
+ 
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
         ctdf["Entry_Date"] = pd.to_datetime(ctdf["Entry_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
@@ -174,7 +181,7 @@ def draw_candle_chart(
             xd_r  = df[df["date_str"] == tr_xd]
             if not xd_r.empty and pd.notna(tr.get("Exit_Price")):
                 _add_sell(tr_xd, float(xd_r["high"].values[0]), tr.get("Trade_PnL_%"))
-
+ 
     # ── level lines ───────────────────────────────────────────────────────────
     mark_lines_data = []
     if stop_loss:
@@ -210,15 +217,106 @@ def draw_candle_chart(
                 "fontFamily": "DM Mono", "fontWeight": "600",
             },
         })
-
-    # ── JSON serialisation ────────────────────────────────────────────────────
-    dates_json        = json.dumps(dates)
-    candle_json       = json.dumps(candle_data)
-    vol_json          = json.dumps(vol_data)
-    ema_json          = json.dumps(ema_data)
-    mark_points_json  = json.dumps(mark_points)
-    mark_lines_json   = json.dumps(mark_lines_data)
-
+ 
+    # ─────────────────────────────────────────────────────────────────────────
+    # ── CORPORATE ACTIONS  ────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────────
+    #
+    #  We build a supplementary scatter series ("CA_markers") that lives on the
+    #  same xAxis/yAxis as the candles.  Each point sits at the candle's HIGH
+    #  (or at the axis top if no candle on that exact date).
+    #
+    #  Symbol legend:
+    #    D   dividend  →  gold   diamond  (symbol: 'diamond')  below low
+    #    FR  forward   →  green  up-arrow (symbol: 'arrow')    above high
+    #    RR  reverse   →  red    down-arrow (symbol: 'arrow', rotate 180) above high
+    #
+    #  Tooltip: custom rich tooltip via formatter function (JS).
+    # ─────────────────────────────────────────────────────────────────────────
+ 
+    ca_data_js = "[]"   # default: no events
+ 
+    if corporate_actions:
+        sym_upper = ticker.strip().upper()
+        ca_sym    = corporate_actions.get(sym_upper, {})
+ 
+        # Build a lookup: date_str → list of events
+        # event = {"kind": "D"|"FR"|"RR", "label": str, "detail": str}
+        date_events: dict = {}
+ 
+        for item in ca_sym.get("dividends", []):
+            date_events.setdefault(item["date"], []).append({
+                "kind":   "D",
+                "label":  "D",
+                "detail": f"Dividend: EGP {item['amount']:.4f}",
+            })
+ 
+        for item in ca_sym.get("forward", []):
+            date_events.setdefault(item["date"], []).append({
+                "kind":   "FR",
+                "label":  "FR",
+                "detail": f"Forward Split ×{item['ratio']:.4g}",
+            })
+ 
+        for item in ca_sym.get("reverse", []):
+            date_events.setdefault(item["date"], []).append({
+                "kind":   "RR",
+                "label":  "RR",
+                "detail": f"Reverse Split ×{item['ratio']:.4g}",
+            })
+ 
+        # Build per-point data for the scatter series
+        # We'll render each event as a separate point (stacked vertically on same date)
+        ca_points = []
+        COLORS = {"D": "#fbbf24", "FR": "#10b981", "RR": "#f87171"}
+        SYMBOLS = {"D": "diamond", "FR": "triangle", "RR": "triangle"}
+        ROTATE  = {"D": 0,        "FR": 0,          "RR": 180}
+        # D sits below the low; FR/RR above the high
+        POSITION = {"D": "below", "FR": "above", "RR": "above"}
+ 
+        for date_str, events in date_events.items():
+            if date_str not in dates:
+                continue
+            idx    = dates.index(date_str)
+            candle = candle_data[idx]          # [open, close, low, high]
+            low    = candle[2]
+            high   = candle[3]
+ 
+            for ev_i, ev in enumerate(events):
+                kind   = ev["kind"]
+                color  = COLORS[kind]
+                sym    = SYMBOLS[kind]
+                rot    = ROTATE[kind]
+                pos    = POSITION[kind]
+ 
+                if pos == "above":
+                    y_val = high * (1.015 + ev_i * 0.015)
+                else:
+                    y_val = low  * (0.985 - ev_i * 0.015)
+ 
+                ca_points.append({
+                    "name":   ev["detail"],
+                    "value":  [idx, round(y_val, 4)],
+                    "label":  ev["label"],
+                    "kind":   kind,
+                    "detail": ev["detail"],
+                    "date":   date_str,
+                    "itemStyle": {"color": color},
+                    "symbol":    sym,
+                    "symbolSize": 18,
+                    "symbolRotate": rot,
+                })
+ 
+        ca_data_js = json.dumps(ca_points)
+ 
+    # ── serialise everything ──────────────────────────────────────────────────
+    dates_json       = json.dumps(dates)
+    candle_json      = json.dumps(candle_data)
+    vol_json         = json.dumps(vol_data)
+    ema_json         = json.dumps(ema_data)
+    mark_points_json = json.dumps(mark_points)
+    mark_lines_json  = json.dumps(mark_lines_data)
+ 
     html = textwrap.dedent(f"""
     <!DOCTYPE html>
     <html>
@@ -227,8 +325,10 @@ def draw_candle_chart(
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
       * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-      html, body {{ width:100%; height:100%; background: #0f172a; font-family: 'DM Mono', monospace; overflow:hidden; }}
-
+      html, body {{ width:100%; height:100%; background: #0f172a;
+                    font-family: 'DM Mono', monospace; overflow:hidden; }}
+ 
+      /* ── toolbar ── */
       #toolbar {{
         display: flex; align-items: center; gap: 5px;
         padding: 5px 8px; background: #0a1f12;
@@ -245,42 +345,57 @@ def draw_candle_chart(
         padding: 3px 9px; cursor: pointer; transition: all .15s; white-space: nowrap;
       }}
       .tb-btn:hover  {{ background: #1e3a2a; color: #d1fae5; }}
-      .tb-btn.active {{ background: #10b981; color: #0f172a; border-color: #10b981; font-weight: 700; }}
+      .tb-btn.active {{ background: #10b981; color: #0f172a;
+                        border-color: #10b981; font-weight: 700; }}
       .tb-sep {{ width: 1px; height: 18px; background: #1e3a2a; margin: 0 3px; }}
       .tb-btn.danger {{ border-color: #f87171; color: #f87171; }}
       .tb-btn.danger:hover {{ background: #f87171; color: #0f172a; }}
       .tb-btn.info {{ border-color: #60a5fa; color: #60a5fa; }}
       .tb-btn.info:hover {{ background: #60a5fa; color: #0f172a; }}
-
+ 
+      /* CA legend */
+      #ca-legend {{
+        display:flex; align-items:center; gap:10px;
+        font-size:10px; font-family:'DM Mono',monospace;
+        color:#9ca3af; margin-left:auto;
+      }}
+      .ca-dot {{ display:inline-block; width:8px; height:8px;
+                 border-radius:2px; margin-right:3px; }}
+ 
       #trend-hint {{
         display:none; font-size:10px; color:#facc15;
         padding: 2px 8px; border:1px solid #facc15;
         border-radius:4px; animation: pulse 1s infinite alternate;
       }}
       @keyframes pulse {{ from {{ opacity:1; }} to {{ opacity:0.4; }} }}
-
+ 
       #chart {{ width: 100%; height: {height}px; }}
     </style>
     </head>
     <body>
-
+ 
     <div id="toolbar">
       <span>Draw</span>
-      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')" title="Click to place a horizontal price line">── H-Line</button>
-      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')" title="Click to place a vertical date line">│ V-Line</button>
-      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')" title="Click + drag to draw trendline">↗ Trendline (drag)</button>
+      <button class="tb-btn" id="btn-hline" onclick="setMode('hline')">── H-Line</button>
+      <button class="tb-btn" id="btn-vline" onclick="setMode('vline')">│ V-Line</button>
+      <button class="tb-btn" id="btn-trend" onclick="setMode('trend')">↗ Trendline (drag)</button>
       <span id="trend-hint">release to finish</span>
       <div class="tb-sep"></div>
-      <button class="tb-btn danger" onclick="deleteLast()" title="Delete last drawn line">✕ Last</button>
-      <button class="tb-btn danger" onclick="clearAll()"   title="Clear all drawn lines">✕ All</button>
+      <button class="tb-btn danger" onclick="deleteLast()">✕ Last</button>
+      <button class="tb-btn danger" onclick="clearAll()">✕ All</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn info"   onclick="resetZoom()"  title="Reset to original 3-month view">⟳ Reset</button>
+      <button class="tb-btn info"   onclick="resetZoom()">⟳ Reset</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn active" id="btn-none" onclick="setMode(null)" title="Pointer / pan mode">✋ Pointer</button>
+      <button class="tb-btn active" id="btn-none" onclick="setMode(null)">✋ Pointer</button>
+      <div id="ca-legend">
+        <span><span class="ca-dot" style="background:#fbbf24"></span>D&nbsp;Dividend</span>
+        <span><span class="ca-dot" style="background:#10b981"></span>FR&nbsp;Fwd Split</span>
+        <span><span class="ca-dot" style="background:#f87171"></span>RR&nbsp;Rev Split</span>
+      </div>
     </div>
-
+ 
     <div id="chart"></div>
-
+ 
     <script>
     const DATES      = {dates_json};
     const CANDLES    = {candle_json};
@@ -288,25 +403,50 @@ def draw_candle_chart(
     const EMA        = {ema_json};
     const MARK_PTS   = {mark_points_json};
     const MARK_LINES = {mark_lines_json};
+    const CA_DATA    = {ca_data_js};
     const START_PCT  = {start_pct};
     const TICKER     = "{ticker}";
-
+ 
     function fmtVol(v) {{
       if (v >= 1e9) return (v/1e9).toFixed(1).replace(/\\.0$/,'') + 'B';
       if (v >= 1e6) return (v/1e6).toFixed(1).replace(/\\.0$/,'') + 'M';
       if (v >= 1e3) return (v/1e3).toFixed(1).replace(/\\.0$/,'') + 'K';
       return v;
     }}
-
+ 
+    // Map CA points into ECharts scatter format
+    // Each element: {{value:[xIdx,y], itemStyle, symbol, symbolSize, symbolRotate, ...custom}}
+    const caScatter = CA_DATA.map(function(pt) {{
+      return {{
+        value:         pt.value,
+        itemStyle:     pt.itemStyle,
+        symbol:        pt.symbol,
+        symbolSize:    pt.symbolSize,
+        symbolRotate:  pt.symbolRotate,
+        // store metadata for tooltip
+        caLabel:  pt.label,
+        caKind:   pt.kind,
+        caDetail: pt.detail,
+        caDate:   pt.date,
+      }};
+    }});
+ 
+    // Build colour map for tooltip header
+    const CA_COLOR = {{ D:'#fbbf24', FR:'#10b981', RR:'#f87171' }};
+    const CA_NAME  = {{ D:'Dividend', FR:'Forward Split', RR:'Reverse Split' }};
+ 
     function buildOption(startPct) {{
       return {{
         backgroundColor: '#0f172a',
         animation: false,
+ 
         title: {{
           text: 'EGX: ' + TICKER,
           textStyle: {{ color:'#d1fae5', fontSize:15, fontFamily:'DM Mono', fontWeight:'700' }},
           left: '1%', top: 6,
         }},
+ 
+        // ── Unified tooltip ──────────────────────────────────────────────────
         tooltip: {{
           trigger: 'item',
           axisPointer: {{
@@ -319,39 +459,68 @@ def draw_candle_chart(
           borderWidth: 1,
           padding: [8, 12],
           formatter: function(p) {{
+            // ── Corporate Action marker ──────────────────────────────────────
+            if (p.seriesName === 'Corporate Actions') {{
+              var kind   = p.data.caKind   || '';
+              var detail = p.data.caDetail || '';
+              var date   = p.data.caDate   || '';
+              var clr    = CA_COLOR[kind]  || '#fff';
+              var name   = CA_NAME[kind]   || kind;
+              return '<div style="font-family:DM Mono,monospace;font-size:12px;'
+                   + 'line-height:1.8;min-width:180px">'
+                   + '<b style="color:' + clr + ';font-size:14px">' + name + '</b><br>'
+                   + '<span style="color:#6b7280">Date</span>  '
+                   + '<b style="color:#e2e8f0">' + date + '</b><br>'
+                   + '<span style="color:' + clr + ';font-size:13px;font-weight:700">'
+                   + detail + '</span>'
+                   + '</div>';
+            }}
+            // ── Candle ───────────────────────────────────────────────────────
             var v = p.value;
             if (!Array.isArray(v) || v.length < 5) {{
               if (p.seriesName === 'EMA 20')
-                return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#facc15">EMA20</span> <b style="color:#e2e8f0">' + parseFloat(v).toFixed(3) + '</b></div>';
+                return '<div style="font-family:DM Mono,monospace;font-size:12px">'
+                     + '<span style="color:#facc15">EMA20</span> '
+                     + '<b style="color:#e2e8f0">' + parseFloat(v).toFixed(3) + '</b></div>';
               if (p.seriesName === 'Volume')
-                return '<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:#6b7280">Vol</span> <b style="color:#e2e8f0">' + fmtVol(p.value) + '</b></div>';
+                return '<div style="font-family:DM Mono,monospace;font-size:12px">'
+                     + '<span style="color:#6b7280">Vol</span> '
+                     + '<b style="color:#e2e8f0">' + fmtVol(p.value) + '</b></div>';
               return '';
             }}
-            var o=parseFloat(v[1]),c=parseFloat(v[2]),lo=parseFloat(v[3]),h=parseFloat(v[4]);
-            var pct=((c-o)/o*100), arrow=pct>=0?'▲':'▼', col=pct>=0?'#10b981':'#f87171', sign=pct>=0?'+':'';
-            return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
-              +'<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
-              +'<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(3)+'</b>'
-              +'&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">'+h.toFixed(3)+'</b><br>'
-              +'<span style="color:#6b7280">L</span> <b style="color:#e2e8f0">'+lo.toFixed(3)+'</b>'
-              +'&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">'+c.toFixed(3)+'</b><br>'
-              +'<span style="color:'+col+';font-size:13px"><b>'+arrow+' '+sign+pct.toFixed(2)+'%</b></span>'
-              +'</div>';
+            var o=parseFloat(v[1]), c=parseFloat(v[2]),
+                lo=parseFloat(v[3]), h=parseFloat(v[4]);
+            var pct=((c-o)/o*100), arrow=pct>=0?'▲':'▼',
+                col=pct>=0?'#10b981':'#f87171', sign=pct>=0?'+':'';
+            return '<div style="font-family:DM Mono,monospace;font-size:12px;'
+                 + 'line-height:1.9;min-width:170px">'
+                 + '<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
+                 + '<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(3)+'</b>'
+                 + '&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">'+h.toFixed(3)+'</b><br>'
+                 + '<span style="color:#6b7280">L</span> <b style="color:#e2e8f0">'+lo.toFixed(3)+'</b>'
+                 + '&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">'+c.toFixed(3)+'</b><br>'
+                 + '<span style="color:'+col+';font-size:13px"><b>'+arrow+' '+sign+pct.toFixed(2)+'%</b></span>'
+                 + '</div>';
           }},
         }},
+ 
         legend: {{
-          data: ['EMA 20'], top: 6, right: '2%',
+          data: ['EMA 20'],
+          top: 6, right: '2%',
           textStyle: {{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono' }},
         }},
+ 
         axisPointer: {{ link: [{{ xAxisIndex:'all' }}] }},
+ 
         grid: [
           {{ left:'1%', right:'6%', top:46, height:'60%' }},
           {{ left:'1%', right:'6%', top:'76%', height:'14%' }},
         ],
+ 
         xAxis: [
           {{
             type:'category', data:DATES, gridIndex:0, scale:true,
-            boundaryGap: true,
+            boundaryGap:true,
             axisLine:  {{ lineStyle:{{ color:'#1e3a2a' }} }},
             axisTick:  {{ show:false }},
             axisLabel: {{ show:false }},
@@ -359,13 +528,14 @@ def draw_candle_chart(
           }},
           {{
             type:'category', data:DATES, gridIndex:1, scale:true,
-            boundaryGap: true,
+            boundaryGap:true,
             axisLine:  {{ lineStyle:{{ color:'#1e3a2a' }} }},
             axisTick:  {{ show:false }},
             axisLabel: {{ show:false }},
             splitLine: {{ show:false }},
           }},
         ],
+ 
         yAxis: [
           {{
             scale:true, gridIndex:0, position:'right',
@@ -373,11 +543,8 @@ def draw_candle_chart(
             axisLine:  {{ show:false }},
             axisTick:  {{ show:false }},
             axisLabel: {{
-              color:'#d1fae5',
-              fontSize:13,
-              fontWeight:'bold',
-              fontFamily:'DM Mono',
-              margin:8,
+              color:'#d1fae5', fontSize:13, fontWeight:'bold',
+              fontFamily:'DM Mono', margin:8,
               formatter: function(v) {{ return parseFloat(v).toFixed(3); }},
             }},
           }},
@@ -386,18 +553,22 @@ def draw_candle_chart(
             splitLine: {{ show:false }},
             axisLine:  {{ show:false }},
             axisTick:  {{ show:false }},
-            axisLabel: {{ color:'#4b6a57', fontSize:11, fontFamily:'DM Mono',
-                         formatter: function(v) {{ return fmtVol(v); }} }},
-            name:'Vol', nameTextStyle: {{ color:'#4b6a57', fontSize:10 }},
+            axisLabel: {{
+              color:'#4b6a57', fontSize:11, fontFamily:'DM Mono',
+              formatter: function(v) {{ return fmtVol(v); }},
+            }},
+            name:'Vol',
+            nameTextStyle: {{ color:'#4b6a57', fontSize:10 }},
           }},
         ],
+ 
         dataZoom: [
           {{
             type:'inside', xAxisIndex:[0,1],
             start:startPct, end:100,
-            zoomOnMouseWheel: true,
-            moveOnMouseWheel: false,
-            preventDefaultMouseMove: false,
+            zoomOnMouseWheel:true,
+            moveOnMouseWheel:false,
+            preventDefaultMouseMove:false,
           }},
           {{
             type:'slider', xAxisIndex:[0,1],
@@ -411,11 +582,14 @@ def draw_candle_chart(
             textStyle:{{color:'#4b6a57', fontSize:9}},
           }},
         ],
+ 
         series: [
+          // ── Candles ────────────────────────────────────────────────────────
           {{
-            name:TICKER, type:'candlestick',
+            name: TICKER,
+            type: 'candlestick',
             xAxisIndex:0, yAxisIndex:0,
-            data:CANDLES,
+            data: CANDLES,
             itemStyle:{{
               color:'transparent', color0:'transparent',
               borderColor:'#10b981', borderColor0:'#f87171', borderWidth:1,
@@ -426,6 +600,8 @@ def draw_candle_chart(
               data:MARK_LINES,
             }},
           }},
+ 
+          // ── EMA 20 ────────────────────────────────────────────────────────
           {{
             name:'EMA 20', type:'line',
             xAxisIndex:0, yAxisIndex:0,
@@ -433,24 +609,49 @@ def draw_candle_chart(
             lineStyle:{{color:'#facc15', width:1.5}},
             symbol:'none', z:3,
           }},
+ 
+          // ── Volume ────────────────────────────────────────────────────────
           {{
             name:'Volume', type:'bar',
             xAxisIndex:1, yAxisIndex:1,
             data:VOL, barMaxWidth:8,
           }},
+ 
+          // ── Corporate Actions (scatter) ───────────────────────────────────
+          {{
+            name: 'Corporate Actions',
+            type: 'scatter',
+            xAxisIndex:0, yAxisIndex:0,
+            data: caScatter,
+            // symbolSize and symbol are set per-point (via data[].symbol etc.)
+            // We use a dummy size here; per-point overrides it.
+            symbolSize: 18,
+            z: 10,
+            // Rich label: show the short code (D / FR / RR)
+            label: {{
+              show: true,
+              formatter: function(p) {{ return p.data.caLabel || ''; }},
+              position: 'inside',
+              color: '#0f172a',
+              fontSize: 8,
+              fontWeight: '900',
+              fontFamily: 'DM Mono',
+            }},
+            // Per-point tooltip handled by global formatter above
+          }},
         ],
       }};
     }}
-
+ 
     const chart = echarts.init(document.getElementById('chart'), null, {{renderer:'canvas'}});
     chart.setOption(buildOption(START_PCT));
     window.addEventListener('resize', () => chart.resize());
-
+ 
     function resetZoom() {{
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:0, start:START_PCT, end:100 }});
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:1, start:START_PCT, end:100 }});
     }}
-
+ 
     document.getElementById('chart').addEventListener('wheel', function(e) {{
       if (!e.ctrlKey) return;
       e.preventDefault();
@@ -462,202 +663,162 @@ def draw_candle_chart(
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:0, start:ns, end:ns+span }});
       chart.dispatchAction({{ type:'dataZoom', dataZoomIndex:1, start:ns, end:ns+span }});
     }}, {{ passive:false }});
-
+ 
     // ══════════════════════════════════════════════════════════════════════════
-    // DRAWING TOOLS
+    // DRAWING TOOLS  (unchanged)
     // ══════════════════════════════════════════════════════════════════════════
-
+ 
     let drawMode   = null;
     let drawnLines = [];
     const DRAW_COLOR = '#facc15';
-
     let isDragging   = false;
     let dragStart    = null;
     let previewActive = false;
-
+ 
     function setMode(mode) {{
       drawMode   = mode;
       isDragging = false;
       dragStart  = null;
       previewActive = false;
       document.getElementById('trend-hint').style.display = 'none';
-
       ['hline','vline','trend','none'].forEach(id => {{
         var btn = document.getElementById('btn-' + id);
-        if (btn) btn.classList.toggle('active', (mode === null && id === 'none') || id === mode);
+        if (btn) btn.classList.toggle('active', (mode===null && id==='none') || id===mode);
       }});
-
-      chart.setOption({{ dataZoom: [{{ type:'inside', disabled: !!mode }}] }});
+      chart.setOption({{ dataZoom:[{{ type:'inside', disabled:!!mode }}] }});
       chart.getZr().setCursorStyle(mode ? 'crosshair' : 'default');
-
       if (!mode) clearPreview();
     }}
-
+ 
     function pixelToData(pixelX, pixelY) {{
       var dp;
-      try {{
-        dp = chart.convertFromPixel({{ gridIndex: 0 }}, [pixelX, pixelY]);
-      }} catch(e) {{ return null; }}
+      try {{ dp = chart.convertFromPixel({{ gridIndex:0 }}, [pixelX, pixelY]); }}
+      catch(e) {{ return null; }}
       if (!dp || dp.length < 2) return null;
       var idx = Math.round(dp[0]);
       if (idx < 0 || idx >= DATES.length) return null;
-      return {{ idx: idx, date: DATES[idx], price: dp[1] }};
+      return {{ idx, date:DATES[idx], price:dp[1] }};
     }}
-
+ 
     function clearPreview() {{
       if (!previewActive) return;
       previewActive = false;
       chart.setOption({{
-        series: [{{
-          id: '__preview__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
-          data:[], symbol:'none',
-          markLine:{{ symbol:['none','none'], silent:true, animation:false, data:[] }},
-        }}],
+        series:[{{ id:'__preview__', type:'scatter',
+                   xAxisIndex:0, yAxisIndex:0,
+                   data:[], symbol:'none',
+                   markLine:{{ symbol:['none','none'], silent:true,
+                               animation:false, data:[] }} }}],
       }}, {{ replaceMerge:[] }});
     }}
-
-    function drawPreview(x1idx, y1, x2idx, y2) {{
-      if (x1idx === x2idx) return;
-      var slope = (y2 - y1) / (x2idx - x1idx);
-      var x0    = 0, xEnd = DATES.length - 1;
-      var y0    = y1 + slope * (x0 - x1idx);
-      var yEnd  = y1 + slope * (xEnd - x1idx);
-      previewActive = true;
+ 
+    function drawPreview(x1idx,y1,x2idx,y2) {{
+      if (x1idx===x2idx) return;
+      var slope=(y2-y1)/(x2idx-x1idx), x0=0, xEnd=DATES.length-1;
+      var y0=y1+slope*(x0-x1idx), yEnd=y1+slope*(xEnd-x1idx);
+      previewActive=true;
       chart.setOption({{
-        series: [{{
-          id: '__preview__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
-          data:[], symbol:'none',
-          markLine:{{
-            symbol:['none','none'], silent:true, animation:false,
-            lineStyle:{{ color:'#facc1588', width:1.5, type:'dashed' }},
-            data:[[
-              {{ xAxis: DATES[x0],   yAxis: y0   }},
-              {{ xAxis: DATES[xEnd], yAxis: yEnd }},
-            ]],
-          }},
-        }}],
+        series:[{{ id:'__preview__', type:'scatter',
+                   xAxisIndex:0, yAxisIndex:0, data:[], symbol:'none',
+                   markLine:{{ symbol:['none','none'], silent:true, animation:false,
+                     lineStyle:{{color:'#facc1588',width:1.5,type:'dashed'}},
+                     data:[[{{ xAxis:DATES[x0],yAxis:y0 }},{{ xAxis:DATES[xEnd],yAxis:yEnd }}]] }} }}],
       }}, {{ replaceMerge:[] }});
     }}
-
+ 
     var zr = chart.getZr();
-
     zr.on('mousedown', function(e) {{
       if (!drawMode) return;
       var d = pixelToData(e.offsetX, e.offsetY);
       if (!d) return;
-
-      if (drawMode === 'hline') {{
+      if (drawMode==='hline') {{
         drawnLines.push({{ type:'hline', price:d.price, color:DRAW_COLOR }});
         renderDrawn();
-
-      }} else if (drawMode === 'vline') {{
+      }} else if (drawMode==='vline') {{
         drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
         renderDrawn();
-
-      }} else if (drawMode === 'trend') {{
-        isDragging = true;
-        dragStart  = d;
-        document.getElementById('trend-hint').style.display = 'inline-block';
+      }} else if (drawMode==='trend') {{
+        isDragging=true; dragStart=d;
+        document.getElementById('trend-hint').style.display='inline-block';
       }}
     }});
-
+ 
     zr.on('mousemove', function(e) {{
-      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
+      if (!isDragging || drawMode!=='trend' || !dragStart) return;
       var d = pixelToData(e.offsetX, e.offsetY);
-      if (!d || d.idx === dragStart.idx) return;
+      if (!d || d.idx===dragStart.idx) return;
       drawPreview(dragStart.idx, dragStart.price, d.idx, d.price);
     }});
-
+ 
     zr.on('mouseup', function(e) {{
-      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
+      if (!isDragging || drawMode!=='trend' || !dragStart) return;
       var d = pixelToData(e.offsetX, e.offsetY);
-      isDragging = false;
-      document.getElementById('trend-hint').style.display = 'none';
+      isDragging=false;
+      document.getElementById('trend-hint').style.display='none';
       clearPreview();
-
-      if (!d) {{ dragStart = null; return; }}
-
-      if (dragStart.idx === d.idx) {{
+      if (!d) {{ dragStart=null; return; }}
+      if (dragStart.idx===d.idx) {{
         drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
       }} else {{
-        drawnLines.push({{
-          type:'trend',
-          x1:dragStart.idx, y1:dragStart.price,
-          x2:d.idx,         y2:d.price,
-          color:DRAW_COLOR,
-        }});
+        drawnLines.push({{ type:'trend', x1:dragStart.idx, y1:dragStart.price,
+                           x2:d.idx, y2:d.price, color:DRAW_COLOR }});
       }}
-      dragStart = null;
+      dragStart=null;
       renderDrawn();
     }});
-
+ 
     function deleteLast() {{ drawnLines.pop(); renderDrawn(); }}
     function clearAll() {{
-      drawnLines = [];
-      isDragging = false; dragStart = null;
+      drawnLines=[];
+      isDragging=false; dragStart=null;
       clearPreview();
-      document.getElementById('trend-hint').style.display = 'none';
+      document.getElementById('trend-hint').style.display='none';
       renderDrawn();
     }}
-
+ 
     function renderDrawn() {{
       var ml = [];
       drawnLines.forEach(function(ln) {{
-        if (ln.type === 'hline') {{
-          ml.push({{
-            yAxis: ln.price,
-            lineStyle: {{ color:ln.color, width:1.5, type:'solid' }},
-            label: {{
-              show:true, formatter:ln.price.toFixed(3),
-              position:'insideEndTop',
-              color:ln.color, fontSize:10, fontFamily:'DM Mono',
-            }},
-          }});
-        }} else if (ln.type === 'vline') {{
+        if (ln.type==='hline') {{
+          ml.push({{ yAxis:ln.price,
+            lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+            label:{{show:true,formatter:ln.price.toFixed(3),
+                    position:'insideEndTop',color:ln.color,
+                    fontSize:10,fontFamily:'DM Mono'}} }});
+        }} else if (ln.type==='vline') {{
           ml.push([
-            {{ xAxis:ln.date, yAxis:'min',
-               lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
-               label:{{ show:true, formatter:ln.date, position:'insideEndTop',
-                        color:ln.color, fontSize:10, fontFamily:'DM Mono' }},
-            }},
-            {{ xAxis:ln.date, yAxis:'max' }},
+            {{ xAxis:ln.date,yAxis:'min',
+               lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+               label:{{show:true,formatter:ln.date,position:'insideEndTop',
+                       color:ln.color,fontSize:10,fontFamily:'DM Mono'}} }},
+            {{ xAxis:ln.date,yAxis:'max' }},
           ]);
-        }} else if (ln.type === 'trend') {{
-          var slope = (ln.y2 - ln.y1) / (ln.x2 - ln.x1);
-          var x0    = 0, xEnd = DATES.length - 1;
-          var y0    = ln.y1 + slope * (x0   - ln.x1);
-          var yEnd  = ln.y1 + slope * (xEnd - ln.x1);
+        }} else if (ln.type==='trend') {{
+          var slope=(ln.y2-ln.y1)/(ln.x2-ln.x1);
+          var x0=0,xEnd=DATES.length-1;
+          var y0=ln.y1+slope*(x0-ln.x1),yEnd=ln.y1+slope*(xEnd-ln.x1);
           ml.push([
-            {{ xAxis:DATES[x0],   yAxis:y0,
-               lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
-               label:{{ show:false }},
-            }},
-            {{ xAxis:DATES[xEnd], yAxis:yEnd }},
+            {{ xAxis:DATES[x0],yAxis:y0,
+               lineStyle:{{color:ln.color,width:1.5,type:'solid'}},
+               label:{{show:false}} }},
+            {{ xAxis:DATES[xEnd],yAxis:yEnd }},
           ]);
         }}
       }});
-
       chart.setOption({{
-        series: [{{
-          id:'__drawn__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
-          data:[], symbol:'none',
-          markLine:{{
-            symbol:['none','none'], silent:true, animation:false,
-            data:ml,
-          }},
-        }}],
+        series:[{{ id:'__drawn__', type:'scatter',
+                   xAxisIndex:0, yAxisIndex:0,
+                   data:[], symbol:'none',
+                   markLine:{{ symbol:['none','none'], silent:true, animation:false, data:ml }} }}],
       }}, {{ replaceMerge:[] }});
     }}
-
+ 
     renderDrawn();
     </script>
     </body>
     </html>
     """)
-
+ 
     components.html(html, height=height + 65, scrolling=False)
 
 
