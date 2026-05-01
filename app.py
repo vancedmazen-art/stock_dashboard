@@ -1100,7 +1100,7 @@ data, all_symbols, df_strategy, refresh_date_obj, refresh_date_str = load_data()
 df_current = data["current"].copy()
 df_closed  = data["closed"].copy()
 st.caption(f"📅 Data as of: **{refresh_date_str}**")
-
+ ca = load_corporate_actions("EGX_Corporate_Actions.xlsx")
 # ── Moving ticker tape ────────────────────────────────────────────────────────
 _all_facts = [
     "🧠 Discipline Wins: Following your rules beats predicting the market.",
