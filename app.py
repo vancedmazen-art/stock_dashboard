@@ -1278,7 +1278,7 @@ def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news
 
         draw_candle_chart(selected, height=650,
                           stop_loss=sl, target=tg, entry=en, entry_date=ed,
-                          closed_trades_df=ticker_closed_arg)
+                          closed_trades_df=ticker_closed_arg, load_chart_data_fn=load_chart_data)
 
         if len(ticker_closed) > 0:
             with st.expander(f"📋 Trade History — {selected} ({len(ticker_closed)} trades)", expanded=False):
@@ -1409,7 +1409,7 @@ with tab_charts:
             sl2, en2, tg2, ed2 = get_levels(sym_open.iloc[0])
         draw_candle_chart(chart_symbol, height=700,
                           stop_loss=sl2, target=tg2, entry=en2, entry_date=ed2,
-                          closed_trades_df=sym_closed_arg)
+                          closed_trades_df=sym_closed_arg, load_chart_data_fn=load_chart_data)
         if sym_closed_arg is not None and len(sym_closed) > 0:
             with st.expander(f"📋 Trade History — {chart_symbol} ({len(sym_closed)} trades)", expanded=False):
                 hist_cols = [c for c in ['Entry_Date','Exit_Date','Entry_Price','Exit_Price',
@@ -1485,7 +1485,7 @@ with tab_egx30:
         draw_candle_chart('EGX30', height=650,
                           stop_loss=egx30_sl, target=egx30_tg,
                           entry=egx30_en, entry_date=egx30_ed,
-                          closed_trades_df=egx30_closed_arg)
+                          closed_trades_df=egx30_closed_arg, load_chart_data_fn=load_chart_data)
         if len(df_closed_egx30) > 0:
             with st.expander(f"📋 EGX30 Trade History ({len(df_closed_egx30)} trades)", expanded=False):
                 hist_cols = [c for c in ['Entry_Date','Exit_Date','Entry_Price','Exit_Price',
