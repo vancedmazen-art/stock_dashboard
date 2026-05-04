@@ -63,6 +63,11 @@ to_date_str   = to_date.strftime("%m/%d/%Y")
 # =============================
 if os.path.exists(OHLCV_FILE):
     existing_df = pd.read_csv(OHLCV_FILE)
+    
+    # handle both old schema ("datetime") and new schema ("Date")
+    if "datetime" in existing_df.columns and "Date" not in existing_df.columns:
+        existing_df.rename(columns={"datetime": "Date"}, inplace=True)
+    
     existing_df["Date"] = pd.to_datetime(existing_df["Date"], errors="coerce")
     existing_keys = set(existing_df["Symbol"].astype(str) + "_" + existing_df["Date"].astype(str))
 else:
