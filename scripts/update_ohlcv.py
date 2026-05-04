@@ -2,7 +2,7 @@ import json
 import os
 import csv
 import pandas as pd
-from investiny import historical_data, search_assets
+from investiny import historical_data
 from datetime import datetime, timedelta
 
 # =============================
@@ -21,6 +21,9 @@ os.makedirs(JSON_DIR, exist_ok=True)
 # =============================
 # WATCHLIST
 # =============================
+INVESTING_IDS = {
+    {"COMI": 12865, "ENGC": 12914, "ABUK": 12964, "HRHO": 12875, "EGX30": 12860, "AALR": 40558, "ACAMD": 1115767, "ACAP": 1203006, "ACGC": 12861, "ACTF": 1218756, "ADCI": 40559, "ADPC": 40560, "AFDI": 12894, "AIDC": 1233877, "AIFI": 40565, "AIH": 40561, "AJWA": 12862, "ALCN": 40563, "ALUM": 40566, "AMER": 40567, "AMES": 40568, "AMIA": 40569, "AMOC": 12971, "TYCN": 40570, "ARAB": 960753, "ARCC": 950023, "AREH": 12897, "ARVA": 40573, "ASCM": 12898, "ASPI": 12884, "ATLC": 1057138, "ATQA": 40574, "AXPH": 12974, "BINV": 1073052, "BIOC": 12975, "BONY": 1233358, "BTFH": 40576, "CAED": 40577, "CCAP": 12864, "CCRS": 12900, "CEFM": 12901, "CERA": 40579, "CICH": 1075451, "CIRA": 40580, "CLHO": 985148, "CNFN": 1121784, "COPR": 12879, "COSG": 12903, "CPCI": 12981, "CRST": 12866, "CSAG": 12904, "DAPH": 12905, "DEIN": 12983, "DOMT": 969108, "DSCW": 40581, "DTPP": 12908, "EALR": 40582, "EBSC": 40584, "ECAP": 12909, "EDFM": 12987, "EEII": 40586, "EFIC": 12910, "EFID": 992622, "EFIH": 1178529, "EGAL": 40587, "EGAS": 12989, "EGCH": 12992, "EGTS": 12867, "EHDR": 12911, "ELEC": 12869, "ELKA": 12870, "ELSH": 12913, "EMFD": 960752, "EPCO": 12872, "ETEL": 12874, "ETRS": 12915, "GBCO": 12899, "GDWA": 1178527, "GGCC": 12916, "GIHD": 12917, "GPIM": 40590, "GRCA": 12920, "GTWL": 40599, "HBCO": 1224792, "HELI": 12922, "ICFC": 1052616, "ICID": 12923, "IDRE": 40602, "IEEC": 950024, "IFAP": 12925, "INEG": 1052608, "INFI": 40603, "ISMA": 12927, "ISMQ": 1174541, "ISPH": 1056341, "JUFO": 40604, "KABO": 12928, "KRDI": 1184823, "KZPC": 13008, "LCSW": 12929, "LUTS": 1203038, "MAAL": 1171365, "MASR": 12932, "MBSC": 12965, "MCQE": 12966, "MCRO": 1185538, "MENA": 12930, "MEPA": 40609, "MFPC": 997882, "MICH": 12931, "MILS": 12972, "MIPH": 40610, "MOED": 1052619, "MOSC": 12933, "MPCI": 40612, "MPCO": 12934, "MTIE": 1010530, "NARE": 40622, "NCCW": 12937, "NHPS": 40616, "NIPH": 12980, "OBRI": 40618, "OCDI": 12880, "OCPH": 40619, "ODIN": 12892, "OFH": 1170419, "OIH": 40621, "OLFI": 994418, "ORAS": 950025, "ORHD": 40620, "ORWE": 12943, "PHAR": 12990, "PHDC": 12883, "POUL": 12945, "PRCL": 12946, "PRDC": 1178528, "PRMH": 12994, "RACC": 1036884, "RAYA": 12948, "RMDA": 1156268, "RREI": 40623, "RUBX": 12950, "SCEM": 12998, "SCFM": 12999, "SCTS": 40625, "SDTI": 40626, "SEIG": 13000, "SIPC": 992995, "SKPC": 12886, "SMFR": 12953, "SNFC": 12954, "SPIN": 12955, "SPMD": 1129365, "SUGR": 12956, "SVCE": 12887, "SWDY": 12888, "TALM": 1172876, "TANM": 1174905, "TAQA": 1204783, "TMGH": 12889, "UEFM": 13005, "UEGC": 12890, "UNIP": 12959, "UNIT": 12960, "WCDF": 13007, "WKOL": 40638, "VLMRA": 1178525, "ZEOT": 12961, "ZMID": 12962}
+    
 watchlist = [
     "EGX30", "AALR", "ABUK", "ACAMD", "ACAP", "ACGC", "ACTF", "ADCI", "ADPC", "AFDI",
     "AIDC", "AIFI", "AIH", "AJWA", "ALCN", "ALUM", "AMER", "AMES", "AMIA", "AMOC",
@@ -85,18 +88,9 @@ for symbol in watchlist:
     print(f"Fetching {symbol}...")
 
     # ── Resolve investing.com ID ──────────────────────────────────────
-    if symbol not in cache:
-        try:
-            asset_type = "Index" if symbol == "EGX30" else "Stock"
-            results = search_assets(query=symbol, limit=1, type=asset_type, exchange="EGX")
-            if results:
-                cache[symbol] = int(results[0]["ticker"])
-        except Exception as e:
-            print(f"  ⚠️  Search failed: {e}")
-
-    investing_id = cache.get(symbol)
+    investing_id = INVESTING_IDS.get(symbol)
     if not investing_id:
-        print(f"  ❌ Not found in cache/search")
+        print(f"  ❌ No investing_id for {symbol}")
         failed.append(symbol)
         continue
 
