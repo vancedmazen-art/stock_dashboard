@@ -25,48 +25,61 @@ def get_OHLCV_data(
     interval: str = "Daily",
     n_bars: int = 720,
 ) -> pd.DataFrame | None:
-    """
-    Fetch OHLCV data for an EGX symbol via investiny.
-    Returns a DataFrame with columns: datetime, open, high, low, close, volume, Symbol
-    Also attaches raw_json and clean_symbol to df.attrs for the pipeline to use.
-    """
+
     cache = _load_cache()
     clean = symbol.replace(f"{exchange}:", "").strip()
+    print(f"    [dp] resolving '{clean}'")
 
-    # ── Resolve investing.com numeric ID ─────────────────────────────
+    # ── Resolve investing.com ID ──────────────────────────────────────
     if clean not in cache:
+        print(f"    [dp] not in cache, searching investing.com...")
         try:
             asset_type = "Index" if clean == "EGX30" else "Stock"
-            results = search_assets(query=clean, limit=1, type=asset_type, exchange=exchange)
+            results = search_assets(query=clean, limit=5, type=asset_type, exchange=exchange)
+            print(f"    [dp] search returned: {results}")
+
             if results:
                 cache[clean] = int(results[0]["ticker"])
                 _save_cache(cache)
+                print(f"    [dp] cached ID={cache[clean]}")
             else:
-                print(f"  ❌ {clean}: not found on investing.com")
+                print(f"    [dp] ❌ no results from search_assets")
                 return None
+
         except Exception as e:
-            print(f"  ❌ {clean}: search failed — {e}")
+            print(f"    [dp] ❌ search_assets exception: {type(e).__name__}: {e}")
             return None
+    else:
+        print(f"    [dp] found in cache: ID={cache[clean]}")
 
     investing_id = cache.get(clean)
     if not investing_id:
+        print(f"    [dp] ❌ investing_id is None/0 after cache lookup")
         return None
 
-    # ── Date range (n_bars trading days → calendar days with buffer) ──
+    # ── Fetch historical data ─────────────────────────────────────────
     to_dt   = datetime.now()
     from_dt = to_dt - timedelta(days=int(n_bars * 1.45))
+    from_str = from_dt.strftime("%m/%d/%Y")
+    to_str   = to_dt.strftime("%m/%d/%Y")
+    print(f"    [dp] fetching ID={investing_id}  {from_str} → {to_str}")
 
     try:
         raw = historical_data(
             investing_id=investing_id,
-            from_date=from_dt.strftime("%m/%d/%Y"),
-            to_date=to_dt.strftime("%m/%d/%Y"),
+            from_date=from_str,
+            to_date=to_str,
         )
+        print(f"    [dp] raw keys: {list(raw.keys()) if isinstance(raw, dict) else type(raw)}")
+        if isinstance(raw, dict):
+            for k, v in raw.items():
+                print(f"    [dp]   {k}: {len(v) if isinstance(v, list) else v} items")
+
     except Exception as e:
-        print(f"  ❌ {clean}: historical_data failed — {e}")
+        print(f"    [dp] ❌ historical_data exception: {type(e).__name__}: {e}")
         return None
 
-    # ── Normalize keys (investiny returns lowercase, but guard anyway) ─
+    # ── Normalize ─────────────────────────────────────────────────────
     dates   = raw.get("date",   raw.get("Date",   []))
     opens   = raw.get("open",   raw.get("Open",   [None] * len(dates)))
     highs   = raw.get("high",   raw.get("High",   [None] * len(dates)))
@@ -74,8 +87,10 @@ def get_OHLCV_data(
     closes  = raw.get("close",  raw.get("Close",  [None] * len(dates)))
     volumes = raw.get("volume", raw.get("Volume", [None] * len(dates)))
 
+    print(f"    [dp] dates found: {len(dates)}")
+
     if not dates:
-        print(f"  ⚠  {clean}: empty response")
+        print(f"    [dp] ❌ dates list is empty — returning None")
         return None
 
     df = pd.DataFrame({
@@ -88,6 +103,7 @@ def get_OHLCV_data(
         "Symbol":   clean,
     })
 
+    print(f"    [dp] ✅ built DataFrame: {len(df)} rows")
     df.attrs["raw_json"]     = raw
     df.attrs["clean_symbol"] = clean
     return df
