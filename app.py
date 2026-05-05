@@ -71,27 +71,21 @@ def draw_candle_chart(
     entry_date=None,
     closed_trades_df=None,
 ):
-    # Load data
     df_all = load_chart_data()
     splits_df, dividends_df = load_corporate_actions()
-
     df = df_all[df_all["symbol"] == ticker].copy().sort_values("datetime")
 
     if df.empty:
         st.warning(f"No chart data for {ticker}")
         return
 
-    # Corporate Actions
     ticker_splits = splits_df[splits_df['Symbol'] == ticker].copy() if not splits_df.empty else pd.DataFrame()
     ticker_divs   = dividends_df[dividends_df['Symbol'] == ticker].copy() if not dividends_df.empty else pd.DataFrame()
 
     df["date_str"] = df["datetime"].dt.strftime("%Y-%m-%d")
     dates = df["date_str"].tolist()
 
-    # === CORPORATE ACTIONS ===
     ca_mark_points = []
-
-    # Dividends
     for _, row in ticker_divs.iterrows():
         if pd.isna(row.get('Date')): continue
         div_date = row['Date'].strftime("%Y-%m-%d")
@@ -102,38 +96,30 @@ def draw_candle_chart(
                 "name": "DIV",
                 "coord": [idx, float(df.iloc[idx]["low"]) * 0.96],
                 "value": f"Div {amount:.3f}",
-                "symbol": "circle",
-                "symbolSize": 14,
+                "symbol": "circle", "symbolSize": 14,
                 "itemStyle": {"color": "#60a5fa"},
                 "label": {"show": True, "formatter": f"↓{amount:.2f}", "position": "bottom",
                           "color": "#60a5fa", "fontSize": 11, "fontFamily": "DM Mono"}
             })
 
-    # Splits
     for _, row in ticker_splits.iterrows():
         if pd.isna(row.get('Date')): continue
         split_date = row['Date'].strftime("%Y-%m-%d")
         if split_date not in dates: continue
-
         idx = dates.index(split_date)
         ratio = float(row['Ratio'])
         is_reverse = "Reverse" in str(row.get('Event_Type', '')) or ratio < 1.0
-
-        color = "#f87171" if is_reverse else "#34d399"
-        symbol = "diamond" if is_reverse else "triangle"
-
+        color  = "#f87171" if is_reverse else "#34d399"
+        symbol = "diamond"  if is_reverse else "triangle"
         ca_mark_points.append({
             "name": "SPLIT",
             "coord": [idx, float(df.iloc[idx]["high"]) * 1.05],
-            "value": f"{ratio:.2f}x",
-            "symbol": symbol,
-            "symbolSize": 16,
+            "value": f"{ratio:.2f}x", "symbol": symbol, "symbolSize": 16,
             "itemStyle": {"color": color},
-            "label": {"show": True, "formatter": "S" if is_reverse else "F", "position": "top",
-                      "color": color, "fontSize": 12, "fontWeight": "bold"}
+            "label": {"show": True, "formatter": "S" if is_reverse else "F",
+                      "position": "top", "color": color, "fontSize": 12, "fontWeight": "bold"}
         })
 
-    # Trade markers (Buy/Sell)
     mark_points = []
 
     def _add_buy(date_str, price_low):
@@ -168,14 +154,13 @@ def draw_candle_chart(
     if closed_trades_df is not None and len(closed_trades_df) > 0:
         ctdf = closed_trades_df.copy()
         ctdf["Entry_Date"] = pd.to_datetime(ctdf["Entry_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-        ctdf["Exit_Date"]  = pd.to_datetime(ctdf["Exit_Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        ctdf["Exit_Date"]  = pd.to_datetime(ctdf["Exit_Date"],  errors="coerce").dt.strftime("%Y-%m-%d")
         for _, tr in ctdf.iterrows():
             tr_ed = str(tr.get("Entry_Date", ""))[:10]
             if tr_ed in dates:
                 ed_r = df[df["date_str"] == tr_ed]
                 if not ed_r.empty and pd.notna(tr.get("Entry_Price")):
                     _add_buy(tr_ed, float(ed_r["low"].values[0]))
-
             tr_xd = str(tr.get("Exit_Date", ""))[:10]
             if tr_xd in dates:
                 xd_r = df[df["date_str"] == tr_xd]
@@ -184,37 +169,30 @@ def draw_candle_chart(
 
     all_mark_points = mark_points + ca_mark_points
 
-    # Chart Data
     df["ema20"] = _ema(df["close"], 20).round(4)
     dates = df["date_str"].tolist()
     n = len(dates)
 
-    max_date = df["datetime"].max()
+    max_date     = df["datetime"].max()
     start_cutoff = (max_date - timedelta(days=90)).strftime("%Y-%m-%d")
-    start_idx = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
-    start_pct = round(start_idx / n * 100)
+    start_idx    = next((i for i, d in enumerate(dates) if d >= start_cutoff), 0)
+    start_pct    = round(start_idx / n * 100)
 
     candle_data = [[float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])] for _, r in df.iterrows()]
-    vol_data = [{"value": float(r["volume"]), "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}} 
-                for _, r in df.iterrows()]
-    ema_data = [round(v, 4) for v in df["ema20"].tolist()]
+    vol_data    = [{"value": float(r["volume"]), "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}} for _, r in df.iterrows()]
+    ema_data    = [round(v, 4) for v in df["ema20"].tolist()]
 
-    # Level lines
     mark_lines_data = []
     if stop_loss is not None:
         mark_lines_data.append({"yAxis": float(stop_loss), "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
-                                "label": {"show": True, "formatter": f"Stop {float(stop_loss):.3f}", "position": "insideEndTop",
-                                          "color": "#f87171", "fontSize": 11}})
+                                 "label": {"show": True, "formatter": f"Stop {float(stop_loss):.3f}", "position": "insideEndTop", "color": "#f87171", "fontSize": 11}})
     if entry is not None:
         mark_lines_data.append({"yAxis": float(entry), "lineStyle": {"color": "#94a3b8", "width": 1.5, "type": "dotted"},
-                                "label": {"show": True, "formatter": f"Entry {float(entry):.3f}", "position": "insideEndTop",
-                                          "color": "#94a3b8", "fontSize": 11}})
+                                 "label": {"show": True, "formatter": f"Entry {float(entry):.3f}", "position": "insideEndTop", "color": "#94a3b8", "fontSize": 11}})
     if target is not None:
         mark_lines_data.append({"yAxis": float(target), "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
-                                "label": {"show": True, "formatter": f"Target {float(target):.3f}", "position": "insideEndTop",
-                                          "color": "#10b981", "fontSize": 11}})
+                                 "label": {"show": True, "formatter": f"Target {float(target):.3f}", "position": "insideEndTop", "color": "#10b981", "fontSize": 11}})
 
-    # JSON Serialization
     dates_json       = json.dumps(dates)
     candle_json      = json.dumps(candle_data)
     vol_json         = json.dumps(vol_data)
@@ -222,7 +200,6 @@ def draw_candle_chart(
     mark_points_json = json.dumps(all_mark_points)
     mark_lines_json  = json.dumps(mark_lines_data)
 
-    # HTML + JS
     html = textwrap.dedent(f"""
     <!DOCTYPE html>
     <html>
@@ -231,31 +208,32 @@ def draw_candle_chart(
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
       * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-      html, body {{ width:100%; height:100%; background: #0f172a; font-family: 'DM Mono', monospace; overflow:hidden; }}
-      #toolbar {{ display: flex; align-items: center; gap: 5px; padding: 5px 8px; background: #0a1f12;
-        border: 1px solid #1e3a2a; border-radius: 6px; margin-bottom: 5px; flex-wrap: wrap; }}
-      .tb-btn {{ background: #0f172a; border: 1px solid #1e3a2a; border-radius: 5px; color: #9ca3af;
-        font-size: 11px; font-family: 'DM Mono', monospace; padding: 3px 9px; cursor: pointer; transition: all .15s; }}
-      .tb-btn:hover  {{ background: #1e3a2a; color: #d1fae5; }}
-      .tb-btn.active {{ background: #10b981; color: #0f172a; border-color: #10b981; font-weight: 700; }}
-      #chart {{ width: 100%; height: {height}px; }}
+      html, body {{ width:100%; height:100%; background:#0f172a; font-family:'DM Mono',monospace; overflow:hidden; }}
+      #toolbar {{ display:flex; align-items:center; gap:5px; padding:5px 8px; background:#0a1f12;
+        border:1px solid #1e3a2a; border-radius:6px; margin-bottom:5px; flex-wrap:wrap; }}
+      .tb-btn {{ background:#0f172a; border:1px solid #1e3a2a; border-radius:5px; color:#9ca3af;
+        font-size:11px; font-family:'DM Mono',monospace; padding:3px 9px; cursor:pointer; transition:all .15s; }}
+      .tb-btn:hover  {{ background:#1e3a2a; color:#d1fae5; }}
+      .tb-btn.active {{ background:#10b981; color:#0f172a; border-color:#10b981; font-weight:700; }}
+      #trend-hint {{ font-size:10px; color:#facc15; display:none; margin-left:4px; }}
+      #chart {{ width:100%; height:{height}px; }}
     </style>
     </head>
     <body>
 
     <div id="toolbar">
-      <span>Draw</span>
+      <span style="color:#4b6a57;font-size:11px;">Draw</span>
       <button class="tb-btn" id="btn-hline" onclick="setMode('hline')">── H-Line</button>
       <button class="tb-btn" id="btn-vline" onclick="setMode('vline')">│ V-Line</button>
       <button class="tb-btn" id="btn-trend" onclick="setMode('trend')">↗ Trendline</button>
-      <span id="trend-hint">release to finish</span>
-      <div class="tb-sep"></div>
-      <button class="tb-btn danger" onclick="deleteLast()">✕ Last</button>
-      <button class="tb-btn danger" onclick="clearAll()">✕ All</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn info" onclick="resetZoom()">⟳ Reset</button>
-      <div class="tb-sep"></div>
+      <span id="trend-hint">▶ drag then release</span>
+      <button class="tb-btn" onclick="deleteLast()">✕ Last</button>
+      <button class="tb-btn" onclick="clearAll()">✕ All</button>
+      <button class="tb-btn" onclick="resetZoom()">⟳ Reset</button>
       <button class="tb-btn active" id="btn-none" onclick="setMode(null)">✋ Pointer</button>
+      <button class="tb-btn" id="btn-fullscreen"
+        style="margin-left:auto; border-color:#facc15; color:#facc15;"
+        onclick="openFullscreen()">⛶ Full Screen</button>
     </div>
 
     <div id="chart"></div>
@@ -269,6 +247,55 @@ def draw_candle_chart(
     const MARK_LINES = {mark_lines_json};
     const START_PCT  = {start_pct};
     const TICKER     = "{ticker}";
+
+    // ── Full screen: serialize everything into a self-contained page ──────────
+    function openFullscreen() {{
+      var w = window.open('', '_blank');
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+        <title>EGX: ${{TICKER}}</title>
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"><\/script>
+        <style>
+          *{{box-sizing:border-box;margin:0;padding:0}}
+          html,body{{width:100%;height:100%;background:#0f172a;font-family:'DM Mono',monospace;overflow:hidden}}
+          #toolbar{{display:flex;align-items:center;gap:5px;padding:6px 10px;background:#0a1f12;
+            border-bottom:1px solid #1e3a2a;flex-wrap:wrap}}
+          .tb-btn{{background:#0f172a;border:1px solid #1e3a2a;border-radius:5px;color:#9ca3af;
+            font-size:12px;padding:4px 10px;cursor:pointer}}
+          .tb-btn:hover{{background:#1e3a2a;color:#d1fae5}}
+          .tb-btn.active{{background:#10b981;color:#0f172a;border-color:#10b981;font-weight:700}}
+          #trend-hint{{font-size:10px;color:#facc15;display:none;margin-left:4px}}
+          #chart{{width:100%;height:calc(100vh - 44px)}}
+        </style></head><body>
+        <div id="toolbar">
+          <span style="color:#4b6a57;font-size:11px;">Draw</span>
+          <button class="tb-btn" id="btn-hline" onclick="setMode('hline')">── H-Line</button>
+          <button class="tb-btn" id="btn-vline" onclick="setMode('vline')">│ V-Line</button>
+          <button class="tb-btn" id="btn-trend" onclick="setMode('trend')">↗ Trendline</button>
+          <span id="trend-hint">▶ drag then release</span>
+          <button class="tb-btn" onclick="deleteLast()">✕ Last</button>
+          <button class="tb-btn" onclick="clearAll()">✕ All</button>
+          <button class="tb-btn" onclick="resetZoom()">⟳ Reset</button>
+          <button class="tb-btn active" id="btn-none" onclick="setMode(null)">✋ Pointer</button>
+        </div>
+        <div id="chart"></div>
+        <script>
+          const DATES=${{JSON.stringify(DATES)}};
+          const CANDLES=${{JSON.stringify(CANDLES)}};
+          const VOL=${{JSON.stringify(VOL)}};
+          const EMA=${{JSON.stringify(EMA)}};
+          const MARK_PTS=${{JSON.stringify(MARK_PTS)}};
+          const MARK_LINES=${{JSON.stringify(MARK_LINES)}};
+          const START_PCT=${{START_PCT}};
+          const TICKER="${{TICKER}}";
+        <\/script>
+        <script src="https://cdn.jsdelivr.net/gh/YOUR_PLACEHOLDER/chart_logic.js"><\/script>
+      </body></html>`);
+      // Instead of external JS, inject the full chart logic inline
+      var script = w.document.createElement('script');
+      script.textContent = getChartLogic();
+      w.document.body.appendChild(script);
+      w.document.close();
+    }}
 
     function fmtVol(v) {{
       if (v >= 1e9) return (v/1e9).toFixed(1).replace(/\\.0$/,'') + 'B';
@@ -284,19 +311,16 @@ def draw_candle_chart(
         title: {{
           text: 'EGX: ' + TICKER,
           textStyle: {{ color:'#d1fae5', fontSize:15, fontFamily:'DM Mono', fontWeight:'700' }},
-          left: '1%', top: 6,
+          left:'1%', top:6,
         }},
         tooltip: {{
           trigger: 'item',
           axisPointer: {{
-            type: 'cross',
+            type:'cross',
             crossStyle: {{ color:'#4b6a57', width:1 }},
-            lineStyle: {{ color:'#4b6a57', width:1, type:'dashed' }},
+            lineStyle:  {{ color:'#4b6a57', width:1, type:'dashed' }},
           }},
-          backgroundColor: '#0f172a',
-          borderColor: '#1e3a2a',
-          borderWidth: 1,
-          padding: [8, 12],
+          backgroundColor:'#0f172a', borderColor:'#1e3a2a', borderWidth:1, padding:[8,12],
           formatter: function(p) {{
             var v = p.value;
             if (!Array.isArray(v) || v.length < 5) {{
@@ -307,7 +331,7 @@ def draw_candle_chart(
               return '';
             }}
             var o=parseFloat(v[1]),c=parseFloat(v[2]),lo=parseFloat(v[3]),h=parseFloat(v[4]);
-            var pct=((c-o)/o*100), arrow=pct>=0?'▲':'▼', col=pct>=0?'#10b981':'#f87171', sign=pct>=0?'+':'';
+            var pct=((c-o)/o*100),arrow=pct>=0?'▲':'▼',col=pct>=0?'#10b981':'#f87171',sign=pct>=0?'+':'';
             return '<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px">'
               +'<b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br>'
               +'<span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(3)+'</b>'
@@ -318,105 +342,50 @@ def draw_candle_chart(
               +'</div>';
           }},
         }},
-        legend: {{
-          data: ['EMA 20'], top: 6, right: '2%',
-          textStyle: {{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono' }},
-        }},
-        axisPointer: {{ link: [{{ xAxisIndex:'all' }}] }},
+        legend: {{ data:['EMA 20'], top:6, right:'2%', textStyle:{{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono' }} }},
+        axisPointer: {{ link:[{{ xAxisIndex:'all' }}] }},
         grid: [
           {{ left:'1%', right:'6%', top:46, height:'60%' }},
           {{ left:'1%', right:'6%', top:'76%', height:'14%' }},
         ],
         xAxis: [
-          {{
-            type:'category', data:DATES, gridIndex:0, scale:true,
-            boundaryGap: true,
-            axisLine:  {{ lineStyle:{{ color:'#1e3a2a' }} }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{ show:false }},
-            splitLine: {{ show:false }},
-          }},
-          {{
-            type:'category', data:DATES, gridIndex:1, scale:true,
-            boundaryGap: true,
-            axisLine:  {{ lineStyle:{{ color:'#1e3a2a' }} }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{ show:false }},
-            splitLine: {{ show:false }},
-          }},
+          {{ type:'category', data:DATES, gridIndex:0, scale:true, boundaryGap:true,
+             axisLine:{{ lineStyle:{{ color:'#1e3a2a' }} }}, axisTick:{{ show:false }},
+             axisLabel:{{ show:false }}, splitLine:{{ show:false }} }},
+          {{ type:'category', data:DATES, gridIndex:1, scale:true, boundaryGap:true,
+             axisLine:{{ lineStyle:{{ color:'#1e3a2a' }} }}, axisTick:{{ show:false }},
+             axisLabel:{{ show:false }}, splitLine:{{ show:false }} }},
         ],
         yAxis: [
-          {{
-            scale:true, gridIndex:0, position:'right',
-            splitLine: {{ show:false }},
-            axisLine:  {{ show:false }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{
-              color:'#d1fae5',
-              fontSize:13,
-              fontWeight:'bold',
-              fontFamily:'DM Mono',
-              margin:8,
-              formatter: function(v) {{ return parseFloat(v).toFixed(3); }},
-            }},
-          }},
-          {{
-            scale:true, gridIndex:1, position:'right',
-            splitLine: {{ show:false }},
-            axisLine:  {{ show:false }},
-            axisTick:  {{ show:false }},
-            axisLabel: {{ color:'#4b6a57', fontSize:11, fontFamily:'DM Mono',
-                         formatter: function(v) {{ return fmtVol(v); }} }},
-            name:'Vol', nameTextStyle: {{ color:'#4b6a57', fontSize:10 }},
-          }},
+          {{ scale:true, gridIndex:0, position:'right', splitLine:{{ show:false }},
+             axisLine:{{ show:false }}, axisTick:{{ show:false }},
+             axisLabel:{{ color:'#d1fae5', fontSize:13, fontWeight:'bold', fontFamily:'DM Mono', margin:8,
+                          formatter:function(v){{ return parseFloat(v).toFixed(3); }} }} }},
+          {{ scale:true, gridIndex:1, position:'right', splitLine:{{ show:false }},
+             axisLine:{{ show:false }}, axisTick:{{ show:false }},
+             axisLabel:{{ color:'#4b6a57', fontSize:11, fontFamily:'DM Mono',
+                          formatter:function(v){{ return fmtVol(v); }} }},
+             name:'Vol', nameTextStyle:{{ color:'#4b6a57', fontSize:10 }} }},
         ],
         dataZoom: [
-          {{
-            type:'inside', xAxisIndex:[0,1],
-            start:startPct, end:100,
-            zoomOnMouseWheel: true,
-            moveOnMouseWheel: false,
-            preventDefaultMouseMove: false,
-          }},
-          {{
-            type:'slider', xAxisIndex:[0,1],
-            start:startPct, end:100,
-            bottom:4, height:18,
-            borderColor:'#1e3a2a', backgroundColor:'#0a1a12',
-            dataBackground:{{ lineStyle:{{color:'#1e3a2a'}}, areaStyle:{{color:'#0a1f12'}} }},
-            selectedDataBackground:{{ lineStyle:{{color:'#10b981'}}, areaStyle:{{color:'#0a2a18'}} }},
-            fillerColor:'rgba(16,185,129,0.08)',
-            handleStyle:{{color:'#10b981'}},
-            textStyle:{{color:'#4b6a57', fontSize:9}},
-          }},
+          {{ type:'inside', xAxisIndex:[0,1], start:startPct, end:100,
+             zoomOnMouseWheel:true, moveOnMouseWheel:false, preventDefaultMouseMove:false }},
+          {{ type:'slider', xAxisIndex:[0,1], start:startPct, end:100,
+             bottom:4, height:18, borderColor:'#1e3a2a', backgroundColor:'#0a1a12',
+             dataBackground:{{ lineStyle:{{ color:'#1e3a2a' }}, areaStyle:{{ color:'#0a1f12' }} }},
+             selectedDataBackground:{{ lineStyle:{{ color:'#10b981' }}, areaStyle:{{ color:'#0a2a18' }} }},
+             fillerColor:'rgba(16,185,129,0.08)', handleStyle:{{ color:'#10b981' }},
+             textStyle:{{ color:'#4b6a57', fontSize:9 }} }},
         ],
         series: [
-          {{
-            name:TICKER, type:'candlestick',
-            xAxisIndex:0, yAxisIndex:0,
-            data:CANDLES,
-            itemStyle:{{
-              color:'transparent', color0:'transparent',
-              borderColor:'#10b981', borderColor0:'#f87171', borderWidth:1,
-            }},
-            markPoint: {{ data:MARK_PTS, animation:false }},
-            markLine: {{
-              symbol:['none','none'], animation:false, silent:true,
-              data:MARK_LINES,
-            }},
-          }},
-          {{
-            name:'EMA 20', type:'line',
-            xAxisIndex:0, yAxisIndex:0,
-            data:EMA, smooth:false,
-            lineStyle:{{color:'#facc15', width:1.5}},
-            symbol:'none', z:3,
-          }},
-          {{
-            name:'Volume', type:'bar',
-            xAxisIndex:1, yAxisIndex:1,
-            data:VOL, barMaxWidth:8,
-          }},
+          {{ name:TICKER, type:'candlestick', xAxisIndex:0, yAxisIndex:0, data:CANDLES,
+             itemStyle:{{ color:'transparent', color0:'transparent',
+               borderColor:'#10b981', borderColor0:'#f87171', borderWidth:1 }},
+             markPoint:{{ data:MARK_PTS, animation:false }},
+             markLine:{{ symbol:['none','none'], animation:false, silent:true, data:MARK_LINES }} }},
+          {{ name:'EMA 20', type:'line', xAxisIndex:0, yAxisIndex:0, data:EMA, smooth:false,
+             lineStyle:{{ color:'#facc15', width:1.5 }}, symbol:'none', z:3 }},
+          {{ name:'Volume', type:'bar', xAxisIndex:1, yAxisIndex:1, data:VOL, barMaxWidth:8 }},
         ],
       }};
     }}
@@ -445,83 +414,73 @@ def draw_candle_chart(
     // ══════════════════════════════════════════════════════════════════════════
     // DRAWING TOOLS
     // ══════════════════════════════════════════════════════════════════════════
-
-    let drawMode   = null;
-    let drawnLines = [];
-    const DRAW_COLOR = '#facc15';
-
-    let isDragging   = false;
-    let dragStart    = null;
-    let previewActive = false;
+    var drawMode     = null;
+    var drawnLines   = [];
+    var isDragging   = false;
+    var dragStart    = null;
+    var previewActive = false;
+    const DRAW_COLOR  = '#facc15';
 
     function setMode(mode) {{
-      drawMode   = mode;
-      isDragging = false;
-      dragStart  = null;
+      drawMode      = mode;
+      isDragging    = false;
+      dragStart     = null;
       previewActive = false;
-      document.getElementById('trend-hint').style.display = 'none';
+      document.getElementById('trend-hint').style.display = mode === 'trend' ? 'inline' : 'none';
 
-      ['hline','vline','trend','none'].forEach(id => {{
+      ['hline','vline','trend','none'].forEach(function(id) {{
         var btn = document.getElementById('btn-' + id);
         if (btn) btn.classList.toggle('active', (mode === null && id === 'none') || id === mode);
       }});
 
       chart.setOption({{ dataZoom: [{{ type:'inside', disabled: !!mode }}] }});
       chart.getZr().setCursorStyle(mode ? 'crosshair' : 'default');
-
       if (!mode) clearPreview();
     }}
 
     function pixelToData(pixelX, pixelY) {{
       var dp;
-      try {{
-        dp = chart.convertFromPixel({{ gridIndex: 0 }}, [pixelX, pixelY]);
-      }} catch(e) {{ return null; }}
+      try {{ dp = chart.convertFromPixel({{ gridIndex:0 }}, [pixelX, pixelY]); }}
+      catch(e) {{ return null; }}
       if (!dp || dp.length < 2) return null;
       var idx = Math.round(dp[0]);
       if (idx < 0 || idx >= DATES.length) return null;
-      return {{ idx: idx, date: DATES[idx], price: dp[1] }};
+      return {{ idx:idx, date:DATES[idx], price:dp[1] }};
     }}
 
     function clearPreview() {{
-      if (!previewActive) return;
       previewActive = false;
       chart.setOption({{
-        series: [{{
-          id: '__preview__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
+        series: [{{ id:'__preview__', type:'scatter', xAxisIndex:0, yAxisIndex:0,
           data:[], symbol:'none',
-          markLine:{{ symbol:['none','none'], silent:true, animation:false, data:[] }},
-        }}],
+          markLine:{{ symbol:['none','none'], silent:true, animation:false, data:[] }} }}],
       }}, {{ replaceMerge:[] }});
     }}
 
     function drawPreview(x1idx, y1, x2idx, y2) {{
       if (x1idx === x2idx) return;
       var slope = (y2 - y1) / (x2idx - x1idx);
-      var x0    = 0, xEnd = DATES.length - 1;
-      var y0    = y1 + slope * (x0 - x1idx);
-      var yEnd  = y1 + slope * (xEnd - x1idx);
+      var x0 = 0, xEnd = DATES.length - 1;
       previewActive = true;
       chart.setOption({{
-        series: [{{
-          id: '__preview__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
+        series: [{{ id:'__preview__', type:'scatter', xAxisIndex:0, yAxisIndex:0,
           data:[], symbol:'none',
           markLine:{{
             symbol:['none','none'], silent:true, animation:false,
             lineStyle:{{ color:'#facc1588', width:1.5, type:'dashed' }},
             data:[[
-              {{ xAxis: DATES[x0],   yAxis: y0   }},
-              {{ xAxis: DATES[xEnd], yAxis: yEnd }},
+              {{ xAxis:DATES[x0],   yAxis:y1 + slope*(x0-x1idx)   }},
+              {{ xAxis:DATES[xEnd], yAxis:y1 + slope*(xEnd-x1idx) }},
             ]],
-          }},
-        }}],
+          }} }}],
       }}, {{ replaceMerge:[] }});
     }}
 
-    var zr = chart.getZr();
+    // ── Use native DOM events on the canvas for reliable drag detection ───────
+    var zr      = chart.getZr();
+    var canvas  = document.querySelector('#chart canvas');
 
+    // mousedown via zrender (works fine)
     zr.on('mousedown', function(e) {{
       if (!drawMode) return;
       var d = pixelToData(e.offsetX, e.offsetY);
@@ -530,36 +489,45 @@ def draw_candle_chart(
       if (drawMode === 'hline') {{
         drawnLines.push({{ type:'hline', price:d.price, color:DRAW_COLOR }});
         renderDrawn();
+        setMode(null);   // ← auto-revert to pointer
 
       }} else if (drawMode === 'vline') {{
         drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
         renderDrawn();
+        setMode(null);   // ← auto-revert to pointer
 
       }} else if (drawMode === 'trend') {{
         isDragging = true;
         dragStart  = d;
-        document.getElementById('trend-hint').style.display = 'inline-block';
+        document.getElementById('trend-hint').style.display = 'inline';
       }}
     }});
 
     zr.on('mousemove', function(e) {{
-      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
+      if (!isDragging || !dragStart) return;
       var d = pixelToData(e.offsetX, e.offsetY);
       if (!d || d.idx === dragStart.idx) return;
       drawPreview(dragStart.idx, dragStart.price, d.idx, d.price);
     }});
 
-    zr.on('mouseup', function(e) {{
-      if (!isDragging || drawMode !== 'trend' || !dragStart) return;
-      var d = pixelToData(e.offsetX, e.offsetY);
+    // ── mouseup: listen on the WINDOW so it fires even if mouse leaves canvas ─
+    window.addEventListener('mouseup', function(e) {{
+      if (!isDragging || !dragStart) return;
+
+      // convert window coords → canvas-relative coords
+      var rect = canvas ? canvas.getBoundingClientRect() : null;
+      var ox   = rect ? e.clientX - rect.left : e.offsetX;
+      var oy   = rect ? e.clientY - rect.top  : e.offsetY;
+
       isDragging = false;
       document.getElementById('trend-hint').style.display = 'none';
       clearPreview();
 
-      if (!d) {{ dragStart = null; return; }}
+      var d = pixelToData(ox, oy);
 
-      if (dragStart.idx === d.idx) {{
-        drawnLines.push({{ type:'vline', idx:d.idx, date:d.date, color:DRAW_COLOR }});
+      if (!d || d.idx === dragStart.idx) {{
+        // Zero-length drag → treat as vline
+        drawnLines.push({{ type:'vline', idx:dragStart.idx, date:dragStart.date, color:DRAW_COLOR }});
       }} else {{
         drawnLines.push({{
           type:'trend',
@@ -570,14 +538,13 @@ def draw_candle_chart(
       }}
       dragStart = null;
       renderDrawn();
+      setMode(null);   // ← auto-revert to pointer after trendline
     }});
 
     function deleteLast() {{ drawnLines.pop(); renderDrawn(); }}
-    function clearAll() {{
-      drawnLines = [];
-      isDragging = false; dragStart = null;
+    function clearAll()   {{
+      drawnLines = []; isDragging = false; dragStart = null;
       clearPreview();
-      document.getElementById('trend-hint').style.display = 'none';
       renderDrawn();
     }}
 
@@ -588,47 +555,75 @@ def draw_candle_chart(
           ml.push({{
             yAxis: ln.price,
             lineStyle: {{ color:ln.color, width:1.5, type:'solid' }},
-            label: {{
-              show:true, formatter:ln.price.toFixed(3),
-              position:'insideEndTop',
-              color:ln.color, fontSize:10, fontFamily:'DM Mono',
-            }},
+            label: {{ show:true, formatter:ln.price.toFixed(3), position:'insideEndTop',
+                      color:ln.color, fontSize:10, fontFamily:'DM Mono' }},
           }});
         }} else if (ln.type === 'vline') {{
           ml.push([
             {{ xAxis:ln.date, yAxis:'min',
                lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
                label:{{ show:true, formatter:ln.date, position:'insideEndTop',
-                        color:ln.color, fontSize:10, fontFamily:'DM Mono' }},
-            }},
+                        color:ln.color, fontSize:10, fontFamily:'DM Mono' }} }},
             {{ xAxis:ln.date, yAxis:'max' }},
           ]);
         }} else if (ln.type === 'trend') {{
-          var slope = (ln.y2 - ln.y1) / (ln.x2 - ln.x1);
-          var x0    = 0, xEnd = DATES.length - 1;
-          var y0    = ln.y1 + slope * (x0   - ln.x1);
-          var yEnd  = ln.y1 + slope * (xEnd - ln.x1);
+          var slope = (ln.y2-ln.y1)/(ln.x2-ln.x1);
+          var x0=0, xEnd=DATES.length-1;
           ml.push([
-            {{ xAxis:DATES[x0],   yAxis:y0,
+            {{ xAxis:DATES[x0],   yAxis:ln.y1+slope*(x0-ln.x1),
                lineStyle:{{ color:ln.color, width:1.5, type:'solid' }},
-               label:{{ show:false }},
-            }},
-            {{ xAxis:DATES[xEnd], yAxis:yEnd }},
+               label:{{ show:false }} }},
+            {{ xAxis:DATES[xEnd], yAxis:ln.y1+slope*(xEnd-ln.x1) }},
           ]);
         }}
       }});
-
       chart.setOption({{
-        series: [{{
-          id:'__drawn__', type:'scatter',
-          xAxisIndex:0, yAxisIndex:0,
+        series: [{{ id:'__drawn__', type:'scatter', xAxisIndex:0, yAxisIndex:0,
           data:[], symbol:'none',
-          markLine:{{
-            symbol:['none','none'], silent:true, animation:false,
-            data:ml,
-          }},
-        }}],
+          markLine:{{ symbol:['none','none'], silent:true, animation:false, data:ml }} }}],
       }}, {{ replaceMerge:[] }});
+    }}
+
+    // ── Full screen logic: inject chart logic into new window ─────────────────
+    function getChartLogic() {{
+      return `
+        ${{fmtVol.toString()}}
+        ${{buildOption.toString()}}
+        var chart = echarts.init(document.getElementById('chart'), null, {{renderer:'canvas'}});
+        chart.setOption(buildOption(START_PCT));
+        window.addEventListener('resize', () => chart.resize());
+        ${{resetZoom.toString()}}
+        var drawMode=null,drawnLines=[],isDragging=false,dragStart=null,previewActive=false;
+        var DRAW_COLOR='#facc15';
+        ${{setMode.toString()}}
+        ${{pixelToData.toString()}}
+        ${{clearPreview.toString()}}
+        ${{drawPreview.toString()}}
+        var zr=chart.getZr();
+        var canvas=document.querySelector('#chart canvas');
+        zr.on('mousedown',function(e){{
+          if(!drawMode)return;
+          var d=pixelToData(e.offsetX,e.offsetY);if(!d)return;
+          if(drawMode==='hline'){{drawnLines.push({{type:'hline',price:d.price,color:DRAW_COLOR}});renderDrawn();setMode(null);}}
+          else if(drawMode==='vline'){{drawnLines.push({{type:'vline',idx:d.idx,date:d.date,color:DRAW_COLOR}});renderDrawn();setMode(null);}}
+          else if(drawMode==='trend'){{isDragging=true;dragStart=d;document.getElementById('trend-hint').style.display='inline';}}
+        }});
+        zr.on('mousemove',function(e){{if(!isDragging||!dragStart)return;var d=pixelToData(e.offsetX,e.offsetY);if(!d||d.idx===dragStart.idx)return;drawPreview(dragStart.idx,dragStart.price,d.idx,d.price);}});
+        window.addEventListener('mouseup',function(e){{
+          if(!isDragging||!dragStart)return;
+          var rect=canvas?canvas.getBoundingClientRect():null;
+          var ox=rect?e.clientX-rect.left:e.offsetX,oy=rect?e.clientY-rect.top:e.offsetY;
+          isDragging=false;document.getElementById('trend-hint').style.display='none';clearPreview();
+          var d=pixelToData(ox,oy);
+          if(!d||d.idx===dragStart.idx){{drawnLines.push({{type:'vline',idx:dragStart.idx,date:dragStart.date,color:DRAW_COLOR}});}}
+          else{{drawnLines.push({{type:'trend',x1:dragStart.idx,y1:dragStart.price,x2:d.idx,y2:d.price,color:DRAW_COLOR}});}}
+          dragStart=null;renderDrawn();setMode(null);
+        }});
+        ${{deleteLast.toString()}}
+        ${{clearAll.toString()}}
+        ${{renderDrawn.toString()}}
+        renderDrawn();
+      `;
     }}
 
     renderDrawn();
