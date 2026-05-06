@@ -959,7 +959,47 @@ take_profit_df = df_current_other[
 ].copy()
 close_now_df = df_closed_other[df_xi['Exit_Date'] == refresh_date_obj].copy()
 holds_df     = df_current_other[df_ci['Entry_Date'] != refresh_date_obj].copy()
+def compute_gappers(chart_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    For each symbol find the two most-recent sessions.
+    A gap-up occurs when: today_open > max(prev_open, prev_close)
+    Returns a DataFrame with columns: symbol, today_open, prev_open, prev_close, gap_pct
+    """
+    results = []
+    for symbol, grp in chart_df.groupby("symbol"):
+        grp = grp.sort_values("datetime")
+        if len(grp) < 2:
+            continue
+        today = grp.iloc[-1]
+        prev  = grp.iloc[-2]
+        today_open = float(today["open"])
+        prev_open  = float(prev["open"])
+        prev_close = float(prev["close"])
+        prev_max   = max(prev_open, prev_close)
+        if today_open > prev_max:
+            gap_pct = (today_open - prev_max) / prev_max * 100
+            results.append({
+                "Ticker":      symbol,
+                "Today_Open":  today_open,
+                "Prev_Open":   prev_open,
+                "Prev_Close":  prev_close,
+                "Gap_%":       round(gap_pct, 2),
+            })
+    return pd.DataFrame(results)
 
+
+chart_df_all  = load_chart_data()
+gappers_raw   = compute_gappers(chart_df_all)
+
+# Keep only gappers that also have an open trade
+if not gappers_raw.empty and not df_current_other.empty:
+    gappers_df = df_current_other.merge(
+        gappers_raw[["Ticker", "Today_Open", "Prev_Open", "Prev_Close", "Gap_%"]],
+        on="Ticker",
+        how="inner",
+    ).sort_values("Gap_%", ascending=False)
+else:
+    gappers_df = pd.DataFrame()
 # EGX30 sentiment
 if len(df_current_egx30) > 0:
     sentiment_text, sentiment_emoji = "Positive", "🚀📈"
@@ -1118,13 +1158,14 @@ def stock_panel(source_df, session_key, metric_cols, show_levels=True, show_news
 # ---------------------------
 # TABS
 # ---------------------------
-tab_buys, tab_tp, tab_close, tab_holds, tab_charts, tab_egx30 = st.tabs([
+tab_buys, tab_tp, tab_close, tab_holds, tab_charts, tab_egx30, tab_gappers = st.tabs([
     f"🆕 Fresh Buys ({len(fresh_buys_df)})",
     f"🎯 Take Profit ({len(take_profit_df)})",
     f"❌ Close Now ({len(close_now_df)})",
     f"✅ Holds ({len(holds_df)})",
     "📈 Charts",
     "📊 EGX30",
+    f"⚡ Gappers ({len(gappers_df)})",
 ])
 
 
@@ -1314,7 +1355,29 @@ with tab_egx30:
                 st.divider()
         else:
             st.info("No recent EGX30 news")
+with tab_gappers:
+    st.markdown("### ⚡ Gapping Up — Open Trades Only")
+    if not gappers_df.empty:
+        g1, g2, g3 = st.columns(3)
+        g1.metric("⚡ Count",    len(gappers_df))
+        g2.metric("🚀 Best Gap", f"{gappers_df['Gap_%'].max():.2f}%")
+        g3.metric("📊 Avg Gap",  f"{gappers_df['Gap_%'].mean():.2f}%")
 
+    stock_panel(
+        gappers_df, "gap_ticker",
+        metric_cols=[
+            ("Entry Date",  "Entry_Date",  "neutral"),
+            ("Entry Price", "Entry_Price", "neutral"),
+            ("Today Open",  "Today_Open",  "gain"),
+            ("Prev Close",  "Prev_Close",  "neutral"),
+            ("Prev Open",   "Prev_Open",   "neutral"),
+            ("Gap %",       "Gap_%",       "gain"),
+            ("Stop Loss",   "Stop_Loss",   "loss"),
+            ("Target",      "Target_Price","gain"),
+            ("R:R",         "RR_Ratio",    "warn"),
+        ],
+        show_levels=True, show_news=True,
+    )
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center;color:#888;font-size:11px;padding:12px'>"
