@@ -973,10 +973,11 @@ def compute_gappers(chart_df: pd.DataFrame) -> pd.DataFrame:
         today = grp.iloc[-1]
         prev  = grp.iloc[-2]
         today_open = float(today["open"])
+        today_close = float(today["close"])
         prev_open  = float(prev["open"])
         prev_close = float(prev["close"])
         prev_max   = max(prev_open, prev_close)
-        if today_open > prev_max:
+        if today_open > prev_max and today_close > prev_max:
             gap_pct = (today_open - prev_max) / prev_max * 100
             results.append({
                 "Ticker":      symbol,
