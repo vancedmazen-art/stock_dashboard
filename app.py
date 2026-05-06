@@ -997,7 +997,7 @@ if not gappers_raw.empty and not df_current_other.empty:
         gappers_raw[["Ticker", "Today_Open", "Prev_Open", "Prev_Close", "Gap_%"]],
         on="Ticker",
         how="inner",
-    ).sort_values("Gap_%", ascending=False)
+    ).sort_values("Entry_Date", ascending=False)
 else:
     gappers_df = pd.DataFrame()
 # EGX30 sentiment
