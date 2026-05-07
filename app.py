@@ -181,6 +181,8 @@ def draw_candle_chart(
     candle_data = [[float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])] for _, r in df.iterrows()]
     vol_data    = [{"value": float(r["volume"]), "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}} for _, r in df.iterrows()]
     ema_data    = [round(v, 4) for v in df["ema20"].tolist()]
+
+    # ── Right-side buffer ─────────────────────────────────────────────────────
     BUFFER = 5
     for i in range(1, BUFFER + 1):
         pad_date = (max_date + timedelta(days=i)).strftime("%Y-%m-%d")
@@ -189,12 +191,7 @@ def draw_candle_chart(
         vol_data.append({"value": None, "itemStyle": {"color": "transparent"}})
         ema_data.append(None)
 
-    dates_json       = json.dumps(dates)
-    candle_json      = json.dumps(candle_data)
-    vol_json         = json.dumps(vol_data)
-    ema_json         = json.dumps(ema_data)
-    mark_points_json = json.dumps(all_mark_points)
-    mark_lines_json  = json.dumps(mark_lines_data)
+    # ── Mark lines (must be built BEFORE json.dumps) ──────────────────────────
     mark_lines_data = []
     if stop_loss is not None:
         mark_lines_data.append({"yAxis": float(stop_loss), "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
@@ -206,6 +203,7 @@ def draw_candle_chart(
         mark_lines_data.append({"yAxis": float(target), "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
                                  "label": {"show": True, "formatter": f"Target {float(target):.3f}", "position": "insideEndTop", "color": "#10b981", "fontSize": 11}})
 
+    # ── Serialize everything once ─────────────────────────────────────────────
     dates_json       = json.dumps(dates)
     candle_json      = json.dumps(candle_data)
     vol_json         = json.dumps(vol_data)
