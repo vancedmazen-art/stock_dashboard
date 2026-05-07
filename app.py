@@ -345,8 +345,8 @@ def draw_candle_chart(
         legend: {{ data:['EMA 20'], top:6, right:'2%', textStyle:{{ color:'#9ca3af', fontSize:11, fontFamily:'DM Mono' }} }},
         axisPointer: {{ link:[{{ xAxisIndex:'all' }}] }},
         grid: [
-          {{ left:'1%', right:'6%', top:46, height:'60%' }},
-          {{ left:'1%', right:'6%', top:'76%', height:'14%' }},
+          {{ left:'1%', right:'6%', top:46, height:'65%' }},
+          {{ left:'1%', right:'6%', top:'80%', height:'8%' }},
         ],
         xAxis: [
           {{ type:'category', data:DATES, gridIndex:0, scale:true, boundaryGap:true,
