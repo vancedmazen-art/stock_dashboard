@@ -349,10 +349,10 @@ def draw_candle_chart(
           {{ left:'1%', right:'6%', top:'80%', height:'8%' }},
         ],
         xAxis: [
-          {{ type:'category', data:DATES, gridIndex:0, scale:true, boundaryGap:['0%', '5%'],
+          {{ type:'category', data:DATES, gridIndex:0, scale:true, boundaryGap:['0%', '20%'],
              axisLine:{{ lineStyle:{{ color:'#1e3a2a' }} }}, axisTick:{{ show:false }},
              axisLabel:{{ show:false }}, splitLine:{{ show:false }} }},
-          {{ type:'category', data:DATES, gridIndex:1, scale:true, boundaryGap:['0%', '5%'],
+          {{ type:'category', data:DATES, gridIndex:1, scale:true, boundaryGap:['0%', '20%'],
              axisLine:{{ lineStyle:{{ color:'#1e3a2a' }} }}, axisTick:{{ show:false }},
              axisLabel:{{ show:false }}, splitLine:{{ show:false }} }},
         ],
