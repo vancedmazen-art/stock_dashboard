@@ -181,7 +181,20 @@ def draw_candle_chart(
     candle_data = [[float(r["open"]), float(r["close"]), float(r["low"]), float(r["high"])] for _, r in df.iterrows()]
     vol_data    = [{"value": float(r["volume"]), "itemStyle": {"color": _vol_color(r["close"], r["open"]), "opacity": 0.75}} for _, r in df.iterrows()]
     ema_data    = [round(v, 4) for v in df["ema20"].tolist()]
+    BUFFER = 5
+    for i in range(1, BUFFER + 1):
+        pad_date = (max_date + timedelta(days=i)).strftime("%Y-%m-%d")
+        dates.append(pad_date)
+        candle_data.append([None, None, None, None])
+        vol_data.append({"value": None, "itemStyle": {"color": "transparent"}})
+        ema_data.append(None)
 
+    dates_json       = json.dumps(dates)
+    candle_json      = json.dumps(candle_data)
+    vol_json         = json.dumps(vol_data)
+    ema_json         = json.dumps(ema_data)
+    mark_points_json = json.dumps(all_mark_points)
+    mark_lines_json  = json.dumps(mark_lines_data)
     mark_lines_data = []
     if stop_loss is not None:
         mark_lines_data.append({"yAxis": float(stop_loss), "lineStyle": {"color": "#f87171", "width": 1.5, "type": "dashed"},
@@ -192,16 +205,7 @@ def draw_candle_chart(
     if target is not None:
         mark_lines_data.append({"yAxis": float(target), "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
                                  "label": {"show": True, "formatter": f"Target {float(target):.3f}", "position": "insideEndTop", "color": "#10b981", "fontSize": 11}})
-    BUFFER = 5  # number of empty candles to add as right padding
 
-    from datetime import timedelta
-    last_date = df["datetime"].max()
-    for i in range(1, BUFFER + 1):
-        pad_date = (last_date + timedelta(days=i)).strftime("%Y-%m-%d")
-        dates.append(pad_date)
-        candle_data.append([None, None, None, None])
-        vol_data.append({"value": None, "itemStyle": {"color": "transparent"}})
-        ema_data.append(None)
     dates_json       = json.dumps(dates)
     candle_json      = json.dumps(candle_data)
     vol_json         = json.dumps(vol_data)
