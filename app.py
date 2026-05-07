@@ -192,7 +192,16 @@ def draw_candle_chart(
     if target is not None:
         mark_lines_data.append({"yAxis": float(target), "lineStyle": {"color": "#10b981", "width": 1.5, "type": "dashed"},
                                  "label": {"show": True, "formatter": f"Target {float(target):.3f}", "position": "insideEndTop", "color": "#10b981", "fontSize": 11}})
+    BUFFER = 5  # number of empty candles to add as right padding
 
+    from datetime import timedelta
+    last_date = df["datetime"].max()
+    for i in range(1, BUFFER + 1):
+        pad_date = (last_date + timedelta(days=i)).strftime("%Y-%m-%d")
+        dates.append(pad_date)
+        candle_data.append([None, None, None, None])
+        vol_data.append({"value": None, "itemStyle": {"color": "transparent"}})
+        ema_data.append(None)
     dates_json       = json.dumps(dates)
     candle_json      = json.dumps(candle_data)
     vol_json         = json.dumps(vol_data)
@@ -349,10 +358,10 @@ def draw_candle_chart(
           {{ left:'1%', right:'6%', top:'80%', height:'8%' }},
         ],
         xAxis: [
-          {{ type:'category', data:DATES, gridIndex:0, scale:true, boundaryGap:['0%', '20%'],
+          {{ type:'category', data:DATES, gridIndex:0, scale:true, boundaryGap:true,
              axisLine:{{ lineStyle:{{ color:'#1e3a2a' }} }}, axisTick:{{ show:false }},
              axisLabel:{{ show:false }}, splitLine:{{ show:false }} }},
-          {{ type:'category', data:DATES, gridIndex:1, scale:true, boundaryGap:['0%', '20%'],
+          {{ type:'category', data:DATES, gridIndex:1, scale:true, boundaryGap:true,
              axisLine:{{ lineStyle:{{ color:'#1e3a2a' }} }}, axisTick:{{ show:false }},
              axisLabel:{{ show:false }}, splitLine:{{ show:false }} }},
         ],
