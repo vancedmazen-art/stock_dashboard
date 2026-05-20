@@ -34,6 +34,22 @@ def load_corporate_actions():
 
 def _ema(series, span):
     return series.ewm(span=span, adjust=False).mean()
+def _wma(series, period):
+    weights = np.arange(1, period + 1)
+    return series.rolling(period).apply(
+        lambda x: np.dot(x, weights) / weights.sum(),
+        raw=True
+    )
+def _hma(series, period):
+    half = int(period / 2)
+    sqrt_period = int(np.sqrt(period))
+
+    wma_half = _wma(series, half)
+    wma_full = _wma(series, period)
+
+    raw_hma = 2 * wma_half - wma_full
+
+    return _wma(raw_hma, sqrt_period)
 
 def _vol_color(close, open_):
     return "#10b981" if close >= open_ else "#f87171"
@@ -110,6 +126,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, entry=None, entry_date
 
     all_mark_points = mark_points + ca_mark_points
     df["ema20"] = _ema(df["close"], 20).round(4)
+    df["hma20"] = _hma(df["close"], 20).round(4)
     dates = df["date_str"].tolist()
     n = len(dates)
     max_date     = df["datetime"].max()
@@ -119,6 +136,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, entry=None, entry_date
     candle_data  = [[float(r["open"]),float(r["close"]),float(r["low"]),float(r["high"])] for _,r in df.iterrows()]
     vol_data     = [{"value":float(r["volume"]),"itemStyle":{"color":_vol_color(r["close"],r["open"]),"opacity":0.75}} for _,r in df.iterrows()]
     ema_data     = [round(v,4) for v in df["ema20"].tolist()]
+    hma_data     = [round(v,4) for v in df["hma20"].tolist()]
 
     for i in range(1, 6):
         pad = (max_date + timedelta(days=i)).strftime("%Y-%m-%d")
