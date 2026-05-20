@@ -144,6 +144,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, entry=None, entry_date
         candle_data.append([None,None,None,None])
         vol_data.append({"value":None,"itemStyle":{"color":"transparent"}})
         ema_data.append(None)
+        hma_data.append(None)
 
     mark_lines_data = []
     if stop_loss is not None:
@@ -155,6 +156,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, entry=None, entry_date
     candle_json      = json.dumps(candle_data)
     vol_json         = json.dumps(vol_data)
     ema_json         = json.dumps(ema_data)
+    hma_json         = json.dumps(hma_data)
     mark_points_json = json.dumps(all_mark_points)
     mark_lines_json  = json.dumps(mark_lines_data)
 
@@ -179,7 +181,7 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, entry=None, entry_date
     </div>
     <div id="chart"></div>
     <script>
-    const DATES={dates_json},CANDLES={candle_json},VOL={vol_json},EMA={ema_json};
+    const DATES={dates_json},CANDLES={candle_json},VOL={vol_json},EMA={ema_json},HMA={hma_json};
     const MARK_PTS={mark_points_json},MARK_LINES={mark_lines_json};
     const START_PCT={start_pct},TICKER="{ticker}";
     function fmtVol(v){{if(v>=1e9)return(v/1e9).toFixed(1).replace(/\\.0$/,'')+'B';if(v>=1e6)return(v/1e6).toFixed(1).replace(/\\.0$/,'')+'M';if(v>=1e3)return(v/1e3).toFixed(1).replace(/\\.0$/,'')+'K';return v;}}
@@ -190,13 +192,13 @@ def draw_candle_chart(ticker, height=650, stop_loss=None, entry=None, entry_date
           var o=parseFloat(v[1]),c=parseFloat(v[2]),lo=parseFloat(v[3]),h=parseFloat(v[4]),pct=((c-o)/o*100),arrow=pct>=0?'▲':'▼',col=pct>=0?'#10b981':'#f87171',sign=pct>=0?'+':'';
           return'<div style="font-family:DM Mono,monospace;font-size:12px;line-height:1.9;min-width:170px"><b style="color:#d1fae5;font-size:13px">'+p.name+'</b><br><span style="color:#6b7280">O</span> <b style="color:#e2e8f0">'+o.toFixed(3)+'</b>&nbsp;&nbsp;<span style="color:#6b7280">H</span> <b style="color:#e2e8f0">'+h.toFixed(3)+'</b><br><span style="color:#6b7280">L</span> <b style="color:#e2e8f0">'+lo.toFixed(3)+'</b>&nbsp;&nbsp;<span style="color:#6b7280">C</span> <b style="color:#e2e8f0">'+c.toFixed(3)+'</b><br><span style="color:'+col+';font-size:13px"><b>'+arrow+' '+sign+pct.toFixed(2)+'%</b></span></div>';
         }}}},
-      legend:{{data:['EMA 20'],top:6,right:'2%',textStyle:{{color:'#9ca3af',fontSize:11,fontFamily:'DM Mono'}}}},
+      legend:{{data:['EMA 20','HMA 20'],top:6,right:'2%',textStyle:{{color:'#9ca3af',fontSize:11,fontFamily:'DM Mono'}}}},
       axisPointer:{{link:[{{xAxisIndex:'all'}}]}},
       grid:[{{left:'1%',right:'6%',top:46,height:'65%'}},{{left:'1%',right:'6%',top:'80%',height:'8%'}}],
       xAxis:[{{type:'category',data:DATES,gridIndex:0,scale:true,boundaryGap:true,axisLine:{{lineStyle:{{color:'#1e3a2a'}}}},axisTick:{{show:false}},axisLabel:{{show:false}},splitLine:{{show:false}}}},{{type:'category',data:DATES,gridIndex:1,scale:true,boundaryGap:true,axisLine:{{lineStyle:{{color:'#1e3a2a'}}}},axisTick:{{show:false}},axisLabel:{{show:false}},splitLine:{{show:false}}}}],
       yAxis:[{{scale:true,gridIndex:0,position:'right',splitLine:{{show:false}},axisLine:{{show:false}},axisTick:{{show:false}},axisLabel:{{color:'#d1fae5',fontSize:13,fontWeight:'bold',fontFamily:'DM Mono',margin:8,formatter:function(v){{return parseFloat(v).toFixed(3);}}}}}},{{scale:true,gridIndex:1,position:'right',splitLine:{{show:false}},axisLine:{{show:false}},axisTick:{{show:false}},axisLabel:{{color:'#4b6a57',fontSize:11,fontFamily:'DM Mono',formatter:function(v){{return fmtVol(v);}}}},name:'Vol',nameTextStyle:{{color:'#4b6a57',fontSize:10}}}}],
       dataZoom:[{{type:'inside',xAxisIndex:[0,1],start:s,end:100,zoomOnMouseWheel:true,moveOnMouseWheel:false,preventDefaultMouseMove:false}},{{type:'slider',xAxisIndex:[0,1],start:s,end:100,bottom:4,height:18,borderColor:'#1e3a2a',backgroundColor:'#0a1a12',dataBackground:{{lineStyle:{{color:'#1e3a2a'}},areaStyle:{{color:'#0a1f12'}}}},selectedDataBackground:{{lineStyle:{{color:'#10b981'}},areaStyle:{{color:'#0a2a18'}}}},fillerColor:'rgba(16,185,129,0.08)',handleStyle:{{color:'#10b981'}},textStyle:{{color:'#4b6a57',fontSize:9}}}}],
-      series:[{{name:TICKER,type:'candlestick',xAxisIndex:0,yAxisIndex:0,data:CANDLES,itemStyle:{{color:'transparent',color0:'transparent',borderColor:'#10b981',borderColor0:'#f87171',borderWidth:1}},markPoint:{{data:MARK_PTS,animation:false}},markLine:{{symbol:['none','none'],animation:false,silent:true,data:MARK_LINES}}}},{{name:'EMA 20',type:'line',xAxisIndex:0,yAxisIndex:0,data:EMA,smooth:false,lineStyle:{{color:'#facc15',width:1.5}},symbol:'none',z:3}},{{name:'Volume',type:'bar',xAxisIndex:1,yAxisIndex:1,data:VOL,barMaxWidth:8}}],
+      series:[{{name:TICKER,type:'candlestick',xAxisIndex:0,yAxisIndex:0,data:CANDLES,itemStyle:{{color:'transparent',color0:'transparent',borderColor:'#10b981',borderColor0:'#f87171',borderWidth:1}},markPoint:{{data:MARK_PTS,animation:false}},markLine:{{symbol:['none','none'],animation:false,silent:true,data:MARK_LINES}}}},{{name:'EMA 20',type:'line',xAxisIndex:0,yAxisIndex:0,data:EMA,smooth:false,lineStyle:{{color:'#facc15',width:1.5}},symbol:'none',z:3}},{{name:'HMA 20',type:'line',xAxisIndex:0,yAxisIndex:0,data:HMA,smooth:false,lineStyle:{{color:'#60a5fa',width:1.5}},symbol:'none',z:3}},{{name:'Volume',type:'bar',xAxisIndex:1,yAxisIndex:1,data:VOL,barMaxWidth:8}}],
     }};}}
     const chart=echarts.init(document.getElementById('chart'),null,{{renderer:'canvas'}});
     chart.setOption(buildOption(START_PCT));
