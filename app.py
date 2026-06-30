@@ -572,7 +572,8 @@ with tab_holds:
         c2.metric("Positive", int((holds_df['PnL_%'] > 0).sum()))
         c3.metric("Avg PnL",  f"{holds_df['PnL_%'].mean():.2f}%")
         c4.metric("Best",     f"{holds_df['PnL_%'].max():.2f}%")
-    trade_panel(holds_df, "holds_ticker", is_open=True, closed_ref=df_closed)
+    trade_panel(
+    holds_df.sort_values(by="Bars_Held",ascending=True,na_position="last"),"holds_ticker",is_open=True,closed_ref=df_closed)
 
 with tab_close:
     st.markdown("### ❌ Close Now — exited today")
