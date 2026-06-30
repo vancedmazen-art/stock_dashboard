@@ -327,7 +327,7 @@ def trade_panel(source_df, session_key, is_open=True, closed_ref=None):
         st.info("No trades here.")
         return
 
-    tickers = source_df['Ticker'].drop_duplicates().sort_values().tolist()
+    tickers = source_df['Ticker'].drop_duplicates().tolist()
     col_list, col_metrics, col_chart = st.columns([1, 1, 5])
 
     with col_list:
